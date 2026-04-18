@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import QRCode from 'qrcode.react';
+import { QRCodeSVG } from 'qrcode.react';
 import { QrCode, Camera, Send, ArrowLeftRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { PageHeader } from '@/components/PageHeader';
@@ -71,7 +71,7 @@ const TransferQr = () => {
                   animate={{ scale: 1, opacity: 1 }}
                   className="rounded-2xl bg-white p-4 shadow-elegant"
                 >
-                  <QRCode value={payload} size={220} level="H" />
+                  <QRCodeSVG value={payload} size={220} level="H" />
                 </motion.div>
                 <div className="text-center">
                   <div className="font-semibold">@{user?.username || 'demo.user'}</div>

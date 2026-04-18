@@ -8,41 +8,41 @@
 
 @layer base {
   :root {
-    /* Brand cyan scale (HSL) */
-    --brand-50: 187 100% 96%;
-    --brand-100: 188 95% 90%;
-    --brand-200: 189 94% 81%;
-    --brand-300: 191 95% 69%;
-    --brand-400: 192 92% 49%;
-    --brand-500: 192 96% 43%;
-    --brand-600: 194 92% 36%;
-    --brand-700: 194 84% 31%;
-    --brand-800: 196 70% 27%;
-    --brand-900: 199 63% 24%;
-    --brand-950: 202 80% 15%;
+    /* Brand green scale — Lipaxe #01594B (HSL) */
+    --brand-50: 169 38% 93%;
+    --brand-100: 169 38% 85%;
+    --brand-200: 169 38% 70%;
+    --brand-300: 169 41% 55%;
+    --brand-400: 169 50% 40%;
+    --brand-500: 169 98% 18%;
+    --brand-600: 169 98% 15%;
+    --brand-700: 169 98% 12%;
+    --brand-800: 169 98% 9%;
+    --brand-900: 169 98% 6%;
+    --brand-950: 169 98% 4%;
 
     /* Surfaces */
-    --background: 200 40% 98%;
-    --foreground: 202 80% 12%;
+    --background: 160 25% 98%;
+    --foreground: 169 60% 8%;
 
     --card: 0 0% 100%;
-    --card-foreground: 202 80% 12%;
+    --card-foreground: 169 60% 8%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 202 80% 12%;
+    --popover-foreground: 169 60% 8%;
 
-    --primary: 194 92% 36%;
+    --primary: 169 98% 18%;
     --primary-foreground: 0 0% 100%;
-    --primary-glow: 192 92% 49%;
+    --primary-glow: 169 50% 40%;
 
-    --secondary: 188 95% 95%;
-    --secondary-foreground: 199 63% 24%;
+    --secondary: 169 38% 93%;
+    --secondary-foreground: 169 98% 12%;
 
-    --muted: 200 30% 95%;
-    --muted-foreground: 200 15% 42%;
+    --muted: 160 20% 95%;
+    --muted-foreground: 169 12% 38%;
 
-    --accent: 187 100% 96%;
-    --accent-foreground: 199 63% 24%;
+    --accent: 169 38% 93%;
+    --accent-foreground: 169 98% 12%;
 
     --destructive: 0 78% 56%;
     --destructive-foreground: 0 0% 100%;

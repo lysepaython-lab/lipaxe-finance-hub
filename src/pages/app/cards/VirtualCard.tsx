@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { useAppSelector } from '@/store/hooks';
-import { fmtMoney } from '@/lib/format';
+import { formatMoney } from '@/lib/format';
 import { toast } from 'sonner';
 
 interface VCard {
@@ -115,7 +115,7 @@ const VirtualCard = () => {
                 <div className="rounded-xl bg-muted/40 p-4">
                   <div className="flex justify-between text-sm mb-2">
                     <span className="text-muted-foreground">{t('cards.spent')}</span>
-                    <span className="font-semibold tabular">{fmtMoney(c.spent, 'USD')} / {fmtMoney(c.limit, 'USD')}</span>
+                    <span className="font-semibold tabular">{formatMoney(c.spent, 'USD')} / {formatMoney(c.limit, 'USD')}</span>
                   </div>
                   <div className="h-2 rounded-full bg-background overflow-hidden">
                     <motion.div

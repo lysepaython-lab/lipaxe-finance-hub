@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { fmtMoney } from '@/lib/format';
+import { formatMoney } from '@/lib/format';
 import { toast } from 'sonner';
 
 type Brand = { id: string; name: string; bg: string; from: number; to: number };
@@ -32,7 +32,7 @@ const GiftCards = () => {
 
   const buy = (b: Brand) => {
     const amt = amount[b.id] || b.from;
-    toast.success(`${t('cards.giftPurchased')} ${b.name} ${fmtMoney(amt, 'USD')}`);
+    toast.success(`${t('cards.giftPurchased')} ${b.name} ${formatMoney(amt, 'USD')}`);
   };
 
   return (
@@ -66,7 +66,7 @@ const GiftCards = () => {
                           (amount[b.id] || b.from) === v ? 'border-primary bg-primary/10 text-primary' : 'border-border hover:border-primary/50'
                         }`}
                       >
-                        {fmtMoney(v, 'USD')}
+                        {formatMoney(v, 'USD')}
                       </button>
                     ))}
                   </div>
@@ -86,7 +86,7 @@ const GiftCards = () => {
                   <div className="text-xs text-muted-foreground font-mono">{c.code}</div>
                 </div>
                 <div className="text-right space-y-1">
-                  <div className="font-display font-bold tabular">{fmtMoney(c.amount, 'USD')}</div>
+                  <div className="font-display font-bold tabular">{formatMoney(c.amount, 'USD')}</div>
                   <Badge variant={c.used ? 'secondary' : 'default'}>{c.used ? t('cards.used') : t('cards.active')}</Badge>
                 </div>
               </CardContent>

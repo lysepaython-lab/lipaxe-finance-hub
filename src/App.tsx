@@ -15,11 +15,24 @@ import Login from "./pages/auth/Login";
 import Register from "./pages/auth/Register";
 import ForgotPassword from "./pages/auth/ForgotPassword";
 import ResetPassword from "./pages/auth/ResetPassword";
+import VerifyEmail from "./pages/auth/VerifyEmail";
 import Dashboard from "./pages/app/Dashboard";
 import Transactions from "./pages/app/Transactions";
 import Deposit from "./pages/app/Deposit";
 import Withdraw from "./pages/app/Withdraw";
 import Transfer from "./pages/app/Transfer";
+import TransferQr from "./pages/app/transfer/TransferQr";
+import TransferNfc from "./pages/app/transfer/TransferNfc";
+import VirtualCard from "./pages/app/cards/VirtualCard";
+import GiftCards from "./pages/app/cards/GiftCards";
+import NfcCards from "./pages/app/cards/NfcCards";
+import PayAll from "./pages/app/payments/PayAll";
+import FestiPay from "./pages/app/payments/FestiPay";
+import Exchange from "./pages/app/strone/Exchange";
+import BusinessAll from "./pages/app/strone/BusinessAll";
+import Cryptos from "./pages/app/strone/Cryptos";
+import Profile from "./pages/app/Profile";
+import Affiliation from "./pages/app/Affiliation";
 import Kyc from "./pages/app/Kyc";
 import Notifications from "./pages/app/Notifications";
 import Activity from "./pages/app/Activity";
@@ -40,6 +53,7 @@ const App = () => (
               <Route path="/" element={<Landing />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
+              <Route path="/verify-email" element={<VerifyEmail />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/reset-password" element={<ResetPassword />} />
 
@@ -49,6 +63,19 @@ const App = () => (
                 <Route path="deposit" element={<Deposit />} />
                 <Route path="withdraw" element={<Withdraw />} />
                 <Route path="transfer" element={<Transfer />} />
+                <Route path="transfer/international" element={<Transfer />} />
+                <Route path="transfer/qr" element={<TransferQr />} />
+                <Route path="transfer/nfc" element={<TransferNfc />} />
+                <Route path="cards/virtual" element={<VirtualCard />} />
+                <Route path="cards/gift" element={<GiftCards />} />
+                <Route path="cards/nfc" element={<NfcCards />} />
+                <Route path="payments/payall" element={<PayAll />} />
+                <Route path="payments/festipay" element={<FestiPay />} />
+                <Route path="strone/exchange" element={<Exchange />} />
+                <Route path="strone/business" element={<BusinessAll />} />
+                <Route path="strone/cryptos" element={<Cryptos />} />
+                <Route path="profile" element={<Profile />} />
+                <Route path="affiliation" element={<Affiliation />} />
                 <Route path="kyc" element={<Kyc />} />
                 <Route path="notifications" element={<Notifications />} />
                 <Route path="activity" element={<Activity />} />

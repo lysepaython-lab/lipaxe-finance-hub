@@ -45,7 +45,7 @@ const Register = () => {
       const res = await register(form).unwrap();
       dispatch(setCredentials({ user: res.user, accessToken: res.access, refreshToken: res.refresh }));
       toast.success(t('auth.registerSuccess'));
-      navigate('/app/kyc');
+      navigate(`/verify-email?email=${encodeURIComponent(form.email)}`);
     } catch (e: any) {
       toast.error(e?.data?.detail || t('common.error'));
     }

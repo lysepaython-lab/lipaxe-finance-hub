@@ -56,6 +56,12 @@ export async function mockHandler(url: string, method: string, body: any) {
   }
   if (url === '/auth/forgot-password/' && method === 'POST') return ok({ detail: 'Reset link sent' });
   if (url === '/auth/reset-password/' && method === 'POST') return ok({ detail: 'Password updated' });
+  if (url === '/auth/verify-email/' && method === 'POST') {
+    // Demo: 123456 is the valid code
+    if (body?.otp === '123456') return ok({ detail: 'Email verified', verified: true });
+    throw new Error('Invalid or expired code');
+  }
+  if (url === '/auth/resend-otp/' && method === 'POST') return ok({ detail: 'Code resent', otp: '123456' });
   if (url === '/auth/me/' && method === 'GET') return ok(user);
 
   // Wallets

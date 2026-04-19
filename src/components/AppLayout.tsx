@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { AppSidebar } from './AppSidebar';
 import { Topbar } from './Topbar';
+import { SessionTimeoutGuard } from './security/SessionTimeoutGuard';
 
 export const AppLayout = () => {
   const location = useLocation();
@@ -23,6 +24,7 @@ export const AppLayout = () => {
             </motion.div>
           </main>
         </div>
+        <SessionTimeoutGuard />
       </div>
     </SidebarProvider>
   );

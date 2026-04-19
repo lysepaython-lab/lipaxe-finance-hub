@@ -18,7 +18,26 @@
     "pricing": "Tarifs",
     "security": "Sécurité",
     "login": "Se connecter",
-    "getStarted": "Commencer"
+    "getStarted": "Commencer",
+    "cards": "Cartes",
+    "virtualCard": "Carte virtuelle",
+    "giftCards": "Cartes cadeaux",
+    "nfcCards": "Cartes NFC",
+    "transfers": "Transferts",
+    "internalTransfer": "Transfert interne",
+    "internationalTransfer": "International",
+    "transferQr": "Transfert par QR",
+    "transferNfc": "Transfert par NFC",
+    "payments": "Paiements",
+    "payAll": "PayAll",
+    "festiPay": "FestiPay",
+    "strone": "Réseau Strone",
+    "lipaxeExchange": "LipaxeExchange",
+    "businessAll": "Business All",
+    "lipaxeCryptos": "Lipaxe Cryptos",
+    "account": "Compte",
+    "profile": "Profil",
+    "affiliation": "Affiliation"
   },
   "landing": {
     "heroEyebrow": "Sécurité bancaire · 180+ pays",
@@ -69,7 +88,18 @@
     "loginSuccess": "Bon retour !",
     "registerSuccess": "Compte créé avec succès",
     "resetSent": "Vérifiez votre boîte de réception",
-    "passwordUpdated": "Mot de passe mis à jour"
+    "passwordUpdated": "Mot de passe mis à jour",
+    "verifyTitle": "Vérifiez votre e-mail",
+    "verifySubtitle": "Saisissez le code à 6 chiffres",
+    "verifySentTo": "Code envoyé à",
+    "verifyAction": "Vérifier",
+    "resendCode": "Renvoyer le code",
+    "resendIn": "Renvoyer dans",
+    "codeResent": "Un nouveau code a été envoyé",
+    "demoCode": "Code démo",
+    "otpIncomplete": "Saisissez les 6 chiffres",
+    "otpInvalid": "Code invalide ou expiré",
+    "emailVerified": "E-mail vérifié"
   },
   "dashboard": {
     "greeting": "Ravi de vous revoir",
@@ -119,7 +149,11 @@
     "fee": "Frais",
     "youReceive": "Vous recevrez",
     "confirm": "Confirmer le dépôt",
-    "success": "Dépôt initié"
+    "success": "Dépôt initié",
+    "selectWallet": "Portefeuille destinataire",
+    "selectMethod": "Mode de paiement",
+    "selectCountry": "Votre pays",
+    "phone": "Numéro de téléphone"
   },
   "withdraw": {
     "title": "Retirer des fonds",
@@ -130,7 +164,8 @@
     "fee": "Frais réseau",
     "totalDebit": "Total débité",
     "confirm": "Confirmer le retrait",
-    "success": "Retrait demandé"
+    "success": "Retrait demandé",
+    "selectWallet": "Portefeuille source"
   },
   "transfer": {
     "title": "Envoyer de l'argent",
@@ -151,7 +186,26 @@
     "note": "Note (optionnel)",
     "review": "Revoir le transfert",
     "confirm": "Envoyer",
-    "success": "Transfert envoyé"
+    "success": "Transfert envoyé",
+    "qrSubtitle": "Recevez ou payez instantanément en scannant un QR",
+    "qrReceive": "Recevoir",
+    "qrPay": "Payer",
+    "qrShareHint": "Partagez ce QR avec l'expéditeur pour recevoir l'argent.",
+    "qrPointHint": "Pointez votre caméra vers un QR Lipaxe pour payer.",
+    "qrScanned": "QR scanné",
+    "simulateScan": "Simuler le scan",
+    "nfcSubtitle": "Payez un autre utilisateur en rapprochant les appareils",
+    "nfcStart": "Démarrer NFC",
+    "nfcHint": "Activez le NFC sur les deux appareils.",
+    "nfcReady": "Prêt à appairer",
+    "nfcSearching": "Recherche d'un appareil…",
+    "nfcDetected": "Appareil détecté",
+    "amountRequired": "Saisissez un montant",
+    "selectWallet": "Portefeuille source",
+    "insufficientBalance": "Solde insuffisant",
+    "lookupRecipient": "Vérifier le destinataire",
+    "recipientFound": "Destinataire trouvé",
+    "recipientNotFound": "Aucun utilisateur avec ce numéro"
   },
   "kyc": {
     "title": "Vérification d'identité",
@@ -181,7 +235,16 @@
     "submitted": "Vérification soumise",
     "next": "Continuer",
     "back": "Retour",
-    "saveDraft": "Enregistrer et quitter"
+    "saveDraft": "Enregistrer et quitter",
+    "liveness": "Vérification de présence",
+    "livenessIntro": "Nous allons vérifier que c'est bien vous avec la caméra.",
+    "livenessStart": "Démarrer la caméra",
+    "livenessLook": "Regardez droit la caméra",
+    "livenessBlink": "Clignez deux fois",
+    "livenessTurn": "Tournez la tête à gauche puis à droite",
+    "livenessSmile": "Souriez",
+    "livenessSuccess": "Présence vérifiée",
+    "livenessFailed": "Échec — veuillez réessayer"
   },
   "common": {
     "amount": "Montant",
@@ -198,7 +261,10 @@
     "language": "Langue",
     "theme": "Thème",
     "light": "Clair",
-    "dark": "Sombre"
+    "dark": "Sombre",
+    "sessionExpiringTitle": "Toujours là ?",
+    "sessionExpiringBody": "Vous serez déconnecté dans {{count}} secondes pour votre sécurité.",
+    "stayConnected": "Rester connecté"
   },
   "notifications": {
     "title": "Notifications",
@@ -215,5 +281,78 @@
     "security": "Sécurité",
     "preferences": "Préférences",
     "qr": "Votre QR de paiement"
+  },
+  "cards": {
+    "virtualSubtitle": "Créez et gérez des cartes Visa & Mastercard virtuelles",
+    "giftSubtitle": "Achetez et vendez des cartes cadeaux des plus grandes marques",
+    "nfcSubtitle": "Appairez et gérez vos cartes sans contact",
+    "create": "Créer une carte",
+    "virtualCreated": "Carte virtuelle créée",
+    "reveal": "Afficher",
+    "hide": "Masquer",
+    "freeze": "Geler",
+    "spent": "Dépensé",
+    "buy": "Acheter",
+    "buyNow": "Acheter",
+    "myCards": "Mes cartes",
+    "sell": "Vendre",
+    "sellSoon": "La revente arrive bientôt.",
+    "giftPurchased": "Acheté",
+    "active": "Active",
+    "used": "Utilisée",
+    "disabled": "Désactivée",
+    "pairNew": "Appairer",
+    "newNfc": "Nouvelle carte NFC",
+    "nfcPaired": "Carte appairée",
+    "holdNear": "Approchez la carte de votre appareil…",
+    "tapToPay": "Paiement sans contact activé"
+  },
+  "payments": {
+    "payAllSubtitle": "Envoyez à plusieurs destinataires en une fois",
+    "addRecipient": "Ajouter un destinataire",
+    "total": "Total",
+    "payAllSend": "Tout payer",
+    "payAllSent": "Paiements en file",
+    "festiSubtitle": "Découvrez des évènements et payez vos tickets en un clic",
+    "bookTicket": "Réserver",
+    "ticketBooked": "Ticket réservé"
+  },
+  "strone": {
+    "exchangeSubtitle": "Convertissez entre devises au taux réel",
+    "exchangeNow": "Convertir",
+    "exchangeDone": "Conversion effectuée",
+    "businessSubtitle": "Outils marchands et comptes pro",
+    "bizFeat1": "Encaissez carte et mobile money",
+    "bizFeat2": "Facturation multi-devises",
+    "bizFeat3": "Comptes équipe et rôles",
+    "bizFeat4": "Analytique en temps réel",
+    "bizFeat5": "API et webhooks",
+    "bizFeat6": "Versements vers banque ou wallet",
+    "cryptoSubtitle": "Achetez et vendez de la crypto en un clic",
+    "buy": "Acheter",
+    "sell": "Vendre",
+    "buying": "Achat",
+    "selling": "Vente"
+  },
+  "profile": {
+    "subtitle": "Informations personnelles et statut de vérification",
+    "edit": "Modifier le profil",
+    "personalInfo": "Informations personnelles",
+    "kycPrompt": "Complétez votre vérification d'identité pour tout débloquer.",
+    "kyc": {
+      "unverified": "Non vérifié",
+      "pending": "En cours d'examen",
+      "verified": "Vérifié"
+    }
+  },
+  "affiliation": {
+    "subtitle": "Gagnez des commissions quand vos amis rejoignent Lipaxe",
+    "yourCode": "Votre code de parrainage",
+    "copied": "Lien copié",
+    "shared": "Options de partage ouvertes",
+    "howItWorks": "Gagnez 10 $ pour chaque ami qui s'inscrit et se vérifie.",
+    "referrals": "Parrainages",
+    "earned": "Total gagné",
+    "history": "Historique"
   }
 }

@@ -149,7 +149,11 @@
     "fee": "Fee",
     "youReceive": "You'll receive",
     "confirm": "Confirm deposit",
-    "success": "Deposit initiated"
+    "success": "Deposit initiated",
+    "selectWallet": "Destination wallet",
+    "selectMethod": "Payment method",
+    "selectCountry": "Your country",
+    "phone": "Phone number"
   },
   "withdraw": {
     "title": "Withdraw funds",
@@ -160,7 +164,8 @@
     "fee": "Network fee",
     "totalDebit": "Total to debit",
     "confirm": "Confirm withdrawal",
-    "success": "Withdrawal requested"
+    "success": "Withdrawal requested",
+    "selectWallet": "Source wallet"
   },
   "transfer": {
     "title": "Send money",
@@ -181,7 +186,26 @@
     "note": "Note (optional)",
     "review": "Review transfer",
     "confirm": "Send now",
-    "success": "Transfer sent"
+    "success": "Transfer sent",
+    "qrSubtitle": "Receive or pay instantly by scanning a QR code",
+    "qrReceive": "Receive",
+    "qrPay": "Pay",
+    "qrShareHint": "Share this QR with the sender to receive money instantly.",
+    "qrPointHint": "Point your camera at a Lipaxe QR to pay.",
+    "qrScanned": "QR scanned",
+    "simulateScan": "Simulate scan",
+    "nfcSubtitle": "Pay another Lipaxe user by holding devices together",
+    "nfcStart": "Start NFC",
+    "nfcHint": "Make sure both devices have NFC enabled.",
+    "nfcReady": "Ready to pair",
+    "nfcSearching": "Looking for nearby device…",
+    "nfcDetected": "Device detected",
+    "amountRequired": "Enter an amount first",
+    "selectWallet": "Source wallet",
+    "insufficientBalance": "Insufficient balance",
+    "lookupRecipient": "Look up recipient",
+    "recipientFound": "Recipient found",
+    "recipientNotFound": "No user with that account number"
   },
   "kyc": {
     "title": "Identity verification",
@@ -211,7 +235,16 @@
     "submitted": "Verification submitted",
     "next": "Continue",
     "back": "Back",
-    "saveDraft": "Save and exit"
+    "saveDraft": "Save and exit",
+    "liveness": "Liveness check",
+    "livenessIntro": "We'll verify it's really you with a quick camera check.",
+    "livenessStart": "Start camera",
+    "livenessLook": "Look straight at the camera",
+    "livenessBlink": "Blink twice",
+    "livenessTurn": "Turn your head left, then right",
+    "livenessSmile": "Smile",
+    "livenessSuccess": "Liveness verified",
+    "livenessFailed": "Verification failed — please try again"
   },
   "common": {
     "amount": "Amount",
@@ -228,7 +261,10 @@
     "language": "Language",
     "theme": "Theme",
     "light": "Light",
-    "dark": "Dark"
+    "dark": "Dark",
+    "sessionExpiringTitle": "Still there?",
+    "sessionExpiringBody": "You'll be signed out in {{count}} seconds for your security.",
+    "stayConnected": "Stay signed in"
   },
   "notifications": {
     "title": "Notifications",
@@ -270,41 +306,6 @@
     "nfcPaired": "NFC card paired",
     "holdNear": "Hold the card near your device…",
     "tapToPay": "Tap to pay enabled"
-  },
-  "transfer": {
-    "title": "Send money",
-    "subtitle": "Transfer to another Lipaxe user or internationally",
-    "internal": "To Lipaxe user",
-    "international": "International transfer",
-    "recipient": "Recipient",
-    "recipientEmail": "Recipient email or @username",
-    "country": "Recipient country",
-    "fromCurrency": "You send",
-    "toCurrency": "They receive",
-    "rate": "Exchange rate",
-    "fee": "Transfer fee",
-    "totalCost": "Total cost",
-    "deliveryTime": "Estimated delivery",
-    "instant": "Instant",
-    "hours": "Within {{count}} hours",
-    "note": "Note (optional)",
-    "review": "Review transfer",
-    "confirm": "Send now",
-    "success": "Transfer sent",
-    "qrSubtitle": "Receive or pay instantly by scanning a QR code",
-    "qrReceive": "Receive",
-    "qrPay": "Pay",
-    "qrShareHint": "Share this QR with the sender to receive money instantly.",
-    "qrPointHint": "Point your camera at a Lipaxe QR to pay.",
-    "qrScanned": "QR scanned",
-    "simulateScan": "Simulate scan",
-    "nfcSubtitle": "Pay another Lipaxe user by holding devices together",
-    "nfcStart": "Start NFC",
-    "nfcHint": "Make sure both devices have NFC enabled.",
-    "nfcReady": "Ready to pair",
-    "nfcSearching": "Looking for nearby device…",
-    "nfcDetected": "Device detected",
-    "amountRequired": "Enter an amount first"
   },
   "payments": {
     "payAllSubtitle": "Send money to multiple recipients at once",

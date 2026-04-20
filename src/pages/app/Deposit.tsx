@@ -66,7 +66,7 @@ const Deposit = () => {
     setErrors({});
     setStatus('pending');
     try {
-      await deposit({ amount: amt, currency: wallet?.currency || 'USD', method: 'card' }).unwrap();
+      await deposit({ amount: amt, payment_method: methodId, wallet_id: walletId!, phone: phone ? sanitizeText(phone) : undefined }).unwrap();
       setStatus('completed');
       toast.success(t('deposit.success'));
       setDone(true);

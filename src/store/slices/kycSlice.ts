@@ -5,7 +5,7 @@ export interface KYCData {
   personal: { dob: string; nationality: string; phone: string };
   address: { street: string; city: string; postalCode: string; country: string };
   document: { type: 'passport' | 'nationalId' | 'drivingLicense' | ''; frontName: string; backName: string };
-  selfie: { selfieName: string };
+  selfie: { selfieName: string; livenessOk: boolean };
 }
 
 const initial: KYCData = {
@@ -13,14 +13,20 @@ const initial: KYCData = {
   personal: { dob: '', nationality: '', phone: '' },
   address: { street: '', city: '', postalCode: '', country: '' },
   document: { type: '', frontName: '', backName: '' },
-  selfie: { selfieName: '' },
+  selfie: { selfieName: '', livenessOk: false },
 };
 
 const load = (): KYCData => {
   try {
     const raw = localStorage.getItem('lipaxe-kyc');
-    if (raw) return JSON.parse(raw);
-  } catch {}
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      // Ensure new fields exist on stored state
+      return { ...initial, ...parsed, selfie: { ...initial.selfie, ...(parsed.selfie || {}) } };
+    }
+  } catch {
+    /* ignore parse errors */
+  }
   return initial;
 };
 

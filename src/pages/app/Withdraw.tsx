@@ -138,7 +138,7 @@ const Withdraw = () => {
       </div>
 
       {!kycOk && (
-        <Card className="border-amber-500/40 bg-amber-500/5">
+        <Card className="border-warning/40 bg-warning/5">
           <CardContent className="p-4 flex items-center justify-between gap-3">
             <p className="text-sm">
               <strong>Vérification requise.</strong> Complétez votre KYC pour effectuer des retraits.

@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { CreditCard, Eye, EyeOff, Snowflake, Plus, Loader2, Trash2, Sparkles } from 'lucide-react';
+import { CreditCard, Eye, EyeOff, Snowflake, Plus, Loader2, Sparkles } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { PageHeader } from '@/components/PageHeader';
 import { Button } from '@/components/ui/button';
@@ -45,7 +45,7 @@ const VirtualCardVisual = ({
     <div className="relative flex justify-between items-start">
       <div>
         <span className="font-display text-lg font-bold">Lipaxe</span>
-        {frozen && <Badge className="ml-2 bg-blue-500/30 border-0 text-white text-[10px]">FROZEN</Badge>}
+        {frozen && <Badge className="ml-2 bg-primary-foreground/30 border-0 text-primary-foreground text-[10px]">FROZEN</Badge>}
       </div>
       <span className="text-xs uppercase tracking-widest opacity-80">{brand}</span>
     </div>

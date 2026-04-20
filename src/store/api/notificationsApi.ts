@@ -5,8 +5,10 @@ export interface AppNotification {
   title: string;
   body: string;
   level: 'info' | 'success' | 'warning' | 'error';
+  priority: 'low' | 'normal' | 'high';
   read: boolean;
   createdAt: string;
+  link?: string;
 }
 
 export const notificationsApi = api.injectEndpoints({
@@ -19,7 +21,11 @@ export const notificationsApi = api.injectEndpoints({
       query: (body) => ({ url: '/api/notifications/makeasread/', method: 'POST', body }),
       invalidatesTags: ['Notifications'],
     }),
+    markAllRead: b.mutation<{ detail: string }, void>({
+      query: () => ({ url: '/api/notifications/makeasread/', method: 'POST', body: { id: 'all' } }),
+      invalidatesTags: ['Notifications'],
+    }),
   }),
 });
 
-export const { useNotificationsQuery, useMarkReadMutation } = notificationsApi;
+export const { useNotificationsQuery, useMarkReadMutation, useMarkAllReadMutation } = notificationsApi;

@@ -108,6 +108,11 @@ export const api = createApi({
     'Notifications',
     'Affiliation',
     'PaymentMethods',
+    'Tontine',
+    'Festi',
+    'Bills',
+    'Crypto',
+    'Qr',
   ],
   endpoints: () => ({}),
 });

@@ -82,7 +82,13 @@ const Withdraw = () => {
     if (!submitThrottle.tryAcquire()) { toast.error('Trop de tentatives.'); return; }
     setErrors({});
     try {
-      const tx = await withdraw({ ...parsed.data, phone: phone || undefined }).unwrap();
+      const tx = await withdraw({
+        amount: payload.amount,
+        payment_method: payload.payment_method,
+        wallet_id: payload.wallet_id,
+        destination: payload.destination,
+        phone: phone || undefined,
+      }).unwrap();
       setTxId(tx.id);
       toast.success(t('withdraw.success'));
       setDone(true);

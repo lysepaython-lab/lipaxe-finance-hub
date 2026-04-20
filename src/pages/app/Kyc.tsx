@@ -18,7 +18,10 @@ const Kyc = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const kyc = useAppSelector(s => s.kyc);
-  const [submit, { isLoading }] = useSubmitKycMutation();
+  const [submitPersonal, { isLoading: l1 }] = useSubmitPersonalMutation();
+  const [submitAddress, { isLoading: l2 }] = useSubmitAddressMutation();
+  const [submitDocuments, { isLoading: l3 }] = useSubmitDocumentsMutation();
+  const isLoading = l1 || l2 || l3;
 
   const steps = [t('kyc.step1'), t('kyc.step2'), t('kyc.step3'), t('kyc.step4'), t('kyc.step5')];
 
@@ -27,7 +30,16 @@ const Kyc = () => {
 
   const onSubmit = async () => {
     try {
-      const res = await submit(kyc).unwrap();
+      const personal = new FormData();
+      Object.entries(kyc.personal).forEach(([k, v]) => personal.append(k, String(v ?? '')));
+      const address = new FormData();
+      Object.entries(kyc.address).forEach(([k, v]) => address.append(k, String(v ?? '')));
+      const docs = new FormData();
+      Object.entries(kyc.document).forEach(([k, v]) => docs.append(k, String(v ?? '')));
+      docs.append('selfie_name', kyc.selfie.selfieName || '');
+      await submitPersonal(personal).unwrap();
+      await submitAddress(address).unwrap();
+      await submitDocuments(docs).unwrap();
       dispatch(updateUser({ kycStatus: 'pending' }));
       dispatch(resetKyc());
       toast.success(t('kyc.submitted'));

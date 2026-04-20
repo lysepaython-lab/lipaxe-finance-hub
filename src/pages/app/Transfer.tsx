@@ -107,7 +107,11 @@ const Transfer = () => {
     try {
       const tx = await transfer({
         kind,
-        ...parsed.data,
+        amount: payload.amount,
+        from_account: payload.from_account,
+        to_account: payload.to_account,
+        payment_method: payload.payment_method,
+        wallet_id: payload.wallet_id,
         toCurrency: kind === 'international' ? quote?.to : undefined,
         note: note ? sanitizeText(note) : undefined,
       }).unwrap();

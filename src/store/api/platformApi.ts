@@ -3,10 +3,12 @@ import { api } from './baseApi';
 export interface IncountryEntry {
   country: { name: string; alpha_2: string; phone_code?: string };
 }
+export type PaymentTypeName = 'Mobile Payment' | 'Electronic' | 'Cryptos' | 'Bank Transfer';
 export interface PaymentMethod {
   id: string;
   name: string;
   type: 'mobile' | 'card' | 'bank' | 'electronic' | 'crypto';
+  payment_type?: { name: PaymentTypeName };
   icon?: string;
   countries: { country: { name: string; alpha_2: string } }[];
   fees?: { fixed: number; percent: number };

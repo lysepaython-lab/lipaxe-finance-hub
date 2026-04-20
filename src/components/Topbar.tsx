@@ -1,16 +1,17 @@
-import { Bell, LogOut, Search, User as UserIcon } from 'lucide-react';
+import { LogOut, Search, User as UserIcon } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { logout } from '@/store/slices/authSlice';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { ThemeToggle } from './ThemeToggle';
 import { LanguageSwitcher } from './LanguageSwitcher';
+import { NotificationsInbox } from './security/NotificationsInbox';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
 } from './ui/dropdown-menu';
 import { SidebarTrigger } from './ui/sidebar';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
 export const Topbar = () => {
@@ -18,7 +19,6 @@ export const Topbar = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const user = useAppSelector((s) => s.auth.user);
-  const unread = useAppSelector((s) => s.notifications.items.filter((n) => !n.read).length);
 
   const initials = user ? `${user.firstName[0]}${user.lastName[0]}` : 'LX';
 
@@ -37,14 +37,7 @@ export const Topbar = () => {
       <div className="ml-auto flex items-center gap-1">
         <LanguageSwitcher />
         <ThemeToggle />
-        <Link to="/app/notifications">
-          <Button variant="ghost" size="icon" className="relative rounded-full">
-            <Bell className="h-[18px] w-[18px]" />
-            {unread > 0 && (
-              <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-destructive ring-2 ring-background" />
-            )}
-          </Button>
-        </Link>
+        <NotificationsInbox />
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

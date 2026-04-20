@@ -1,83 +1,147 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { CreditCard, Eye, EyeOff, Lock, Snowflake, Plus, Settings2 } from 'lucide-react';
+import { CreditCard, Eye, EyeOff, Snowflake, Plus, Loader2, Sparkles } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { PageHeader } from '@/components/PageHeader';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { useAppSelector } from '@/store/hooks';
+import { Skeleton } from '@/components/ui/skeleton';
 import { formatMoney } from '@/lib/format';
 import { toast } from 'sonner';
+import {
+  useCardOffersQuery,
+  useMyCardsQuery,
+  useCardTransactionsQuery,
+  useOrderCardMutation,
+  useRechargeCardMutation,
+  useWithdrawCardMutation,
+  useFreezeCardMutation,
+} from '@/store/api/cardApi';
+import { WalletSelector } from '@/components/security/WalletSelector';
+import { PinModal, usePinGate } from '@/components/security/PinModal';
+import { useAppSelector } from '@/store/hooks';
+import { cn } from '@/lib/utils';
 
-interface VCard {
-  id: string;
-  brand: 'Visa' | 'Mastercard';
-  number: string;
-  cvv: string;
-  exp: string;
-  holder: string;
-  spent: number;
-  limit: number;
-  frozen: boolean;
-}
-
-const seed: VCard[] = [
-  { id: 'vc1', brand: 'Visa', number: '4539 8821 2204 4242', cvv: '321', exp: '12/27', holder: 'ALEX MORGAN', spent: 482.5, limit: 2000, frozen: false },
-  { id: 'vc2', brand: 'Mastercard', number: '5412 7503 1118 9908', cvv: '742', exp: '08/26', holder: 'ALEX MORGAN', spent: 1240, limit: 5000, frozen: false },
-];
-
-const VirtualCardVisual = ({ c, reveal }: { c: VCard; reveal: boolean }) => (
+const VirtualCardVisual = ({
+  brand, number, holder, exp, cvv, reveal, frozen,
+}: {
+  brand: 'Visa' | 'Mastercard'; number: string; holder: string; exp: string; cvv?: string; reveal: boolean; frozen?: boolean;
+}) => (
   <motion.div
     whileHover={{ y: -4, rotateX: 2, rotateY: -2 }}
     transition={{ type: 'spring', stiffness: 200 }}
-    className="relative aspect-[1.6/1] rounded-2xl bg-gradient-hero text-primary-foreground p-5 shadow-brand overflow-hidden"
+    className={cn(
+      'relative aspect-[1.6/1] rounded-2xl bg-gradient-hero text-primary-foreground p-5 shadow-brand overflow-hidden',
+      frozen && 'opacity-60 grayscale',
+    )}
   >
     <div className="absolute -top-10 -right-10 h-40 w-40 rounded-full bg-primary-foreground/10 blur-2xl" />
     <div className="absolute -bottom-12 -left-12 h-44 w-44 rounded-full bg-primary-foreground/10 blur-2xl" />
     <div className="relative flex justify-between items-start">
-      <span className="font-display text-lg font-bold">Lipaxe</span>
-      <span className="text-xs uppercase tracking-widest opacity-80">{c.brand}</span>
+      <div>
+        <span className="font-display text-lg font-bold">Lipaxe</span>
+        {frozen && <Badge className="ml-2 bg-primary-foreground/30 border-0 text-primary-foreground text-[10px]">FROZEN</Badge>}
+      </div>
+      <span className="text-xs uppercase tracking-widest opacity-80">{brand}</span>
     </div>
-    <div className="relative mt-8 font-mono text-lg tracking-[0.2em] tabular">
-      {reveal ? c.number : '•••• •••• •••• ' + c.number.slice(-4)}
+    <div className="relative mt-8 font-mono text-lg tracking-[0.18em] tabular-nums">
+      {reveal ? number : '•••• •••• •••• ' + number.replace(/\s/g, '').slice(-4)}
     </div>
     <div className="relative mt-5 flex items-end justify-between text-xs">
       <div>
         <div className="opacity-70">CARD HOLDER</div>
-        <div className="font-semibold tracking-wide">{c.holder}</div>
+        <div className="font-semibold tracking-wide">{holder}</div>
       </div>
       <div className="text-right">
         <div className="opacity-70">EXP</div>
-        <div className="font-semibold">{c.exp}</div>
+        <div className="font-semibold">{exp}</div>
       </div>
-      <div className="text-right">
-        <div className="opacity-70">CVV</div>
-        <div className="font-semibold">{reveal ? c.cvv : '•••'}</div>
-      </div>
+      {cvv !== undefined && (
+        <div className="text-right">
+          <div className="opacity-70">CVV</div>
+          <div className="font-semibold">{reveal ? cvv : '•••'}</div>
+        </div>
+      )}
     </div>
   </motion.div>
 );
 
 const VirtualCard = () => {
   const { t } = useTranslation();
-  const wallets = useAppSelector(() => null) as any;
-  const [cards, setCards] = useState<VCard[]>(seed);
-  const [reveal, setReveal] = useState<Record<string, boolean>>({});
+  const user = useAppSelector((s) => s.auth.user);
+  const { data: offers } = useCardOffersQuery();
+  const { data: cards, isLoading } = useMyCardsQuery();
+  const [orderCard, { isLoading: ordering }] = useOrderCardMutation();
+  const [rechargeCard] = useRechargeCardMutation();
+  const [withdrawCard] = useWithdrawCardMutation();
+  const [freezeCard] = useFreezeCardMutation();
+  const pin = usePinGate();
 
-  const create = () => {
-    const id = 'vc' + Date.now();
-    const num = '4' + Array.from({ length: 15 }, () => Math.floor(Math.random() * 10)).join('');
-    setCards((prev) => [
-      {
-        id, brand: 'Visa', number: num.replace(/(.{4})/g, '$1 ').trim(),
-        cvv: Math.floor(Math.random() * 900 + 100).toString(),
-        exp: '12/29', holder: 'ALEX MORGAN', spent: 0, limit: 1000, frozen: false,
-      },
-      ...prev,
-    ]);
-    toast.success(t('cards.virtualCreated'));
+  const [reveal, setReveal] = useState<Record<string, boolean>>({});
+  const [activeCardId, setActiveCardId] = useState<string | null>(null);
+  const { data: cardTx } = useCardTransactionsQuery(activeCardId!, { skip: !activeCardId });
+
+  // Order modal state
+  const [orderOpen, setOrderOpen] = useState(false);
+  const [offerId, setOfferId] = useState('');
+  const [walletId, setWalletId] = useState<string>();
+  const [funding, setFunding] = useState('50');
+  const [nameOnCard, setNameOnCard] = useState((user ? `${user.firstName} ${user.lastName}` : '').toUpperCase());
+
+  // Fund modal state
+  const [fundOpen, setFundOpen] = useState(false);
+  const [fundCardId, setFundCardId] = useState<string | null>(null);
+  const [fundAmount, setFundAmount] = useState('20');
+  const [fundWallet, setFundWallet] = useState<string>();
+  const [fundMode, setFundMode] = useState<'recharge' | 'withdraw'>('recharge');
+
+  const selectedOffer = useMemo(() => offers?.find((o) => o.id === offerId), [offers, offerId]);
+
+  const submitOrder = () => {
+    if (!offerId || !walletId) { toast.error('Sélectionnez une offre et un portefeuille'); return; }
+    pin.guard(async () => {
+      try {
+        await orderCard({ id: offerId, amount: selectedOffer?.price || 0, name_on_card: nameOnCard, funding_amount: Number(funding), wallet_id: walletId }).unwrap();
+        toast.success(t('cards.virtualCreated'));
+        setOrderOpen(false);
+      } catch (e) {
+        toast.error((e as { data?: { detail?: string } })?.data?.detail || t('common.error'));
+      }
+    });
+  };
+
+  const submitFund = () => {
+    if (!fundCardId || !fundWallet) { toast.error('Portefeuille requis'); return; }
+    pin.guard(async () => {
+      try {
+        if (fundMode === 'recharge') {
+          await rechargeCard({ card_id: fundCardId, amount: Number(fundAmount), payment_method: 'wallet', wallet_id: fundWallet }).unwrap();
+          toast.success('Carte rechargée');
+        } else {
+          await withdrawCard({ card_id: fundCardId, amount: Number(fundAmount), wallet_id: fundWallet }).unwrap();
+          toast.success('Retrait effectué');
+        }
+        setFundOpen(false);
+      } catch (e) {
+        toast.error((e as { data?: { detail?: string } })?.data?.detail || t('common.error'));
+      }
+    });
+  };
+
+  const toggleFreeze = (id: string, frozen: boolean) => {
+    pin.guard(async () => {
+      try {
+        await freezeCard({ card_id: id, action: frozen ? 'unfreeze' : 'freeze' }).unwrap();
+        toast.success(frozen ? 'Carte activée' : 'Carte gelée');
+      } catch (e) {
+        toast.error((e as { data?: { detail?: string } })?.data?.detail || t('common.error'));
+      }
+    });
   };
 
   return (
@@ -86,51 +150,148 @@ const VirtualCard = () => {
         title={t('nav.virtualCard')}
         subtitle={t('cards.virtualSubtitle')}
         icon={<CreditCard className="h-6 w-6" />}
-        actions={<Button onClick={create} className="bg-gradient-brand shadow-brand"><Plus className="mr-2 h-4 w-4"/>{t('cards.create')}</Button>}
+        actions={<Button onClick={() => setOrderOpen(true)} className="bg-gradient-brand shadow-brand"><Plus className="mr-2 h-4 w-4" />{t('cards.create')}</Button>}
       />
-      <div className="grid gap-6 lg:grid-cols-2">
-        {cards.map((c, idx) => (
-          <motion.div
-            key={c.id}
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: idx * 0.05 }}
-          >
-            <Card className="bg-gradient-card border-border/60">
-              <CardContent className="p-6 space-y-5">
-                <div className={c.frozen ? 'opacity-60 grayscale' : ''}>
-                  <VirtualCardVisual c={c} reveal={reveal[c.id]} />
-                </div>
-                <div className="flex items-center justify-between">
-                  <Button variant="outline" size="sm" onClick={() => setReveal((r) => ({ ...r, [c.id]: !r[c.id] }))}>
-                    {reveal[c.id] ? <EyeOff className="mr-2 h-4 w-4" /> : <Eye className="mr-2 h-4 w-4" />}
-                    {reveal[c.id] ? t('cards.hide') : t('cards.reveal')}
+
+      {isLoading ? (
+        <div className="grid gap-6 lg:grid-cols-2">
+          <Skeleton className="h-72 rounded-2xl" />
+          <Skeleton className="h-72 rounded-2xl" />
+        </div>
+      ) : (
+        <div className="grid gap-6 lg:grid-cols-2">
+          {(cards || []).map((c, idx) => (
+            <motion.div key={c.id} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.05 }}>
+              <Card className="bg-gradient-card border-border/60">
+                <CardContent className="p-6 space-y-5">
+                  <VirtualCardVisual
+                    brand={c.brand}
+                    number={c.number_masked}
+                    holder={c.name_on_card}
+                    exp={c.exp}
+                    reveal={!!reveal[c.id]}
+                    frozen={c.status === 'frozen'}
+                  />
+                  <div className="flex items-center justify-between flex-wrap gap-3">
+                    <Button variant="outline" size="sm" onClick={() => setReveal((r) => ({ ...r, [c.id]: !r[c.id] }))}>
+                      {reveal[c.id] ? <EyeOff className="mr-2 h-4 w-4" /> : <Eye className="mr-2 h-4 w-4" />}
+                      {reveal[c.id] ? t('cards.hide') : t('cards.reveal')}
+                    </Button>
+                    <div className="flex items-center gap-2 text-sm">
+                      <Snowflake className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-muted-foreground">{t('cards.freeze')}</span>
+                      <Switch checked={c.status === 'frozen'} onCheckedChange={() => toggleFreeze(c.id, c.status === 'frozen')} />
+                    </div>
+                  </div>
+                  <div className="rounded-xl bg-muted/40 p-4 flex items-center justify-between">
+                    <div>
+                      <div className="text-xs text-muted-foreground">Solde carte</div>
+                      <div className="font-display text-xl font-bold tabular">{formatMoney(c.balance, c.currency)}</div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button size="sm" variant="outline" onClick={() => { setFundCardId(c.id); setFundMode('recharge'); setFundOpen(true); }}>Recharger</Button>
+                      <Button size="sm" variant="outline" onClick={() => { setFundCardId(c.id); setFundMode('withdraw'); setFundOpen(true); }}>Retirer</Button>
+                    </div>
+                  </div>
+                  <Button variant="ghost" size="sm" className="w-full" onClick={() => setActiveCardId(activeCardId === c.id ? null : c.id)}>
+                    {activeCardId === c.id ? 'Masquer' : 'Voir'} les transactions
                   </Button>
-                  <div className="flex items-center gap-2 text-sm">
-                    <Snowflake className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-muted-foreground">{t('cards.freeze')}</span>
-                    <Switch checked={c.frozen} onCheckedChange={(v) => setCards((cs) => cs.map((x) => x.id === c.id ? { ...x, frozen: v } : x))} />
-                  </div>
-                </div>
-                <div className="rounded-xl bg-muted/40 p-4">
-                  <div className="flex justify-between text-sm mb-2">
-                    <span className="text-muted-foreground">{t('cards.spent')}</span>
-                    <span className="font-semibold tabular">{formatMoney(c.spent, 'USD')} / {formatMoney(c.limit, 'USD')}</span>
-                  </div>
-                  <div className="h-2 rounded-full bg-background overflow-hidden">
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: `${(c.spent / c.limit) * 100}%` }}
-                      transition={{ duration: 0.6, ease: 'easeOut' }}
-                      className="h-full bg-gradient-brand"
-                    />
-                  </div>
-                </div>
-              </CardContent>
+                  {activeCardId === c.id && (
+                    <div className="space-y-2 pt-2 border-t border-border">
+                      {(cardTx || []).map((tx) => (
+                        <div key={tx.id} className="flex justify-between text-sm">
+                          <span>{tx.description}</span>
+                          <span className="tabular font-medium">{formatMoney(tx.amount, tx.currency)}</span>
+                        </div>
+                      ))}
+                      {(cardTx || []).length === 0 && <p className="text-xs text-muted-foreground text-center py-2">Aucune transaction</p>}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </motion.div>
+          ))}
+          {(cards || []).length === 0 && (
+            <Card className="lg:col-span-2 p-12 text-center">
+              <Sparkles className="h-10 w-10 mx-auto text-primary mb-3" />
+              <h3 className="font-display text-xl font-bold mb-2">Aucune carte</h3>
+              <p className="text-muted-foreground mb-4">Créez votre première carte virtuelle Lipaxe.</p>
+              <Button onClick={() => setOrderOpen(true)} className="bg-gradient-brand shadow-brand"><Plus className="mr-2 h-4 w-4" />{t('cards.create')}</Button>
             </Card>
-          </motion.div>
-        ))}
-      </div>
+          )}
+        </div>
+      )}
+
+      {/* Order modal */}
+      <Dialog open={orderOpen} onOpenChange={setOrderOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Commander une carte virtuelle</DialogTitle>
+            <DialogDescription>Choisissez une offre et financez la carte depuis votre portefeuille.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="grid gap-2">
+              {(offers || []).map((o) => (
+                <button
+                  key={o.id}
+                  type="button"
+                  onClick={() => setOfferId(o.id)}
+                  className={cn(
+                    'rounded-xl border-2 p-3 text-left transition-colors',
+                    offerId === o.id ? 'border-primary bg-primary/5' : 'border-input hover:border-primary/40',
+                  )}
+                >
+                  <div className="flex justify-between">
+                    <span className="font-semibold">{o.name}</span>
+                    <span className="text-sm tabular">{formatMoney(o.price, o.currency)}</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">{o.description}</p>
+                </button>
+              ))}
+            </div>
+            <WalletSelector label="Portefeuille de financement" value={walletId} onChange={(id) => setWalletId(id)} />
+            <div className="space-y-2">
+              <Label>Nom sur la carte</Label>
+              <Input value={nameOnCard} onChange={(e) => setNameOnCard(e.target.value.toUpperCase())} maxLength={26} />
+            </div>
+            <div className="space-y-2">
+              <Label>Montant initial à charger</Label>
+              <Input type="number" min={0} value={funding} onChange={(e) => setFunding(e.target.value)} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOrderOpen(false)}>Annuler</Button>
+            <Button onClick={submitOrder} disabled={ordering} className="bg-gradient-brand shadow-brand">
+              {ordering && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Confirmer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Fund/Withdraw modal */}
+      <Dialog open={fundOpen} onOpenChange={setFundOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{fundMode === 'recharge' ? 'Recharger la carte' : 'Retirer de la carte'}</DialogTitle>
+            <DialogDescription>
+              {fundMode === 'recharge' ? 'Transférez des fonds depuis un portefeuille vers la carte.' : 'Renvoyez les fonds de la carte vers un portefeuille.'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <WalletSelector label="Portefeuille" value={fundWallet} onChange={(id) => setFundWallet(id)} />
+            <div className="space-y-2">
+              <Label>Montant</Label>
+              <Input type="number" min={0} value={fundAmount} onChange={(e) => setFundAmount(e.target.value)} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setFundOpen(false)}>Annuler</Button>
+            <Button onClick={submitFund} className="bg-gradient-brand shadow-brand">Confirmer</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <PinModal open={pin.open} onOpenChange={pin.setOpen} onSuccess={pin.onSuccess} />
     </div>
   );
 };

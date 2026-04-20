@@ -54,10 +54,13 @@ export const walletApi = api.injectEndpoints({
       query: (body) => ({ url: '/api/transactions/transfert/', method: 'POST', body }),
       invalidatesTags: ['Wallet', 'Transactions'],
     }),
-    transferQrLink: b.mutation<{ token: string; amount: number; currency: string; url?: string }, { amount: number; wallet_id: string; currency: string; expires_in?: number }>({
+    transferQrLink: b.mutation<{ token: string; amount: number; currency: string; url?: string; expires_at?: string }, { amount: number; wallet_id: string; currency: string; expires_in?: number; note?: string }>({
       query: (body) => ({ url: '/api/transactions/transfertlinkqrcode/', method: 'POST', body }),
     }),
-    validateQr: b.mutation<{ detail: string; amount: number; currency: string }, { token: string; pin?: string; otp?: string }>({
+    qrInfo: b.query<{ token: string; amount: number; currency: string; sender: string; expires_at?: string }, string>({
+      query: (token) => `/api/transactions/qr/${token}/`,
+    }),
+    validateQr: b.mutation<{ detail: string; amount: number; currency: string }, { token: string; pin?: string; otp?: string; wallet_id?: string }>({
       query: (body) => ({ url: '/api/transactions/validate/', method: 'POST', body }),
       invalidatesTags: ['Wallet', 'Transactions'],
     }),
@@ -75,7 +78,7 @@ export const {
   useFxQuoteMutation,
   useDepositMutation, useCardDepositMutation, useElectronicDepositMutation, useCryptoDepositMutation,
   useWithdrawMutation, useTransferMutation,
-  useTransferQrLinkMutation, useValidateQrMutation,
+  useTransferQrLinkMutation, useValidateQrMutation, useQrInfoQuery,
   useLookupRecipientMutation,
   useActivityQuery,
 } = walletApi;

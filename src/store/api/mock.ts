@@ -346,11 +346,48 @@ export async function mockHandler(url: string, method: string, body: any): Promi
     return ok(tx);
   }
   if (url === '/api/transactions/transfertlinkqrcode/' && method === 'POST') {
-    return ok({ token: 'qr_' + Math.random().toString(36).slice(2, 10), amount: body.amount, currency: body.currency });
+    const w = wallets.find((x) => x.id === body.wallet_id);
+    if (!w) throw new Error('Wallet introuvable');
+    const token = 'qr_' + Math.random().toString(36).slice(2, 10);
+    const expires_at = new Date(Date.now() + (body.expires_in || 600) * 1000).toISOString();
+    qrTokens.set(token, {
+      token, sender: `${user.firstName} ${user.lastName}`,
+      amount: body.amount, currency: body.currency || w.currency,
+      wallet_id: w.id, expires_at, consumed: false,
+    });
+    const url_ = (typeof window !== 'undefined' ? window.location.origin : '') + '/app/transfer/qr?token=' + token;
+    return ok({ token, amount: body.amount, currency: body.currency || w.currency, url: url_, expires_at });
+  }
+  if (url.startsWith('/api/transactions/qr/') && method === 'GET') {
+    const token = url.split('/').filter(Boolean).pop();
+    const t = token ? qrTokens.get(token) : undefined;
+    if (!t) throw new Error('QR introuvable ou expiré');
+    if (t.consumed) throw new Error('Ce QR a déjà été utilisé');
+    if (new Date(t.expires_at).getTime() < Date.now()) throw new Error('Ce QR est expiré');
+    return ok({ token: t.token, amount: t.amount, currency: t.currency, sender: t.sender, expires_at: t.expires_at });
   }
   if (url === '/api/transactions/validate/' && method === 'POST') {
     if (!body?.token) throw new Error('Token requis');
-    return ok({ detail: 'Validated', amount: 50, currency: 'USD' });
+    const t = qrTokens.get(body.token);
+    if (!t) throw new Error('QR introuvable');
+    if (t.consumed) throw new Error('Déjà consommé');
+    if (new Date(t.expires_at).getTime() < Date.now()) throw new Error('QR expiré');
+    if (body.pin && body.pin !== userPin) throw new Error('PIN incorrect');
+    // Optional OTP for amounts > 100
+    if (t.amount > 100 && body.otp !== '123456') throw new Error('Code OTP requis (123456 en démo)');
+    t.consumed = true;
+    const senderWallet = wallets.find((w) => w.id === t.wallet_id);
+    const receiverWallet = body.wallet_id ? wallets.find((w) => w.id === body.wallet_id) : wallets.find((w) => w.currency === t.currency);
+    if (senderWallet) { senderWallet.balance -= t.amount; senderWallet.available -= t.amount; }
+    if (receiverWallet) { receiverWallet.balance += t.amount; receiverWallet.available += t.amount; }
+    transactions.unshift({
+      id: 'qr' + Date.now(), type: 'transfer', direction: 'in', amount: t.amount, currency: t.currency,
+      status: 'completed', description: `QR from ${t.sender}`, counterparty: t.sender,
+      reference: 'QR-' + Math.floor(Math.random() * 9000 + 1000), createdAt: new Date().toISOString(),
+      wallet_id: receiverWallet?.id,
+    });
+    pushNotif({ title: 'Paiement QR reçu', body: `Vous avez reçu ${t.amount} ${t.currency}`, level: 'success', priority: 'normal', read: false, link: '/app/transactions' });
+    return ok({ detail: 'Validated', amount: t.amount, currency: t.currency });
   }
   if (url === '/api/transactions/lookup/' && method === 'POST') {
     const acc = String(body?.account_no || '').trim();
@@ -415,9 +452,105 @@ export async function mockHandler(url: string, method: string, body: any): Promi
   // ---------- NOTIFICATIONS -----------------------------------------------
   if (url === '/api/notifications/' && method === 'GET') return ok(notifications);
   if (url === '/api/notifications/makeasread/' && method === 'POST') {
-    const n = notifications.find((x) => x.id === body.id);
-    if (n) n.read = true;
+    if (body?.id === 'all') {
+      notifications.forEach((n) => (n.read = true));
+    } else {
+      const n = notifications.find((x) => x.id === body.id);
+      if (n) n.read = true;
+    }
     return ok({ detail: 'OK' });
+  }
+
+  // ---------- TONTINES ----------------------------------------------------
+  if (url === '/api/tontines/' && method === 'GET') return ok(tontines);
+  if (url === '/api/tontines/' && method === 'POST') {
+    const id = 'tn' + Date.now();
+    const members = (body.members as string[]).map((m, i) => ({ user: m, received: false, position: i + 1 }));
+    const tn: Tontine = {
+      id, name: body.name, contribution: body.contribution, currency: body.currency,
+      frequency: body.frequency, duration_months: body.duration_months, selection: body.selection,
+      members, next_beneficiary: members[0]?.user,
+      next_payout_at: new Date(Date.now() + (body.frequency === 'weekly' ? 7 : 30) * day).toISOString(),
+      status: 'active',
+    };
+    tontines.unshift(tn);
+    pushNotif({ title: 'Tontine créée', body: `${tn.name} démarre.`, level: 'info', priority: 'normal', read: false, link: '/app/strone/business' });
+    return ok(tn);
+  }
+  if (url === '/api/tontines/contribute/' && method === 'POST') {
+    const tn = tontines.find((x) => x.id === body.tontine_id);
+    const w = wallets.find((x) => x.id === body.wallet_id);
+    if (!tn || !w) throw new Error('Tontine ou wallet introuvable');
+    if (w.available < body.amount) throw new Error('Solde insuffisant');
+    w.available -= body.amount; w.balance -= body.amount;
+    pushNotif({ title: 'Contribution tontine', body: `${body.amount} ${tn.currency} → ${tn.name}`, level: 'success', priority: 'normal', read: false });
+    return ok({ detail: 'Contribution enregistrée' });
+  }
+
+  // ---------- FESTIPAY ----------------------------------------------------
+  if (url === '/api/festipay/events/' && method === 'GET') return ok(festiEvents);
+  if (url === '/api/festipay/book/' && method === 'POST') {
+    const ev = festiEvents.find((e) => e.id === body.event_id);
+    const w = wallets.find((x) => x.id === body.wallet_id);
+    if (!ev || !w) throw new Error('Event ou wallet introuvable');
+    if (w.available < ev.price) throw new Error('Solde insuffisant');
+    w.available -= ev.price; w.balance -= ev.price;
+    ev.attendees += 1;
+    const ticket = {
+      id: 'tk' + Date.now(), event_id: ev.id,
+      qr_token: 'tk_' + Math.random().toString(36).slice(2, 10),
+      amount: ev.price, currency: ev.currency, createdAt: new Date().toISOString(),
+    };
+    pushNotif({ title: 'Ticket réservé', body: `${ev.name} — Bonne soirée!`, level: 'success', priority: 'normal', read: false });
+    return ok(ticket);
+  }
+
+  // ---------- PAYALL ------------------------------------------------------
+  if (url.startsWith('/api/payall/providers/') && method === 'GET') {
+    const cat = url.includes('?category=') ? url.split('?category=')[1] : null;
+    return ok(cat ? BILL_PROVIDERS.filter((p) => p.category === cat) : BILL_PROVIDERS);
+  }
+  if (url === '/api/payall/pay/' && method === 'POST') {
+    const w = wallets.find((x) => x.id === body.wallet_id);
+    if (!w) throw new Error('Wallet introuvable');
+    if (w.available < body.amount) throw new Error('Solde insuffisant');
+    w.available -= body.amount; w.balance -= body.amount;
+    const ref = 'BILL-' + Math.floor(Math.random() * 9000 + 1000);
+    transactions.unshift({
+      id: 'b' + Date.now(), type: 'withdrawal', direction: 'out', amount: body.amount, currency: w.currency,
+      status: 'completed', description: `Bill ${body.provider_id}`, counterparty: body.reference,
+      reference: ref, createdAt: new Date().toISOString(), wallet_id: w.id,
+    });
+    pushNotif({ title: 'Facture payée', body: `${body.amount} ${w.currency} — ${body.provider_id}`, level: 'success', priority: 'normal', read: false });
+    return ok({ detail: 'Bill paid', reference: ref });
+  }
+
+  // ---------- CRYPTO ------------------------------------------------------
+  if (url === '/api/cryptos/' && method === 'GET') return ok(CRYPTO_ASSETS);
+  if (url.startsWith('/api/cryptos/') && url.endsWith('/networks/') && method === 'GET') {
+    const sym = url.split('/').filter(Boolean)[2];
+    return ok(CRYPTO_NETWORKS[sym] || []);
+  }
+  if (url === '/api/cryptos/deposit-address/' && method === 'POST') {
+    const address = body.network === 'TRC20' ? 'TR' + Math.random().toString(36).slice(2, 32).toUpperCase()
+      : body.network === 'ERC20' ? '0x' + Math.random().toString(16).slice(2, 42)
+      : '1' + Math.random().toString(36).slice(2, 30);
+    return ok({ address, network: body.network, symbol: body.symbol, qr_payload: `${body.symbol}:${address}?amount=${body.amount}` });
+  }
+  if (url === '/api/cryptos/withdraw/' && method === 'POST') {
+    const w = wallets.find((x) => x.id === body.wallet_id);
+    if (!w) throw new Error('Wallet introuvable');
+    if (w.available < body.amount) throw new Error('Solde insuffisant');
+    if (!body.address || body.address.length < 10) throw new Error('Adresse invalide');
+    w.available -= body.amount; w.balance -= body.amount;
+    const ref = 'CRY-' + Math.floor(Math.random() * 9000 + 1000);
+    transactions.unshift({
+      id: 'c' + Date.now(), type: 'withdrawal', direction: 'out', amount: body.amount, currency: body.symbol,
+      status: 'pending', description: `${body.symbol} (${body.network}) → ${body.address.slice(0, 8)}…`,
+      counterparty: body.address, reference: ref, createdAt: new Date().toISOString(), wallet_id: w.id,
+    });
+    pushNotif({ title: 'Retrait crypto envoyé', body: `${body.amount} ${body.symbol} → ${body.address.slice(0, 10)}…`, level: 'success', priority: 'high', read: false });
+    return ok({ detail: 'Crypto withdrawal sent', reference: ref });
   }
 
   // ---------- AFFILIATION --------------------------------------------------

@@ -277,6 +277,18 @@ export async function mockHandler(url: string, method: string, body: any): Promi
     if (!body?.token) throw new Error('Token requis');
     return ok({ detail: 'Validated', amount: 50, currency: 'USD' });
   }
+  if (url === '/api/transactions/lookup/' && method === 'POST') {
+    const acc = String(body?.account_no || '').trim();
+    if (!acc) throw new Error('Compte requis');
+    // Simulate "not found" for very short or numeric-only weird strings sometimes
+    if (acc.length < 3) throw new Error('Destinataire introuvable');
+    const seed = acc.toLowerCase().replace(/[^a-z]/g, '').slice(0, 4) || 'user';
+    const name =
+      acc.startsWith('@')
+        ? acc.slice(1).split('.').map((p) => p.charAt(0).toUpperCase() + p.slice(1)).join(' ')
+        : `${seed.charAt(0).toUpperCase()}${seed.slice(1)} Lipaxe`;
+    return ok({ account_no: acc, name, verified: true });
+  }
 
   // ---------- CARDS --------------------------------------------------------
   if (url === '/api/virtual-cards/' && method === 'GET') {

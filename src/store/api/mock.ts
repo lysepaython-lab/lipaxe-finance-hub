@@ -91,18 +91,28 @@ const COUNTRIES = [
 ];
 
 const PAYMENT_METHODS_DEPOSIT = [
-  { id: 'pm_mtn', name: 'MTN Mobile Money', type: 'mobile', countries: [{ country: { name: 'Ghana', alpha_2: 'GH' } }, { country: { name: 'Nigeria', alpha_2: 'NG' } }, { country: { name: 'Burundi', alpha_2: 'BI' } }], fees: { fixed: 0, percent: 1.5 } },
-  { id: 'pm_wave', name: 'Wave', type: 'mobile', countries: [{ country: { name: 'Senegal', alpha_2: 'SN' } }, { country: { name: 'Kenya', alpha_2: 'KE' } }], fees: { fixed: 0, percent: 1 } },
-  { id: 'pm_visa', name: 'Visa / Mastercard', type: 'card', countries: COUNTRIES.map((c) => ({ country: { name: c.name, alpha_2: c.alpha_2 } })), fees: { fixed: 0.3, percent: 2.9 } },
-  { id: 'pm_paypal', name: 'PayPal', type: 'electronic', countries: [{ country: { name: 'France', alpha_2: 'FR' } }, { country: { name: 'United States', alpha_2: 'US' } }, { country: { name: 'Germany', alpha_2: 'DE' } }], fees: { fixed: 0, percent: 3.4 } },
-  { id: 'pm_payeer', name: 'Payeer', type: 'electronic', countries: COUNTRIES.map((c) => ({ country: { name: c.name, alpha_2: c.alpha_2 } })), fees: { fixed: 0, percent: 1.95 } },
-  { id: 'pm_usdt', name: 'USDT (TRC20)', type: 'crypto', countries: COUNTRIES.map((c) => ({ country: { name: c.name, alpha_2: c.alpha_2 } })), fees: { fixed: 1, percent: 0 } },
+  { id: 'pm_orange_cdf', name: 'Orange Money', payment_type: { name: 'Mobile Payment' }, type: 'mobile', countries: [{ country: { name: 'DR Congo', alpha_2: 'CD' } }, { country: { name: 'Burundi', alpha_2: 'BI' } }], fees: { fixed: 0, percent: 1.5 } },
+  { id: 'pm_mtn', name: 'MTN Mobile Money', payment_type: { name: 'Mobile Payment' }, type: 'mobile', countries: [{ country: { name: 'Ghana', alpha_2: 'GH' } }, { country: { name: 'Nigeria', alpha_2: 'NG' } }, { country: { name: 'Burundi', alpha_2: 'BI' } }], fees: { fixed: 0, percent: 1.5 } },
+  { id: 'pm_wave', name: 'Wave', payment_type: { name: 'Mobile Payment' }, type: 'mobile', countries: [{ country: { name: 'Senegal', alpha_2: 'SN' } }, { country: { name: 'Kenya', alpha_2: 'KE' } }], fees: { fixed: 0, percent: 1 } },
+  { id: 'pm_visa', name: 'Visa / Mastercard', payment_type: { name: 'Bank Transfer' }, type: 'card', countries: COUNTRIES.map((c) => ({ country: { name: c.name, alpha_2: c.alpha_2 } })), fees: { fixed: 0.3, percent: 2.9 } },
+  { id: 'pm_amex', name: 'American Express', payment_type: { name: 'Bank Transfer' }, type: 'card', countries: COUNTRIES.map((c) => ({ country: { name: c.name, alpha_2: c.alpha_2 } })), fees: { fixed: 0.3, percent: 3.5 } },
+  { id: 'pm_paypal', name: 'PayPal', payment_type: { name: 'Electronic' }, type: 'electronic', countries: [{ country: { name: 'France', alpha_2: 'FR' } }, { country: { name: 'United States', alpha_2: 'US' } }, { country: { name: 'Germany', alpha_2: 'DE' } }], fees: { fixed: 0, percent: 3.4 } },
+  { id: 'pm_payeer', name: 'Payeer', payment_type: { name: 'Electronic' }, type: 'electronic', countries: COUNTRIES.map((c) => ({ country: { name: c.name, alpha_2: c.alpha_2 } })), fees: { fixed: 0, percent: 1.95 } },
+  { id: 'pm_stripe', name: 'Stripe', payment_type: { name: 'Electronic' }, type: 'electronic', countries: COUNTRIES.map((c) => ({ country: { name: c.name, alpha_2: c.alpha_2 } })), fees: { fixed: 0.3, percent: 2.9 } },
+  { id: 'pm_usdt_trc20', name: 'USDT (TRC20)', payment_type: { name: 'Cryptos' }, type: 'crypto', countries: COUNTRIES.map((c) => ({ country: { name: c.name, alpha_2: c.alpha_2 } })), fees: { fixed: 1, percent: 0 } },
+  { id: 'pm_usdt_erc20', name: 'USDT (ERC20)', payment_type: { name: 'Cryptos' }, type: 'crypto', countries: COUNTRIES.map((c) => ({ country: { name: c.name, alpha_2: c.alpha_2 } })), fees: { fixed: 5, percent: 0 } },
 ];
 
 const PAYMENT_METHODS_WITHDRAW = [
-  { id: 'pm_mtn', name: 'MTN Mobile Money', type: 'mobile', countries: [{ country: { name: 'Ghana', alpha_2: 'GH' } }, { country: { name: 'Burundi', alpha_2: 'BI' } }], fees: { fixed: 0.5, percent: 0.5 } },
-  { id: 'pm_bank', name: 'Bank wire', type: 'bank', countries: COUNTRIES.map((c) => ({ country: { name: c.name, alpha_2: c.alpha_2 } })), fees: { fixed: 1.5, percent: 0 } },
-  { id: 'pm_usdt', name: 'USDT (TRC20)', type: 'crypto', countries: COUNTRIES.map((c) => ({ country: { name: c.name, alpha_2: c.alpha_2 } })), fees: { fixed: 1, percent: 0 } },
+  { id: 'pm_orange_cdf', name: 'Orange Money', payment_type: { name: 'Mobile Payment' }, type: 'mobile', countries: [{ country: { name: 'DR Congo', alpha_2: 'CD' } }, { country: { name: 'Burundi', alpha_2: 'BI' } }], fees: { fixed: 0.5, percent: 0.5 } },
+  { id: 'pm_mtn', name: 'MTN Mobile Money', payment_type: { name: 'Mobile Payment' }, type: 'mobile', countries: [{ country: { name: 'Ghana', alpha_2: 'GH' } }, { country: { name: 'Burundi', alpha_2: 'BI' } }], fees: { fixed: 0.5, percent: 0.5 } },
+  { id: 'pm_visa_wd', name: 'Visa / Mastercard', payment_type: { name: 'Bank Transfer' }, type: 'card', countries: COUNTRIES.map((c) => ({ country: { name: c.name, alpha_2: c.alpha_2 } })), fees: { fixed: 1, percent: 0.5 } },
+  { id: 'pm_amex_wd', name: 'American Express', payment_type: { name: 'Bank Transfer' }, type: 'card', countries: COUNTRIES.map((c) => ({ country: { name: c.name, alpha_2: c.alpha_2 } })), fees: { fixed: 1, percent: 0.7 } },
+  { id: 'pm_paypal_wd', name: 'PayPal', payment_type: { name: 'Electronic' }, type: 'electronic', countries: COUNTRIES.map((c) => ({ country: { name: c.name, alpha_2: c.alpha_2 } })), fees: { fixed: 0, percent: 2.5 } },
+  { id: 'pm_payeer_wd', name: 'Payeer', payment_type: { name: 'Electronic' }, type: 'electronic', countries: COUNTRIES.map((c) => ({ country: { name: c.name, alpha_2: c.alpha_2 } })), fees: { fixed: 0, percent: 1.5 } },
+  { id: 'pm_stripe_wd', name: 'Stripe', payment_type: { name: 'Electronic' }, type: 'electronic', countries: COUNTRIES.map((c) => ({ country: { name: c.name, alpha_2: c.alpha_2 } })), fees: { fixed: 0.3, percent: 2.9 } },
+  { id: 'pm_usdt_wd_trc20', name: 'USDT (TRC20)', payment_type: { name: 'Cryptos' }, type: 'crypto', countries: COUNTRIES.map((c) => ({ country: { name: c.name, alpha_2: c.alpha_2 } })), fees: { fixed: 1, percent: 0 } },
+  { id: 'pm_usdt_wd_erc20', name: 'USDT (ERC20)', payment_type: { name: 'Cryptos' }, type: 'crypto', countries: COUNTRIES.map((c) => ({ country: { name: c.name, alpha_2: c.alpha_2 } })), fees: { fixed: 5, percent: 0 } },
 ];
 
 const ok = <T,>(data: T): T => structuredClone(data);

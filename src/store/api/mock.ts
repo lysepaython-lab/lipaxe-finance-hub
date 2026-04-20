@@ -138,6 +138,7 @@ const pushNotif = (n: Omit<Notif, 'id' | 'createdAt'>) => {
   notifications.unshift({ ...n, id: 'n' + Date.now(), createdAt: new Date().toISOString() });
 };
 
+const COUNTRIES = [
   { name: 'France', alpha_2: 'FR', phone_code: '+33' },
   { name: 'United Kingdom', alpha_2: 'GB', phone_code: '+44' },
   { name: 'United States', alpha_2: 'US', phone_code: '+1' },

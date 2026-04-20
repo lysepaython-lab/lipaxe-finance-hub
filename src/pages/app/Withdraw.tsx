@@ -6,88 +6,116 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useWithdrawMutation } from '@/store/api/walletApi';
+import { useCryptoNetworksQuery, useCryptoWithdrawMutation } from '@/store/api/businessApi';
 import { usePaymentMethodsWithdrawalQuery, type PaymentMethod, type WalletV2 } from '@/store/api/platformApi';
 import { Loader2, Check, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatMoney } from '@/lib/format';
 import { WalletSelector } from '@/components/security/WalletSelector';
-import { CountryPicker, flagEmoji } from '@/components/security/CountryPicker';
 import { PinModal, usePinGate } from '@/components/security/PinModal';
 import { AsyncStatusPill } from '@/components/security/AsyncStatus';
+import { PaymentMethodFields, type DynamicFields } from '@/components/security/PaymentMethodFields';
 import { useSubmitOnce } from '@/hooks/useSubmitOnce';
 import { useTransactionPolling } from '@/hooks/useTransactionPolling';
 import { sanitizeText, Throttle } from '@/lib/security';
-import { z } from 'zod';
-import { amountSchema, accountNoSchema } from '@/lib/validation';
+import { amountSchema } from '@/lib/validation';
 import { useAppSelector } from '@/store/hooks';
 import { cn } from '@/lib/utils';
 
 const submitThrottle = new Throttle(8, 60_000);
 
-const schema = z.object({
-  amount: amountSchema,
-  payment_method: z.string().min(1),
-  wallet_id: z.string().min(1),
-  destination: accountNoSchema,
-});
-
 const Withdraw = () => {
   const { t } = useTranslation();
   const user = useAppSelector((s) => s.auth.user);
   const [withdraw, { isLoading }] = useWithdrawMutation();
+  const [cryptoWithdraw, { isLoading: cryptoLoading }] = useCryptoWithdrawMutation();
   const { data: methods } = usePaymentMethodsWithdrawalQuery();
   const pin = usePinGate();
 
   const [walletId, setWalletId] = useState<string>();
   const [wallet, setWallet] = useState<WalletV2 | undefined>();
-  const [country, setCountry] = useState('FR');
   const [methodId, setMethodId] = useState('');
   const [amount, setAmount] = useState('200');
-  const [destination, setDestination] = useState('');
-  const [phone, setPhone] = useState('');
+  const [fields, setFields] = useState<DynamicFields>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [done, setDone] = useState(false);
   const [txId, setTxId] = useState<string | null>(null);
   const status = useTransactionPolling(txId);
 
-  const filteredMethods = useMemo<PaymentMethod[]>(
-    () => (methods || []).filter((m) => m.countries.some((c) => c.country.alpha_2 === country)),
-    [methods, country],
-  );
-  const selectedMethod = filteredMethods.find((m) => m.id === methodId);
+  const allMethods = methods || [];
+  const selectedMethod = allMethods.find((m) => m.id === methodId);
+  const cryptoSym = selectedMethod?.payment_type?.name === 'Cryptos' ? 'USDT' : '';
+  const { data: networks } = useCryptoNetworksQuery(cryptoSym, { skip: !cryptoSym });
+
+  // Group methods by payment_type.name
+  const grouped = useMemo(() => {
+    const map: Record<string, PaymentMethod[]> = {};
+    allMethods.forEach((m) => {
+      const key = m.payment_type?.name || 'Other';
+      (map[key] = map[key] || []).push(m);
+    });
+    return map;
+  }, [allMethods]);
 
   const amt = parseFloat(amount) || 0;
   const fee = selectedMethod ? (selectedMethod.fees?.fixed || 0) + amt * ((selectedMethod.fees?.percent || 0) / 100) : 0;
   const total = amt + fee;
   const insufficient = wallet ? total > wallet.available : false;
-
-  // KYC gate: required for withdrawals
   const kycOk = user?.kycStatus === 'verified';
 
+  const validateExtra = (): string | null => {
+    const typeName = selectedMethod?.payment_type?.name;
+    if (typeName === 'Mobile Payment') {
+      if (!fields.phone || !/^\+?[0-9 ]{6,20}$/.test(fields.phone)) return 'Numéro mobile invalide';
+    }
+    if (typeName === 'Bank Transfer') {
+      const num = (fields.card_number || '').replace(/\s/g, '');
+      if (!/^\d{13,16}$/.test(num)) return 'Numéro de carte invalide';
+      if (!/^\d{2}\/\d{2}$/.test(fields.card_validity || '')) return 'Validité invalide (MM/AA)';
+    }
+    if (typeName === 'Cryptos') {
+      if (!fields.destination_address || fields.destination_address.length < 10) return 'Adresse crypto invalide';
+      if (!fields.network) return 'Sélectionnez un réseau';
+    }
+    return null;
+  };
+
   const doWithdraw = async () => {
-    const payload = {
-      amount: amt,
-      payment_method: methodId,
-      wallet_id: walletId || '',
-      destination: sanitizeText(destination || phone),
-    };
-    const parsed = schema.safeParse(payload);
+    const parsed = amountSchema.safeParse(amt);
     if (!parsed.success) {
-      const errs: Record<string, string> = {};
-      parsed.error.issues.forEach((i) => (errs[i.path[0] as string] = i.message));
-      setErrors(errs);
+      setErrors({ amount: parsed.error.issues[0].message });
       return;
     }
+    const extra = validateExtra();
+    if (extra) { toast.error(extra); return; }
     if (insufficient) { toast.error(t('transfer.insufficientBalance')); return; }
     if (!submitThrottle.tryAcquire()) { toast.error('Trop de tentatives.'); return; }
     setErrors({});
     try {
-      const tx = await withdraw({
-        amount: payload.amount,
-        payment_method: payload.payment_method,
-        wallet_id: payload.wallet_id,
-        destination: payload.destination,
-        phone: phone || undefined,
+      const typeName = selectedMethod?.payment_type?.name;
+      let tx;
+      if (typeName === 'Cryptos') {
+        const r = await cryptoWithdraw({
+          symbol: 'USDT',
+          network: fields.network!,
+          address: sanitizeText(fields.destination_address!),
+          amount: amt,
+          wallet_id: walletId!,
+        }).unwrap();
+        toast.success(`Retrait crypto ${r.reference}`);
+        setDone(true);
+        return;
+      }
+      const destination =
+        typeName === 'Mobile Payment' ? sanitizeText(fields.phone || '') :
+        typeName === 'Bank Transfer' ? `${(fields.card_number || '').slice(-4)}` :
+        selectedMethod?.name || '';
+      tx = await withdraw({
+        amount: amt,
+        payment_method: methodId,
+        wallet_id: walletId!,
+        destination,
+        phone: fields.phone,
       }).unwrap();
       setTxId(tx.id);
       toast.success(t('withdraw.success'));
@@ -102,10 +130,7 @@ const Withdraw = () => {
 
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!kycOk) {
-      toast.error('Vérification KYC requise pour les retraits.');
-      return;
-    }
+    if (!kycOk) { toast.error('Vérification KYC requise pour les retraits.'); return; }
     if (!walletId) { toast.error(t('withdraw.selectWallet')); return; }
     if (!methodId) { toast.error(t('deposit.selectMethod')); return; }
     pin.guard(submit);
@@ -119,11 +144,11 @@ const Withdraw = () => {
         </div>
         <h2 className="font-display text-2xl font-bold">{t('withdraw.success')}</h2>
         <p className="text-muted-foreground mt-2">
-          {formatMoney(amt, wallet?.currency || 'USD')} → {destination || phone}
+          {formatMoney(amt, wallet?.currency || 'USD')}
         </p>
         <div className="my-4"><AsyncStatusPill status={status} /></div>
         <div className="flex gap-3 justify-center mt-6">
-          <Button variant="outline" onClick={() => { setDone(false); setTxId(null); }}>Nouveau retrait</Button>
+          <Button variant="outline" onClick={() => { setDone(false); setTxId(null); setFields({}); }}>Nouveau retrait</Button>
           <Button asChild className="bg-gradient-brand"><a href="/app">Retour</a></Button>
         </div>
       </Card>
@@ -157,70 +182,63 @@ const Withdraw = () => {
               onChange={(id, w) => { setWalletId(id); setWallet(w); }}
             />
 
-            <CountryPicker
-              label="Pays de destination"
-              value={country}
-              onChange={(code) => { setCountry(code); setMethodId(''); }}
-              paymentMethods={methods}
-            />
-
-            <div className="space-y-2">
+            <div className="space-y-3">
               <Label>{t('deposit.selectMethod')}</Label>
-              <div className="grid sm:grid-cols-2 gap-2">
-                {filteredMethods.map((m) => (
-                  <motion.button
-                    key={m.id}
-                    type="button"
-                    whileHover={{ y: -1 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => setMethodId(m.id)}
-                    className={cn(
-                      'rounded-xl border-2 p-3 text-left transition-colors',
-                      methodId === m.id ? 'border-primary bg-primary/5' : 'border-input hover:border-primary/40',
-                    )}
-                  >
-                    <div className="font-semibold text-sm">{m.name}</div>
-                    <div className="text-xs text-muted-foreground capitalize">{m.type}</div>
-                    {m.fees && (
-                      <div className="text-xs text-muted-foreground mt-1">
-                        {m.fees.fixed > 0 && `${m.fees.fixed} + `}{m.fees.percent}%
-                      </div>
-                    )}
-                  </motion.button>
-                ))}
-                {filteredMethods.length === 0 && (
-                  <p className="col-span-2 text-sm text-muted-foreground py-4 text-center">
-                    {flagEmoji(country)} Aucun mode disponible.
-                  </p>
-                )}
-              </div>
+              {Object.keys(grouped).length === 0 ? (
+                <p className="text-sm text-muted-foreground py-4 text-center">Chargement…</p>
+              ) : (
+                Object.entries(grouped).map(([type, list]) => (
+                  <div key={type} className="space-y-2">
+                    <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">{type}</p>
+                    <div className="grid sm:grid-cols-2 gap-2">
+                      {list.map((m) => (
+                        <motion.button
+                          key={m.id}
+                          type="button"
+                          whileHover={{ y: -1 }}
+                          whileTap={{ scale: 0.98 }}
+                          onClick={() => { setMethodId(m.id); setFields({}); }}
+                          className={cn(
+                            'rounded-xl border-2 p-3 text-left transition-colors',
+                            methodId === m.id ? 'border-primary bg-primary/5' : 'border-input hover:border-primary/40',
+                          )}
+                        >
+                          <div className="font-semibold text-sm">{m.name}</div>
+                          {m.fees && (
+                            <div className="text-xs text-muted-foreground mt-1">
+                              {m.fees.fixed > 0 && `${m.fees.fixed} + `}{m.fees.percent}%
+                            </div>
+                          )}
+                        </motion.button>
+                      ))}
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
 
-            {selectedMethod?.type === 'mobile' ? (
+            {selectedMethod?.payment_type?.name === 'Cryptos' && networks && (
               <div className="space-y-2">
-                <Label>Numéro mobile money</Label>
-                <Input
-                  inputMode="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="+257 ..."
-                  className="h-11 rounded-xl"
-                  maxLength={20}
-                />
-              </div>
-            ) : (
-              <div className="space-y-2">
-                <Label>{t('withdraw.destination')}</Label>
-                <Input
-                  value={destination}
-                  onChange={(e) => setDestination(e.target.value)}
-                  placeholder="IBAN, n° de compte ou wallet"
-                  className="h-11 rounded-xl"
-                  maxLength={64}
-                />
-                {errors.destination && <p className="text-xs text-destructive">{errors.destination}</p>}
+                <Label>Réseau</Label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {networks.map((n) => (
+                    <button
+                      key={n.id}
+                      type="button"
+                      onClick={() => setFields((f) => ({ ...f, network: n.id }))}
+                      className={cn(
+                        'rounded-lg border-2 p-2 text-xs font-semibold transition-colors',
+                        fields.network === n.id ? 'border-primary bg-primary/5' : 'border-input hover:border-primary/40',
+                      )}
+                    >
+                      {n.name}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
+
+            <PaymentMethodFields method={selectedMethod} values={fields} onChange={(p) => setFields((f) => ({ ...f, ...p }))} context="withdraw" />
 
             <div className="space-y-2">
               <Label>{t('withdraw.amount')}</Label>
@@ -260,9 +278,9 @@ const Withdraw = () => {
             <Button
               type="submit"
               className="w-full h-12 bg-gradient-brand shadow-brand text-base rounded-xl"
-              disabled={isLoading || busy || insufficient || !kycOk}
+              disabled={isLoading || cryptoLoading || busy || insufficient || !kycOk}
             >
-              {(isLoading || busy) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}
+              {(isLoading || cryptoLoading || busy) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}
               {t('withdraw.confirm')}
             </Button>
           </form>

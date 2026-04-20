@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { setStep, updatePersonal, updateAddress, updateDocument, updateSelfie, resetKyc } from '@/store/slices/kycSlice';
-import { useSubmitKycMutation } from '@/store/api/walletApi';
+import { useSubmitPersonalMutation, useSubmitAddressMutation, useSubmitDocumentsMutation } from '@/store/api/kycApi';
 import { updateUser } from '@/store/slices/authSlice';
 import { Check, Upload, ChevronRight, ChevronLeft, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';

@@ -16,7 +16,9 @@ interface Tx {
 interface Activity { id: string; action: string; ip: string; device: string; createdAt: string; }
 interface Notif {
   id: string; title: string; body: string;
-  level: 'info' | 'success' | 'warning' | 'error'; read: boolean; createdAt: string;
+  level: 'info' | 'success' | 'warning' | 'error';
+  priority: 'low' | 'normal' | 'high';
+  read: boolean; createdAt: string; link?: string;
 }
 interface UserCard {
   id: string; brand: 'Visa' | 'Mastercard'; number_masked: string;
@@ -68,9 +70,9 @@ let cards: UserCard[] = [
 ];
 
 let notifications: Notif[] = [
-  { id: 'n1', title: 'Payment received', body: 'You received $950 from John K.', level: 'success', read: false, createdAt: new Date(now - day).toISOString() },
-  { id: 'n2', title: 'KYC required', body: 'Verify your identity to unlock higher limits.', level: 'warning', read: false, createdAt: new Date(now - day * 2).toISOString() },
-  { id: 'n3', title: 'New device', body: 'Sign-in from Safari on iPhone.', level: 'info', read: true, createdAt: new Date(now - day * 5).toISOString() },
+  { id: 'n1', title: 'Payment received', body: 'You received $950 from John K.', level: 'success', priority: 'normal', read: false, createdAt: new Date(now - day).toISOString(), link: '/app/transactions' },
+  { id: 'n2', title: 'KYC required', body: 'Verify your identity to unlock higher limits.', level: 'warning', priority: 'high', read: false, createdAt: new Date(now - day * 2).toISOString(), link: '/app/kyc' },
+  { id: 'n3', title: 'New device', body: 'Sign-in from Safari on iPhone.', level: 'info', priority: 'low', read: true, createdAt: new Date(now - day * 5).toISOString(), link: '/app/activity' },
 ];
 
 const COUNTRIES = [

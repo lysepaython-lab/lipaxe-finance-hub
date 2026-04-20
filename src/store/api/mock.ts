@@ -75,7 +75,69 @@ let notifications: Notif[] = [
   { id: 'n3', title: 'New device', body: 'Sign-in from Safari on iPhone.', level: 'info', priority: 'low', read: true, createdAt: new Date(now - day * 5).toISOString(), link: '/app/activity' },
 ];
 
-const COUNTRIES = [
+// ---------- Tontines (BusinessAll) ----------
+interface Tontine {
+  id: string; name: string; contribution: number; currency: string;
+  frequency: 'weekly' | 'monthly'; duration_months: number;
+  selection: 'random' | 'ordered';
+  members: { user: string; received: boolean; position: number }[];
+  next_beneficiary?: string; next_payout_at?: string;
+  status: 'active' | 'completed';
+}
+let tontines: Tontine[] = [
+  {
+    id: 'tn1', name: 'Famille Lipaxe', contribution: 50, currency: 'USD', frequency: 'monthly', duration_months: 6, selection: 'ordered',
+    members: [
+      { user: '@alex', received: true, position: 1 },
+      { user: '@marie.d', received: false, position: 2 },
+      { user: '@john.k', received: false, position: 3 },
+    ],
+    next_beneficiary: '@marie.d', next_payout_at: new Date(now + day * 12).toISOString(), status: 'active',
+  },
+];
+
+// ---------- FestiPay events ----------
+interface FestiEvent {
+  id: string; name: string; date: string; price: number; currency: string;
+  attendees: number; cover: string; organizer: string;
+}
+let festiEvents: FestiEvent[] = [
+  { id: 'e1', name: 'Lipaxe Summit 2025', date: '2025-03-14', price: 49, currency: 'USD', attendees: 312, cover: 'from-violet-500 to-fuchsia-600', organizer: 'Lipaxe' },
+  { id: 'e2', name: 'Afro Fintech Night', date: '2025-04-02', price: 25, currency: 'USD', attendees: 145, cover: 'from-amber-500 to-rose-600', organizer: 'AfroPay' },
+  { id: 'e3', name: 'Web3 & Money', date: '2025-05-10', price: 79, currency: 'USD', attendees: 580, cover: 'from-sky-500 to-emerald-600', organizer: 'CryptoCorp' },
+];
+
+// ---------- PayAll Bills ----------
+const BILL_PROVIDERS = [
+  { id: 'bp_regideso', name: 'Regideso (Eau)', category: 'water', country: 'BI' },
+  { id: 'bp_snel', name: 'SNEL (Électricité)', category: 'electricity', country: 'CD' },
+  { id: 'bp_orange_net', name: 'Orange Internet', category: 'internet', country: 'CD' },
+  { id: 'bp_canal', name: 'Canal+', category: 'tv', country: 'CD' },
+  { id: 'bp_vodacom', name: 'Vodacom Internet', category: 'internet', country: 'CD' },
+];
+
+// ---------- Crypto ----------
+const CRYPTO_ASSETS = [
+  { symbol: 'USDT', name: 'Tether', price_usd: 1, change_24h: 0.01 },
+  { symbol: 'USDC', name: 'USD Coin', price_usd: 1, change_24h: 0 },
+  { symbol: 'BTC', name: 'Bitcoin', price_usd: 67420, change_24h: 2.4 },
+  { symbol: 'ETH', name: 'Ethereum', price_usd: 3210, change_24h: -0.8 },
+];
+const CRYPTO_NETWORKS: Record<string, { id: string; name: string; symbol: string }[]> = {
+  USDT: [{ id: 'TRC20', name: 'TRON (TRC20)', symbol: 'TRX' }, { id: 'ERC20', name: 'Ethereum (ERC20)', symbol: 'ETH' }, { id: 'BEP20', name: 'BNB Smart Chain (BEP20)', symbol: 'BNB' }],
+  USDC: [{ id: 'ERC20', name: 'Ethereum (ERC20)', symbol: 'ETH' }, { id: 'TRC20', name: 'TRON (TRC20)', symbol: 'TRX' }],
+  BTC: [{ id: 'BTC', name: 'Bitcoin', symbol: 'BTC' }],
+  ETH: [{ id: 'ERC20', name: 'Ethereum (ERC20)', symbol: 'ETH' }],
+};
+
+// ---------- QR token store ----------
+interface QrToken { token: string; sender: string; amount: number; currency: string; wallet_id: string; expires_at: string; consumed: boolean; }
+const qrTokens: Map<string, QrToken> = new Map();
+
+const pushNotif = (n: Omit<Notif, 'id' | 'createdAt'>) => {
+  notifications.unshift({ ...n, id: 'n' + Date.now(), createdAt: new Date().toISOString() });
+};
+
   { name: 'France', alpha_2: 'FR', phone_code: '+33' },
   { name: 'United Kingdom', alpha_2: 'GB', phone_code: '+44' },
   { name: 'United States', alpha_2: 'US', phone_code: '+1' },

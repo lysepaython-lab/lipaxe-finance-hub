@@ -5,73 +5,132 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useDepositMutation } from '@/store/api/walletApi';
+import {
+  useDepositMutation,
+  useCardDepositMutation,
+  useElectronicDepositMutation,
+  useCryptoDepositMutation,
+} from '@/store/api/walletApi';
 import { usePaymentMethodsDepositQuery, type PaymentMethod, type WalletV2 } from '@/store/api/platformApi';
-import { Loader2, Check, ShieldCheck } from 'lucide-react';
+import { useCryptoNetworksQuery } from '@/store/api/businessApi';
+import { Loader2, Check, ShieldCheck, Copy } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatMoney } from '@/lib/format';
 import { WalletSelector } from '@/components/security/WalletSelector';
-import { CountryPicker, flagEmoji } from '@/components/security/CountryPicker';
 import { PinModal, usePinGate } from '@/components/security/PinModal';
 import { AsyncStatusPill } from '@/components/security/AsyncStatus';
+import { PaymentMethodFields, type DynamicFields } from '@/components/security/PaymentMethodFields';
 import { useSubmitOnce } from '@/hooks/useSubmitOnce';
-import { depositSchema } from '@/lib/validation';
+import { useTransactionPolling } from '@/hooks/useTransactionPolling';
 import { sanitizeText, Throttle } from '@/lib/security';
+import { amountSchema } from '@/lib/validation';
 import { cn } from '@/lib/utils';
 
 const submitThrottle = new Throttle(8, 60_000);
 
+/**
+ * Deposit page — grouped by payment_type.name (Mobile / Bank / Electronic / Cryptos).
+ * Country picker removed: methods are filtered server-side based on the user's KYC country.
+ */
 const Deposit = () => {
   const { t } = useTranslation();
-  const [deposit, { isLoading }] = useDepositMutation();
   const { data: methods } = usePaymentMethodsDepositQuery();
+  const [deposit, { isLoading: l1 }] = useDepositMutation();
+  const [cardDeposit, { isLoading: l2 }] = useCardDepositMutation();
+  const [elecDeposit, { isLoading: l3 }] = useElectronicDepositMutation();
+  const [cryptoDeposit, { isLoading: l4 }] = useCryptoDepositMutation();
   const pin = usePinGate();
 
   const [walletId, setWalletId] = useState<string>();
   const [wallet, setWallet] = useState<WalletV2 | undefined>();
-  const [country, setCountry] = useState<string>('FR');
-  const [methodId, setMethodId] = useState<string>('');
+  const [methodId, setMethodId] = useState('');
   const [amount, setAmount] = useState('500');
-  const [phone, setPhone] = useState('');
+  const [fields, setFields] = useState<DynamicFields>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [done, setDone] = useState(false);
-  const [status, setStatus] = useState<'idle' | 'pending' | 'completed' | 'failed'>('idle');
+  const [txId, setTxId] = useState<string | null>(null);
+  const [cryptoAddress, setCryptoAddress] = useState<{ address: string; network: string; symbol: string } | null>(null);
+  const status = useTransactionPolling(txId);
 
-  const filteredMethods = useMemo<PaymentMethod[]>(
-    () => (methods || []).filter((m) => m.countries.some((c) => c.country.alpha_2 === country)),
-    [methods, country],
-  );
-  const selectedMethod = filteredMethods.find((m) => m.id === methodId);
+  const allMethods = methods || [];
+  const selectedMethod = allMethods.find((m) => m.id === methodId);
+  const cryptoSym = selectedMethod?.payment_type?.name === 'Cryptos' ? 'USDT' : '';
+  const { data: networks } = useCryptoNetworksQuery(cryptoSym, { skip: !cryptoSym });
+
+  const grouped = useMemo(() => {
+    const map: Record<string, PaymentMethod[]> = {};
+    allMethods.forEach((m) => {
+      const key = m.payment_type?.name || 'Other';
+      (map[key] = map[key] || []).push(m);
+    });
+    return map;
+  }, [allMethods]);
+
   const amt = parseFloat(amount) || 0;
   const fee = selectedMethod ? (selectedMethod.fees?.fixed || 0) + amt * ((selectedMethod.fees?.percent || 0) / 100) : 0;
+  const isLoading = l1 || l2 || l3 || l4;
+
+  const validateExtra = (): string | null => {
+    const typeName = selectedMethod?.payment_type?.name;
+    if (typeName === 'Mobile Payment') {
+      if (!fields.phone || !/^\+?[0-9 ]{6,20}$/.test(fields.phone)) return 'Numéro mobile invalide';
+    }
+    if (typeName === 'Bank Transfer') {
+      const num = (fields.card_number || '').replace(/\s/g, '');
+      if (!/^\d{13,16}$/.test(num)) return 'Numéro de carte invalide';
+      if (!/^\d{2}\/\d{2}$/.test(fields.card_validity || '')) return 'Validité invalide (MM/AA)';
+    }
+    if (typeName === 'Cryptos') {
+      if (!fields.network) return 'Sélectionnez un réseau';
+    }
+    return null;
+  };
 
   const doDeposit = async () => {
-    const payload = {
-      amount: amt,
-      payment_method: methodId,
-      wallet_id: walletId || '',
-      phone: phone ? sanitizeText(phone) : undefined,
-    };
-    const parsed = depositSchema.safeParse(payload);
-    if (!parsed.success) {
-      const errs: Record<string, string> = {};
-      parsed.error.issues.forEach((i) => (errs[i.path[0] as string] = i.message));
-      setErrors(errs);
-      return;
-    }
-    if (!submitThrottle.tryAcquire()) {
-      toast.error('Trop de tentatives, patientez quelques secondes.');
-      return;
-    }
+    const parsed = amountSchema.safeParse(amt);
+    if (!parsed.success) { setErrors({ amount: parsed.error.issues[0].message }); return; }
+    const extra = validateExtra();
+    if (extra) { toast.error(extra); return; }
+    if (!submitThrottle.tryAcquire()) { toast.error('Trop de tentatives.'); return; }
     setErrors({});
-    setStatus('pending');
     try {
-      await deposit({ amount: amt, payment_method: methodId, wallet_id: walletId!, phone: phone ? sanitizeText(phone) : undefined }).unwrap();
-      setStatus('completed');
+      const typeName = selectedMethod?.payment_type?.name;
+      if (typeName === 'Cryptos') {
+        // Backend returns a deposit address that the user funds externally.
+        const r = await cryptoDeposit({
+          amount: amt, payment_method: methodId, wallet_id: walletId!, network: fields.network,
+        }).unwrap() as unknown as { address?: string; network?: string; symbol?: string; id?: string };
+        if (r?.address) {
+          setCryptoAddress({ address: r.address, network: r.network || fields.network!, symbol: r.symbol || 'USDT' });
+        } else if (r?.id) {
+          setTxId(r.id);
+        }
+        toast.success('Adresse de dépôt générée');
+        setDone(true);
+        return;
+      }
+      if (typeName === 'Bank Transfer') {
+        const tx = await cardDeposit({
+          amount: amt, payment_method: methodId, wallet_id: walletId!,
+          card_token: sanitizeText((fields.card_number || '').replace(/\s/g, '').slice(-4)),
+        }).unwrap();
+        setTxId(tx.id);
+      } else if (typeName === 'Electronic') {
+        const tx = await elecDeposit({
+          amount: amt, payment_method: methodId, wallet_id: walletId!,
+        }).unwrap();
+        setTxId(tx.id);
+      } else {
+        // Mobile Payment (default)
+        const tx = await deposit({
+          amount: amt, payment_method: methodId, wallet_id: walletId!,
+          phone: fields.phone ? sanitizeText(fields.phone) : undefined,
+        }).unwrap();
+        setTxId(tx.id);
+      }
       toast.success(t('deposit.success'));
       setDone(true);
     } catch (e) {
-      setStatus('failed');
       const detail = (e as { data?: { detail?: string } })?.data?.detail || t('common.error');
       toast.error(detail);
     }
@@ -86,18 +145,41 @@ const Deposit = () => {
     pin.guard(submit);
   };
 
+  const copyAddr = () => {
+    if (!cryptoAddress) return;
+    navigator.clipboard.writeText(cryptoAddress.address);
+    toast.success('Adresse copiée');
+  };
+
   if (done) return (
     <div className="max-w-lg mx-auto">
       <Card className="text-center p-10 shadow-elegant">
         <div className="mx-auto h-16 w-16 rounded-full bg-success/10 text-success flex items-center justify-center mb-4">
           <Check className="h-8 w-8" />
         </div>
-        <h2 className="font-display text-2xl font-bold">{t('deposit.success')}</h2>
-        <p className="text-muted-foreground mt-2">
-          {formatMoney(amt, wallet?.currency || 'USD')} → {wallet?.currency}
-        </p>
+        <h2 className="font-display text-2xl font-bold">
+          {cryptoAddress ? 'Adresse de dépôt' : t('deposit.success')}
+        </h2>
+        {cryptoAddress ? (
+          <div className="mt-6 space-y-3 text-left">
+            <p className="text-sm text-muted-foreground text-center">
+              Envoyez <strong>{amt} {cryptoAddress.symbol}</strong> sur le réseau <strong>{cryptoAddress.network}</strong> à :
+            </p>
+            <div className="rounded-xl bg-muted/40 p-3 font-mono text-xs break-all">{cryptoAddress.address}</div>
+            <Button variant="outline" className="w-full" onClick={copyAddr}>
+              <Copy className="mr-2 h-4 w-4" /> Copier l'adresse
+            </Button>
+          </div>
+        ) : (
+          <>
+            <p className="text-muted-foreground mt-2">{formatMoney(amt, wallet?.currency || 'USD')} → {wallet?.currency}</p>
+            <div className="my-4"><AsyncStatusPill status={status} /></div>
+          </>
+        )}
         <div className="flex gap-3 justify-center mt-6">
-          <Button variant="outline" onClick={() => { setDone(false); setStatus('idle'); }}>Nouveau dépôt</Button>
+          <Button variant="outline" onClick={() => { setDone(false); setTxId(null); setCryptoAddress(null); setFields({}); }}>
+            Nouveau dépôt
+          </Button>
           <Button asChild className="bg-gradient-brand"><a href="/app">Retour au tableau de bord</a></Button>
         </div>
       </Card>
@@ -106,77 +188,77 @@ const Deposit = () => {
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="font-display text-3xl font-bold">{t('deposit.title')}</h1>
-          <p className="text-muted-foreground mt-1">{t('deposit.subtitle')}</p>
-        </div>
-        <AsyncStatusPill status={status} />
+      <div>
+        <h1 className="font-display text-3xl font-bold">{t('deposit.title')}</h1>
+        <p className="text-muted-foreground mt-1">{t('deposit.subtitle')}</p>
       </div>
 
       <Card className="shadow-elegant border-border/60">
-        <CardContent className="p-6 space-y-6">
+        <CardContent className="p-6">
           <form onSubmit={onSubmit} className="space-y-6" noValidate>
             <WalletSelector
               label={t('deposit.selectWallet')}
               value={walletId}
               onChange={(id, w) => { setWalletId(id); setWallet(w); }}
             />
-            {errors.wallet_id && <p className="text-xs text-destructive -mt-3">{errors.wallet_id}</p>}
 
-            <CountryPicker
-              label={t('deposit.selectCountry')}
-              value={country}
-              onChange={(code) => { setCountry(code); setMethodId(''); }}
-              paymentMethods={methods}
-            />
-
-            <div className="space-y-2">
+            <div className="space-y-3">
               <Label>{t('deposit.selectMethod')}</Label>
-              <div className="grid sm:grid-cols-2 gap-2">
-                {filteredMethods.map((m) => (
-                  <motion.button
-                    key={m.id}
-                    type="button"
-                    whileHover={{ y: -1 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => setMethodId(m.id)}
-                    className={cn(
-                      'rounded-xl border-2 p-3 text-left transition-colors',
-                      methodId === m.id ? 'border-primary bg-primary/5' : 'border-input hover:border-primary/40',
-                    )}
-                  >
-                    <div className="font-semibold text-sm">{m.name}</div>
-                    <div className="text-xs text-muted-foreground capitalize">{m.type}</div>
-                    {m.fees && (
-                      <div className="text-xs text-muted-foreground mt-1">
-                        {m.fees.fixed > 0 && `${m.fees.fixed} + `}{m.fees.percent}%
-                      </div>
-                    )}
-                  </motion.button>
-                ))}
-                {filteredMethods.length === 0 && (
-                  <p className="col-span-2 text-sm text-muted-foreground py-4 text-center">
-                    {flagEmoji(country)} Aucun mode disponible pour ce pays.
-                  </p>
-                )}
-              </div>
+              {Object.keys(grouped).length === 0 ? (
+                <p className="text-sm text-muted-foreground py-4 text-center">Chargement…</p>
+              ) : (
+                Object.entries(grouped).map(([type, list]) => (
+                  <div key={type} className="space-y-2">
+                    <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">{type}</p>
+                    <div className="grid sm:grid-cols-2 gap-2">
+                      {list.map((m) => (
+                        <motion.button
+                          key={m.id}
+                          type="button"
+                          whileHover={{ y: -1 }}
+                          whileTap={{ scale: 0.98 }}
+                          onClick={() => { setMethodId(m.id); setFields({}); }}
+                          className={cn(
+                            'rounded-xl border-2 p-3 text-left transition-colors',
+                            methodId === m.id ? 'border-primary bg-primary/5' : 'border-input hover:border-primary/40',
+                          )}
+                        >
+                          <div className="font-semibold text-sm">{m.name}</div>
+                          {m.fees && (
+                            <div className="text-xs text-muted-foreground mt-1">
+                              {m.fees.fixed > 0 && `${m.fees.fixed} + `}{m.fees.percent}%
+                            </div>
+                          )}
+                        </motion.button>
+                      ))}
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
 
-            {selectedMethod?.type === 'mobile' && (
+            {selectedMethod?.payment_type?.name === 'Cryptos' && networks && networks.length > 0 && (
               <div className="space-y-2">
-                <Label>{t('deposit.phone')}</Label>
-                <Input
-                  inputMode="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="+257 ..."
-                  className="h-11 rounded-xl"
-                  maxLength={20}
-                />
-                {errors.phone && <p className="text-xs text-destructive">{errors.phone}</p>}
+                <Label>Réseau</Label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {networks.map((n) => (
+                    <button
+                      key={n.id}
+                      type="button"
+                      onClick={() => setFields((f) => ({ ...f, network: n.id }))}
+                      className={cn(
+                        'rounded-lg border-2 p-2 text-xs font-semibold transition-colors',
+                        fields.network === n.id ? 'border-primary bg-primary/5' : 'border-input hover:border-primary/40',
+                      )}
+                    >
+                      {n.name}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
+
+            <PaymentMethodFields method={selectedMethod} values={fields} onChange={(p) => setFields((f) => ({ ...f, ...p }))} context="deposit" />
 
             <div className="space-y-2">
               <Label>{t('deposit.amount')}</Label>

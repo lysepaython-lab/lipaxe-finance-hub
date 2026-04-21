@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
 import { motion } from 'framer-motion';
@@ -12,6 +12,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useLoginMutation } from '@/store/api/authApi';
 import { useAppDispatch } from '@/store/hooks';
 import { setCredentials } from '@/store/slices/authSlice';
+import { isSafeRedirect } from '@/lib/security';
 import { toast } from 'sonner';
 
 const schema = z.object({
@@ -23,10 +24,12 @@ const Login = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
+  const [params] = useSearchParams();
   const [login, { isLoading }] = useLoginMutation();
   const [form, setForm] = useState({ email: 'demo@lipaxe.app', password: 'demo1234' });
   const [showPwd, setShowPwd] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const redirect = params.get('redirect') || '';
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,7 +45,8 @@ const Login = () => {
       const res = await login(form).unwrap();
       dispatch(setCredentials({ user: res.user, accessToken: res.access, refreshToken: res.refresh }));
       toast.success(t('auth.loginSuccess'));
-      navigate('/app');
+      const target = redirect && isSafeRedirect(redirect) ? redirect : '/app';
+      navigate(target);
     } catch (e: any) {
       toast.error(e?.data?.detail || t('common.error'));
     }

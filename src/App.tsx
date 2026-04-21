@@ -37,6 +37,7 @@ import Kyc from "./pages/app/Kyc";
 import Notifications from "./pages/app/Notifications";
 import Activity from "./pages/app/Activity";
 import Settings from "./pages/app/Settings";
+import PublicQrLanding from "./pages/PublicQrLanding";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -56,6 +57,7 @@ const App = () => (
               <Route path="/verify-email" element={<VerifyEmail />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/reset-password" element={<ResetPassword />} />
+              <Route path="/pay/:token" element={<PublicQrLanding />} />
 
               <Route path="/app" element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
                 <Route index element={<Dashboard />} />

@@ -199,6 +199,14 @@ export async function mockHandler(url: string, method: string, body: any): Promi
   }
   if ((url === '/auth/register/' || url === '/api/user/') && method === 'POST') {
     user = { ...user, email: body.email, firstName: body.first_name || body.firstName || user.firstName, lastName: body.last_name || body.lastName || user.lastName };
+    // Capture affiliate referral code if provided
+    if (body?.reference || body?.ref) {
+      pushNotif({
+        title: 'Parrainage enregistré',
+        body: `Code utilisé : ${body.reference || body.ref}`,
+        level: 'info', priority: 'low', read: false,
+      });
+    }
     return ok({ user, access: 'mock-access-token', refresh: 'mock-refresh-token' });
   }
   if (url === '/auth/forgot-password/' && method === 'POST') return ok({ detail: 'Reset link sent' });
@@ -289,6 +297,14 @@ export async function mockHandler(url: string, method: string, body: any): Promi
   if ((url === '/deposits/' || url === '/api/transactions/deposit/' || url === '/api/transactions/card/' || url === '/api/transactions/electronic/' || url === '/api/transactions/crypto/' || url === '/api/providers/deposit/afripay/' || url === '/api/providers/deposit/afripay/confirm/') && method === 'POST') {
     const w = wallets.find((x) => x.id === body.wallet_id) || wallets.find((x) => x.currency === body.currency);
     if (!w) throw new Error('Wallet introuvable');
+    // Crypto deposit returns an address — funded externally, no immediate tx.
+    if (url === '/api/transactions/crypto/') {
+      const network = body.network || 'TRC20';
+      const address = network === 'TRC20' ? 'TR' + Math.random().toString(36).slice(2, 32).toUpperCase()
+        : network === 'ERC20' ? '0x' + Math.random().toString(16).slice(2, 42)
+        : '1' + Math.random().toString(36).slice(2, 30);
+      return ok({ address, network, symbol: 'USDT' });
+    }
     const fee = feeFor(body.amount, body.payment_method?.includes('card') ? 'card' : 'mobile');
     const tx: Tx = {
       id: 'd' + Date.now(), type: 'deposit', direction: 'in', amount: body.amount, currency: w.currency,

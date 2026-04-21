@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { QRCodeSVG } from 'qrcode.react';
-import { QrCode, Camera, Send, Copy, Check, Loader2 } from 'lucide-react';
+import { QrCode, Camera, Send, Copy, Check, Loader2, Share2, MessageCircle, Mail, MessageSquare } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { PageHeader } from '@/components/PageHeader';
@@ -154,9 +154,48 @@ const TransferQr = () => {
                     </div>
                     <div className="font-display text-xl font-bold tabular">{formatMoney(generated.amount, generated.currency)}</div>
                     {generated.url && (
-                      <Button variant="outline" size="sm" onClick={() => copy(generated.url!)}>
-                        {copied ? <Check className="mr-1 h-3 w-3" /> : <Copy className="mr-1 h-3 w-3" />} Copier le lien
-                      </Button>
+                      <div className="flex flex-wrap items-center justify-center gap-2">
+                        <Button variant="outline" size="sm" onClick={() => copy(generated.url!)}>
+                          {copied ? <Check className="mr-1 h-3 w-3" /> : <Copy className="mr-1 h-3 w-3" />} Copier
+                        </Button>
+                        <Button
+                          size="sm"
+                          className="bg-gradient-brand shadow-brand"
+                          onClick={async () => {
+                            const shareData = {
+                              title: 'Demande de paiement Lipaxe',
+                              text: `Paiement de ${formatMoney(generated.amount, generated.currency)} via Lipaxe`,
+                              url: generated.url!,
+                            };
+                            if (navigator.share) {
+                              try { await navigator.share(shareData); } catch { /* user cancelled */ }
+                            } else {
+                              copy(generated.url!);
+                              toast.success('Lien copié — partagez-le');
+                            }
+                          }}
+                        >
+                          <Share2 className="mr-1 h-3 w-3" /> Partager
+                        </Button>
+                        <Button variant="outline" size="sm" asChild>
+                          <a
+                            href={`https://wa.me/?text=${encodeURIComponent(`Paiement Lipaxe ${formatMoney(generated.amount, generated.currency)} : ${generated.url}`)}`}
+                            target="_blank" rel="noopener noreferrer"
+                          >
+                            <MessageCircle className="mr-1 h-3 w-3" /> WhatsApp
+                          </a>
+                        </Button>
+                        <Button variant="outline" size="sm" asChild>
+                          <a href={`sms:?&body=${encodeURIComponent(`Paiement Lipaxe : ${generated.url}`)}`}>
+                            <MessageSquare className="mr-1 h-3 w-3" /> SMS
+                          </a>
+                        </Button>
+                        <Button variant="outline" size="sm" asChild>
+                          <a href={`mailto:?subject=${encodeURIComponent('Demande de paiement Lipaxe')}&body=${encodeURIComponent(`Bonjour,\n\nVoici un lien de paiement Lipaxe pour ${formatMoney(generated.amount, generated.currency)} :\n${generated.url}\n\nMerci.`)}`}>
+                            <Mail className="mr-1 h-3 w-3" /> Email
+                          </a>
+                        </Button>
+                      </div>
                     )}
                   </motion.div>
                 )}

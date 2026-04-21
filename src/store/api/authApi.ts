@@ -8,7 +8,7 @@ export const authApi = api.injectEndpoints({
     login: b.mutation<AuthResp, { email: string; password: string }>({
       query: (body) => ({ url: '/auth/login/', method: 'POST', body }),
     }),
-    register: b.mutation<AuthResp & { otpRequired?: boolean }, { email: string; password: string; firstName: string; lastName: string }>({
+    register: b.mutation<AuthResp & { otpRequired?: boolean }, { email: string; password: string; firstName: string; lastName: string; reference?: string }>({
       query: (body) => ({ url: '/auth/register/', method: 'POST', body }),
     }),
     forgotPassword: b.mutation<{ detail: string }, { email: string }>({

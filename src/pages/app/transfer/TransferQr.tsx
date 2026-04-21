@@ -15,8 +15,22 @@ import { useTransferQrLinkMutation, useValidateQrMutation, useQrInfoQuery } from
 import { WalletSelector } from '@/components/security/WalletSelector';
 import { PinModal, usePinGate } from '@/components/security/PinModal';
 import { OtpModal } from '@/components/security/OtpModal';
+import { QrScanner } from '@/components/security/QrScanner';
 import { formatMoney } from '@/lib/format';
 import { toast } from 'sonner';
+
+/** Extract a token from a raw QR payload (URL or plain token). */
+const parseQrPayload = (raw: string): string | null => {
+  if (!raw) return null;
+  const trimmed = raw.trim();
+  // Match ?token=… or /pay/<token>
+  const m1 = trimmed.match(/[?&]token=([^&\s]+)/);
+  if (m1) return decodeURIComponent(m1[1]);
+  const m2 = trimmed.match(/\/pay\/([A-Za-z0-9_-]+)/);
+  if (m2) return m2[1];
+  if (/^qr_[A-Za-z0-9_-]+$/.test(trimmed)) return trimmed;
+  return trimmed;
+};
 
 const TransferQr = () => {
   const { t } = useTranslation();
@@ -37,6 +51,8 @@ const TransferQr = () => {
   const [scanToken, setScanToken] = useState<string | null>(incomingToken);
   const [payWallet, setPayWallet] = useState<string>();
   const [otpOpen, setOtpOpen] = useState(false);
+  const [scannerOpen, setScannerOpen] = useState(false);
+  const [manualInput, setManualInput] = useState('');
   const { data: qrInfo, error: qrError } = useQrInfoQuery(scanToken!, { skip: !scanToken });
 
   useEffect(() => {
@@ -77,6 +93,20 @@ const TransferQr = () => {
     if (!payWallet) { toast.error('Sélectionnez un portefeuille'); return; }
     if (qrInfo && qrInfo.amount > 100) { setOtpOpen(true); return; }
     finalizeValidate();
+  };
+
+  const onScannerResult = (txt: string) => {
+    const tok = parseQrPayload(txt);
+    if (!tok) { toast.error('QR illisible'); return; }
+    setScanToken(tok);
+    setScannerOpen(false);
+    toast.success('QR détecté');
+  };
+
+  const onManualSubmit = () => {
+    const tok = parseQrPayload(manualInput);
+    if (!tok) { toast.error('Lien ou token invalide'); return; }
+    setScanToken(tok);
   };
 
   const copy = (txt: string) => {
@@ -139,29 +169,48 @@ const TransferQr = () => {
           <div className="grid gap-6 lg:grid-cols-2">
             <Card>
               <CardContent className="p-6 space-y-4">
-                <Label>Coller un token QR ou un lien</Label>
-                <Input
-                  value={scanToken || ''}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    const m = v.match(/token=([^&]+)/);
-                    setScanToken(m ? m[1] : v.trim());
-                  }}
-                  placeholder="qr_xxxxxx ou /app/transfer/qr?token=…"
-                  className="font-mono text-sm"
-                />
-                <div className="flex items-center justify-center py-4">
-                  <motion.div animate={{ borderColor: ['hsl(var(--primary)/0.3)', 'hsl(var(--primary))', 'hsl(var(--primary)/0.3)'] }} transition={{ duration: 2, repeat: Infinity }} className="h-32 w-32 rounded-2xl border-4 border-dashed flex items-center justify-center text-muted-foreground">
-                    <Camera className="h-8 w-8" />
-                  </motion.div>
+                <div className="flex items-center justify-between gap-2">
+                  <Label className="text-base">Scanner un QR</Label>
+                  {!scannerOpen ? (
+                    <Button size="sm" onClick={() => setScannerOpen(true)} className="bg-gradient-brand shadow-brand">
+                      <Camera className="mr-1 h-4 w-4" /> Ouvrir la caméra
+                    </Button>
+                  ) : (
+                    <Button size="sm" variant="outline" onClick={() => setScannerOpen(false)}>
+                      Fermer
+                    </Button>
+                  )}
                 </div>
-                <p className="text-xs text-center text-muted-foreground">Scanner caméra: bientôt — collez le lien pour l'instant</p>
+
+                {scannerOpen ? (
+                  <QrScanner onResult={onScannerResult} onClose={() => setScannerOpen(false)} />
+                ) : (
+                  <div className="rounded-2xl border-2 border-dashed border-border flex flex-col items-center justify-center py-8 text-muted-foreground">
+                    <Camera className="h-10 w-10 mb-2 opacity-60" />
+                    <p className="text-sm">Cliquez sur « Ouvrir la caméra » pour scanner</p>
+                  </div>
+                )}
+
+                <div className="relative my-2">
+                  <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-border" /></div>
+                  <div className="relative flex justify-center"><span className="bg-card px-2 text-[10px] uppercase tracking-wider text-muted-foreground">ou collez le lien</span></div>
+                </div>
+
+                <div className="flex gap-2">
+                  <Input
+                    value={manualInput}
+                    onChange={(e) => setManualInput(e.target.value)}
+                    placeholder="qr_xxxxxx ou https://…/pay/qr_xxxxxx"
+                    className="font-mono text-sm"
+                  />
+                  <Button type="button" variant="outline" onClick={onManualSubmit}>Charger</Button>
+                </div>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="p-6 space-y-4">
                 {!scanToken ? (
-                  <p className="text-muted-foreground text-sm text-center py-12">Collez un token pour voir les détails</p>
+                  <p className="text-muted-foreground text-sm text-center py-12">Scannez un QR pour voir les détails</p>
                 ) : qrError ? (
                   <p className="text-destructive text-sm text-center py-12">QR invalide ou expiré</p>
                 ) : !qrInfo ? (

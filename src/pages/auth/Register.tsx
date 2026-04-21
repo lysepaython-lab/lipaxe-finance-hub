@@ -1,9 +1,9 @@
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
 import { motion } from 'framer-motion';
-import { FaUser, FaEnvelope, FaLock, FaKey } from 'react-icons/fa';
+import { FaUser, FaEnvelope, FaKey, FaUserFriends } from 'react-icons/fa';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { AuthLayout } from '@/components/AuthLayout';
 import { IconInput } from '@/components/IconInput';
@@ -13,12 +13,14 @@ import { useRegisterMutation } from '@/store/api/authApi';
 import { useAppDispatch } from '@/store/hooks';
 import { setCredentials } from '@/store/slices/authSlice';
 import { toast } from 'sonner';
+import { isSafeRedirect } from '@/lib/security';
 
 const schema = z.object({
   firstName: z.string().trim().min(1, 'Requis').max(50),
   lastName: z.string().trim().min(1, 'Requis').max(50),
   email: z.string().trim().email('Email invalide').max(255),
   password: z.string().min(8, 'Au moins 8 caractères').max(100),
+  reference: z.string().trim().max(64).optional().or(z.literal('')),
   terms: z.literal(true, { errorMap: () => ({ message: 'Requis' }) }),
 });
 
@@ -26,10 +28,22 @@ const Register = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
+  const [params] = useSearchParams();
   const [register, { isLoading }] = useRegisterMutation();
-  const [form, setForm] = useState({ firstName: '', lastName: '', email: '', password: '', terms: false });
+  const incomingRef = params.get('reference') || params.get('ref') || '';
+  const redirect = params.get('redirect') || '';
+  const [form, setForm] = useState({
+    firstName: '', lastName: '', email: '', password: '',
+    reference: incomingRef, terms: false,
+  });
   const [showPwd, setShowPwd] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Keep referral synced if user lands with a query param after typing nothing.
+  useEffect(() => {
+    if (incomingRef && !form.reference) setForm((f) => ({ ...f, reference: incomingRef }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [incomingRef]);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,7 +59,9 @@ const Register = () => {
       const res = await register(form).unwrap();
       dispatch(setCredentials({ user: res.user, accessToken: res.access, refreshToken: res.refresh }));
       toast.success(t('auth.registerSuccess'));
-      navigate(`/verify-email?email=${encodeURIComponent(form.email)}`);
+      const safeRedirect = redirect && isSafeRedirect(redirect) ? redirect : '';
+      const verifyUrl = `/verify-email?email=${encodeURIComponent(form.email)}${safeRedirect ? `&redirect=${encodeURIComponent(safeRedirect)}` : ''}`;
+      navigate(verifyUrl);
     } catch (e: any) {
       toast.error(e?.data?.detail || t('common.error'));
     }
@@ -111,6 +127,15 @@ const Register = () => {
               {showPwd ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
           }
+        />
+
+        <IconInput
+          icon={<FaUserFriends className="h-4 w-4" />}
+          label={`${t('auth.referralCode') || 'Code de parrainage'} (optionnel)`}
+          placeholder="LIPAXE-XXXX"
+          value={form.reference}
+          onChange={(e) => setForm({ ...form, reference: e.target.value.toUpperCase().slice(0, 64) })}
+          error={errors.reference}
         />
 
         <label className="flex items-start gap-2 text-sm cursor-pointer">

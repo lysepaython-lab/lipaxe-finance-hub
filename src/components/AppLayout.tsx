@@ -4,9 +4,11 @@ import { SidebarProvider } from '@/components/ui/sidebar';
 import { AppSidebar } from './AppSidebar';
 import { Topbar } from './Topbar';
 import { SessionTimeoutGuard } from './security/SessionTimeoutGuard';
+import { useNotificationsStream } from '@/hooks/useNotificationsStream';
 
 export const AppLayout = () => {
   const location = useLocation();
+  useNotificationsStream();
   return (
     <SidebarProvider>
       <div className="flex min-h-screen w-full bg-background">

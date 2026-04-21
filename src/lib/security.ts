@@ -47,3 +47,9 @@ export const safePath = (raw: string | null, fallback = '/app'): string => {
   if (!raw.startsWith('/') || raw.startsWith('//')) return fallback;
   return raw;
 };
+
+/** Boolean variant — true if `raw` is an internal, single-slash path. */
+export const isSafeRedirect = (raw: string | null | undefined): boolean => {
+  if (!raw) return false;
+  return raw.startsWith('/') && !raw.startsWith('//');
+};

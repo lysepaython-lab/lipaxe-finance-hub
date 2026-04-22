@@ -21,23 +21,23 @@ export const walletApi = api.injectEndpoints({
     fxQuote: b.mutation<FxQuote, { from: string; to: string; amount: number }>({
       query: (body) => ({ url: '/fx/quote/', method: 'POST', body }),
     }),
-    deposit: b.mutation<Transaction, { amount: number; payment_method: string; wallet_id: string; phone?: string }>({
+    deposit: b.mutation<Transaction, { amount: number; payment_method: string; payment_method_id?: string; wallet_id: string; phone?: string }>({
       query: (body) => ({ url: '/api/transactions/deposit/', method: 'POST', body }),
       invalidatesTags: ['Wallet', 'Transactions'],
     }),
-    cardDeposit: b.mutation<Transaction, { amount: number; payment_method: string; wallet_id: string; card_token?: string }>({
+    cardDeposit: b.mutation<Transaction, { amount: number; payment_method: string; payment_method_id?: string; wallet_id: string; card_token?: string; card_number?: string; validity?: string }>({
       query: (body) => ({ url: '/api/transactions/card/', method: 'POST', body }),
       invalidatesTags: ['Wallet', 'Transactions'],
     }),
-    electronicDeposit: b.mutation<Transaction, { amount: number; payment_method: string; wallet_id: string }>({
+    electronicDeposit: b.mutation<Transaction, { amount: number; payment_method: string; payment_method_id?: string; wallet_id: string }>({
       query: (body) => ({ url: '/api/transactions/electronic/', method: 'POST', body }),
       invalidatesTags: ['Wallet', 'Transactions'],
     }),
-    cryptoDeposit: b.mutation<Transaction, { amount: number; payment_method: string; wallet_id: string; network?: string }>({
+    cryptoDeposit: b.mutation<Transaction, { amount: number; payment_method: string; payment_method_id?: string; wallet_id: string; network?: string }>({
       query: (body) => ({ url: '/api/transactions/crypto/', method: 'POST', body }),
       invalidatesTags: ['Wallet', 'Transactions'],
     }),
-    withdraw: b.mutation<Transaction, { amount: number; wallet_id: string; payment_method: string; destination: string; phone?: string }>({
+    withdraw: b.mutation<Transaction, { amount: number; wallet_id: string; payment_method: string; payment_method_id?: string; destination: string; phone?: string; card_number?: string; validity?: string; address?: string; network?: string }>({
       query: (body) => ({ url: '/api/transactions/withdrawal/', method: 'POST', body }),
       invalidatesTags: ['Wallet', 'Transactions'],
     }),
@@ -48,6 +48,7 @@ export const walletApi = api.injectEndpoints({
       from_account: string;
       to_account: string;
       payment_method: string;
+      payment_method_id?: string;
       toCurrency?: string;
       note?: string;
     }>({

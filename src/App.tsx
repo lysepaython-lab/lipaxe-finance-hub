@@ -37,6 +37,7 @@ import Kyc from "./pages/app/Kyc";
 import Notifications from "./pages/app/Notifications";
 import Activity from "./pages/app/Activity";
 import Settings from "./pages/app/Settings";
+import Security from "./pages/app/Security";
 import PublicQrLanding from "./pages/PublicQrLanding";
 import NotFound from "./pages/NotFound";
 
@@ -82,6 +83,7 @@ const App = () => (
                 <Route path="notifications" element={<Notifications />} />
                 <Route path="activity" element={<Activity />} />
                 <Route path="settings" element={<Settings />} />
+                <Route path="security" element={<Security />} />
               </Route>
 
               <Route path="/dashboard" element={<Navigate to="/app" replace />} />

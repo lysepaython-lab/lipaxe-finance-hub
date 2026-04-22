@@ -3,6 +3,7 @@ import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { notificationsApi } from '@/store/api/notificationsApi';
 import { toast } from 'sonner';
 import { API_URL } from '@/store/api/baseApi';
+import { showLocalNotification, isPushSupported, ensureServiceWorker } from '@/lib/pushNotifications';
 
 /**
  * Subscribes to a realtime channel for high-priority notifications.
@@ -33,16 +34,20 @@ export const useNotificationsStream = () => {
       try {
         const n = JSON.parse(raw);
         refetch();
+        const title = n?.title || 'Nouvelle notification';
+        const body = n?.body || n?.message || '';
         if (n?.priority === 'high') {
-          toast(n.title || 'Nouvelle notification', {
-            description: n.body,
-            duration: 8000,
-          });
+          toast(title, { description: body, duration: 8000 });
+          showLocalNotification(title, body, { tag: n?.id || 'lipaxe-high', requireInteraction: true });
+        } else if (n?.priority !== 'low') {
+          showLocalNotification(title, body, { tag: n?.id });
         }
       } catch {
         refetch();
       }
     };
+
+    if (isPushSupported()) ensureServiceWorker().catch(() => {});
 
     const connectSSE = () => {
       if (!API_URL || stopped) return;

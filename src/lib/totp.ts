@@ -1,7 +1,8 @@
 // TOTP helpers powered by otplib (RFC 6238). Frontend uses these only for
 // the demo/mock flow. In production the backend MUST own secret generation
 // and verification — never trust client-side TOTP checks.
-import { authenticator } from 'otplib';
+import * as otplib from 'otplib';
+const authenticator = (otplib as any).authenticator ?? otplib.default?.authenticator;
 
 authenticator.options = { window: 1, step: 30, digits: 6 };
 

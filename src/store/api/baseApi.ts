@@ -113,6 +113,9 @@ export const api = createApi({
     'Bills',
     'Crypto',
     'Qr',
+    'Devices',
+    'TwoFA',
+    'DashboardLayout',
   ],
   endpoints: () => ({}),
 });

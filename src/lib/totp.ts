@@ -1,8 +1,9 @@
 // TOTP helpers powered by otplib (RFC 6238). Frontend uses these only for
 // the demo/mock flow. In production the backend MUST own secret generation
 // and verification — never trust client-side TOTP checks.
-import * as otplib from 'otplib';
-const authenticator = (otplib as any).authenticator ?? otplib.default?.authenticator;
+// otplib's named export shape varies between cjs/esm builds; use any-cast.
+import * as otplibNs from 'otplib';
+const authenticator: any = (otplibNs as any).authenticator ?? (otplibNs as any).default?.authenticator;
 
 authenticator.options = { window: 1, step: 30, digits: 6 };
 

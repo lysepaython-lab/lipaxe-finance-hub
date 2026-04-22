@@ -218,6 +218,39 @@ export async function mockHandler(url: string, method: string, body: any): Promi
     throw new Error('Invalid or expired code');
   }
   if (url === '/auth/resend-otp/' && method === 'POST') return ok({ detail: 'Code resent', otp: '123456' });
+  if (url === '/auth/update-pending-email/' && method === 'POST') {
+    if (!body?.new_email) throw new Error('Nouvelle adresse requise');
+    return ok({ detail: 'Pending email updated', email: body.new_email });
+  }
+  if (url.startsWith('/auth/pending-status/') && method === 'GET') {
+    return ok({ exists: true, email: user.email, created_at: new Date().toISOString() });
+  }
+
+  // ---------- SECURITY: DEVICES / 2FA / PUSH ------------------------------
+  if (url === '/api/security/devices/' && method === 'GET') {
+    const id = (typeof localStorage !== 'undefined' && localStorage.getItem('lipaxe-device-id')) || 'dev_current';
+    return ok([
+      { id: 'd_current', device_id: id, label: 'Chrome on macOS', ip: '192.168.1.4', last_seen: new Date().toISOString(), current: true, trusted: true },
+      { id: 'd_iphone', device_id: 'dev_iphone', label: 'Safari on iOS', ip: '10.0.0.21', last_seen: new Date(Date.now() - day * 2).toISOString(), current: false, trusted: true },
+      { id: 'd_old', device_id: 'dev_old', label: 'Firefox on Windows', ip: '88.120.4.10', last_seen: new Date(Date.now() - day * 18).toISOString(), current: false, trusted: false },
+    ]);
+  }
+  if (url === '/api/security/devices/register/' && method === 'POST') return ok({ detail: 'Registered' });
+  if (url.match(/^\/api\/security\/devices\/.+\/revoke\/$/) && method === 'POST') return ok({ detail: 'Revoked' });
+  if (url.match(/^\/api\/security\/devices\/.+\/trust\/$/) && method === 'POST') return ok({ detail: 'Updated' });
+
+  if (url === '/api/security/2fa/status/' && method === 'GET') return ok({ enabled: false });
+  if (url === '/api/security/2fa/init/' && method === 'POST') return ok({ secret: '', otpauth_url: '', backup_codes: [] });
+  if (url === '/api/security/2fa/enable/' && method === 'POST') return ok({ detail: '2FA enabled' });
+  if (url === '/api/security/2fa/disable/' && method === 'POST') return ok({ detail: '2FA disabled' });
+  if (url === '/api/security/2fa/backup-codes/' && method === 'POST') return ok({ backup_codes: [] });
+
+  if (url === '/api/push/vapid-key/' && method === 'GET') {
+    return ok({ public_key: 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U' });
+  }
+  if (url === '/api/push/subscribe/' && method === 'POST') return ok({ detail: 'Subscribed' });
+  if (url === '/api/push/unsubscribe/' && method === 'POST') return ok({ detail: 'Unsubscribed' });
+
   if (url === '/auth/me/' && method === 'GET') return ok(user);
   if (url === '/api/user/me/' && method === 'GET') return ok(user);
   if (url === '/api/user/me/' && method === 'PUT') {

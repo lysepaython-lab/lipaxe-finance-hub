@@ -5,6 +5,7 @@ import { SpendingChart } from '@/components/dashboard/SpendingChart';
 import { QuickActions } from '@/components/dashboard/QuickActions';
 import { RecentTransactions } from '@/components/dashboard/RecentTransactions';
 import { AccountsList } from '@/components/dashboard/AccountsList';
+import { SortableDashboard, type DashboardWidget } from '@/components/dashboard/SortableDashboard';
 
 const Dashboard = () => {
   const { t } = useTranslation();
@@ -12,6 +13,14 @@ const Dashboard = () => {
 
   const hour = new Date().getHours();
   const salutation = hour < 12 ? 'Bonjour' : hour < 18 ? 'Bon après-midi' : 'Bonsoir';
+
+  const widgets: DashboardWidget[] = [
+    { id: 'balance',  column: 'side', render: () => <BalanceCard /> },
+    { id: 'accounts', column: 'side', render: () => <AccountsList /> },
+    { id: 'actions',  column: 'main', render: () => <QuickActions /> },
+    { id: 'spending', column: 'main', render: () => <SpendingChart /> },
+    { id: 'recent',   column: 'full', render: () => <RecentTransactions /> },
+  ];
 
   return (
     <div className="space-y-6 lg:space-y-8">
@@ -23,20 +32,10 @@ const Dashboard = () => {
         <p className="text-muted-foreground text-sm lg:text-base">Voici un aperçu de vos finances aujourd'hui.</p>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-1 space-y-6">
-          <BalanceCard />
-          <AccountsList />
-        </div>
-        <div className="lg:col-span-2 space-y-6">
-          <QuickActions />
-          <SpendingChart />
-        </div>
-      </div>
-
-      <RecentTransactions />
+      <SortableDashboard widgets={widgets} />
     </div>
   );
 };
 
 export default Dashboard;
+

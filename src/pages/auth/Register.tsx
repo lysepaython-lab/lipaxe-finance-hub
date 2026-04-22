@@ -14,6 +14,7 @@ import { useAppDispatch } from '@/store/hooks';
 import { setCredentials } from '@/store/slices/authSlice';
 import { toast } from 'sonner';
 import { isSafeRedirect } from '@/lib/security';
+import { setPendingVerification } from '@/lib/pendingVerification';
 
 const schema = z.object({
   firstName: z.string().trim().min(1, 'Requis').max(50),
@@ -58,8 +59,15 @@ const Register = () => {
     try {
       const res = await register(form).unwrap();
       dispatch(setCredentials({ user: res.user, accessToken: res.access, refreshToken: res.refresh }));
-      toast.success(t('auth.registerSuccess'));
       const safeRedirect = redirect && isSafeRedirect(redirect) ? redirect : '';
+      // Persist a durable "pending verification" record so the user can come
+      // back later (closed tab / new device) and resume the OTP flow safely.
+      setPendingVerification({
+        email: form.email,
+        redirect: safeRedirect || undefined,
+        reference: form.reference || undefined,
+      });
+      toast.success(t('auth.registerSuccess'));
       const verifyUrl = `/verify-email?email=${encodeURIComponent(form.email)}${safeRedirect ? `&redirect=${encodeURIComponent(safeRedirect)}` : ''}`;
       navigate(verifyUrl);
     } catch (e: any) {

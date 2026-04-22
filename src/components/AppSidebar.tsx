@@ -69,6 +69,7 @@ const groups: Group[] = [
       { to: '/app/affiliation', key: 'affiliation', icon: Users2 },
       { to: '/app/activity', key: 'activity', icon: History },
       { to: '/app/settings', key: 'settings', icon: Settings },
+      { to: '/app/security', key: 'security', icon: ShieldCheck },
     ],
   },
 ];

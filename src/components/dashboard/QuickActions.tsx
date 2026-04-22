@@ -15,7 +15,7 @@ export const QuickActions = () => {
     { to: '/app/strone/cryptos', label: 'Crypto', icon: Coins, tone: 'from-brand-300 to-brand-600' },
   ];
   return (
-    <Card className="shadow-elegant border-border/60 overflow-hidden">
+    <Card className="hidden md:block shadow-elegant border-border/60 overflow-hidden">
       <CardHeader className="pb-3">
         <CardTitle className="font-display flex items-center justify-between">
           <span>{t('dashboard.quickActions')}</span>

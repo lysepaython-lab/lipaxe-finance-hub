@@ -109,6 +109,11 @@ const Cryptos = () => {
                       {c.change_24h >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
                       {c.change_24h >= 0 ? '+' : ''}{c.change_24h}%
                     </div>
+                    <div className="mt-2 space-y-1 text-[11px] text-muted-foreground">
+                      <div>Marché: {c.market_rate || String(c.price_usd)}</div>
+                      <div>Achat: {c.buy_rate || '—'} {typeof c.buy_margin_percent === 'number' ? `(${c.buy_margin_percent >= 0 ? '+' : ''}${c.buy_margin_percent.toFixed(2)}%)` : ''}</div>
+                      <div>Vente: {c.sell_rate || '—'} {typeof c.sell_margin_percent === 'number' ? `(${c.sell_margin_percent >= 0 ? '+' : ''}${c.sell_margin_percent.toFixed(2)}%)` : ''}</div>
+                    </div>
                   </div>
                   <div className="flex gap-2">
                     <Button size="sm" className="bg-gradient-brand shadow-brand" onClick={() => openMode('buy', c.symbol)}>
@@ -162,6 +167,18 @@ const Cryptos = () => {
                 <Label>Montant ({symbol})</Label>
                 <Input type="number" min={0} value={amount} onChange={(e) => setAmount(e.target.value)} className="tabular" />
               </div>
+
+              {(() => {
+                const asset = (assets || []).find((item) => item.symbol === symbol);
+                if (!asset) return null;
+                return (
+                  <div className="rounded-xl bg-muted/40 p-3 text-xs space-y-1">
+                    <div>Taux marché: {asset.market_rate || asset.price_usd}</div>
+                    <div>Taux achat client: {asset.buy_rate || '—'}</div>
+                    <div>Taux vente client: {asset.sell_rate || '—'}</div>
+                  </div>
+                );
+              })()}
 
               <TabsContent value="sell" className="m-0 space-y-2">
                 <Label>Adresse de destination</Label>

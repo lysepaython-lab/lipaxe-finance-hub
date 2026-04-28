@@ -10,8 +10,6 @@ import { IconInput } from '@/components/IconInput';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useRegisterMutation } from '@/store/api/authApi';
-import { useAppDispatch } from '@/store/hooks';
-import { setCredentials } from '@/store/slices/authSlice';
 import { toast } from 'sonner';
 import { isSafeRedirect } from '@/lib/security';
 import { setPendingVerification } from '@/lib/pendingVerification';
@@ -20,7 +18,7 @@ const schema = z.object({
   firstName: z.string().trim().min(1, 'Requis').max(50),
   lastName: z.string().trim().min(1, 'Requis').max(50),
   email: z.string().trim().email('Email invalide').max(255),
-  password: z.string().min(8, 'Au moins 8 caractères').max(100),
+  password: z.string().min(8, 'Au moins 8 caractÃ¨res').max(100),
   reference: z.string().trim().max(64).optional().or(z.literal('')),
   terms: z.literal(true, { errorMap: () => ({ message: 'Requis' }) }),
 });
@@ -28,7 +26,6 @@ const schema = z.object({
 const Register = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const dispatch = useAppDispatch();
   const [params] = useSearchParams();
   const [register, { isLoading }] = useRegisterMutation();
   const incomingRef = params.get('reference') || params.get('ref') || '';
@@ -40,7 +37,6 @@ const Register = () => {
   const [showPwd, setShowPwd] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // Keep referral synced if user lands with a query param after typing nothing.
   useEffect(() => {
     if (incomingRef && !form.reference) setForm((f) => ({ ...f, reference: incomingRef }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -58,20 +54,19 @@ const Register = () => {
     setErrors({});
     try {
       const res = await register(form).unwrap();
-      dispatch(setCredentials({ user: res.user, accessToken: res.access, refreshToken: res.refresh }));
       const safeRedirect = redirect && isSafeRedirect(redirect) ? redirect : '';
-      // Persist a durable "pending verification" record so the user can come
-      // back later (closed tab / new device) and resume the OTP flow safely.
       setPendingVerification({
+        userId: res.user.id,
         email: form.email,
         redirect: safeRedirect || undefined,
         reference: form.reference || undefined,
       });
       toast.success(t('auth.registerSuccess'));
-      const verifyUrl = `/verify-email?email=${encodeURIComponent(form.email)}${safeRedirect ? `&redirect=${encodeURIComponent(safeRedirect)}` : ''}`;
-      navigate(verifyUrl);
+      navigate('/verify-email');
     } catch (e: any) {
-      toast.error(e?.data?.detail || t('common.error'));
+    
+      const firstError = e?.data ? Object.values(e.data).flat() : null;
+      toast.error(firstError || e?.data?.detail || t('common.error'));
     }
   };
 
@@ -121,7 +116,7 @@ const Register = () => {
           icon={<FaKey className="h-4 w-4" />}
           label={t('auth.password')}
           type={showPwd ? 'text' : 'password'}
-          placeholder="••••••••"
+          placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
           value={form.password}
           onChange={(e) => setForm({ ...form, password: e.target.value })}
           error={errors.password}
@@ -139,7 +134,7 @@ const Register = () => {
 
         <IconInput
           icon={<FaUserFriends className="h-4 w-4" />}
-          label={`${t('auth.referralCode') || 'Code de parrainage'} (optionnel)`}
+          label={`${t('auth.referralCode') || 'Code de parrainage'}`}
           placeholder="LIPAXE-XXXX"
           value={form.reference}
           onChange={(e) => setForm({ ...form, reference: e.target.value.toUpperCase().slice(0, 64) })}

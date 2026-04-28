@@ -1,4 +1,5 @@
 import { api } from './baseApi';
+import { normalizeAffiliateCode, normalizeCommissions } from './adapters';
 
 export interface AffiliateCode {
   code: string;
@@ -17,11 +18,13 @@ export interface Commission {
 export const affiliationApi = api.injectEndpoints({
   endpoints: (b) => ({
     affiliateCode: b.query<AffiliateCode, void>({
-      query: () => '/api/affiliate-code/',
+      query: () => '/affiliation/affiliate-code/',
+      transformResponse: (response: unknown) => normalizeAffiliateCode(response),
       providesTags: ['Affiliation'],
     }),
     commissions: b.query<Commission[], void>({
-      query: () => '/api/commissions/',
+      query: () => '/affiliation/commissions/',
+      transformResponse: (response: unknown) => normalizeCommissions(response),
       providesTags: ['Affiliation'],
     }),
   }),

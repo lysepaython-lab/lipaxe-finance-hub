@@ -1,6 +1,6 @@
 import { api } from './baseApi';
+import { normalizeFestiEvent, unwrapData } from './adapters';
 
-// ============ Tontine / BusinessAll ============
 export interface Tontine {
   id: string;
   name: string;
@@ -8,11 +8,33 @@ export interface Tontine {
   currency: string;
   frequency: 'weekly' | 'monthly';
   duration_months: number;
-  selection: 'random' | 'ordered';
-  members: { user: string; received: boolean; position: number }[];
+  selection: 'random' | 'ordered' | 'credit_score';
+  status: 'pending' | 'draft' | 'active' | 'locked' | 'completed' | 'cancelled' | 'defaulted';
+  policy?: Record<string, unknown>;
+  contract_hash?: string;
+  members: {
+    user: string;
+    received: boolean;
+    position: number;
+    status?: string;
+    credit_score_snapshot?: number;
+    kyc_status_snapshot?: string;
+  }[];
   next_beneficiary?: string;
   next_payout_at?: string;
-  status: 'active' | 'completed';
+  my_join_status?: string;
+  escrow_wallet?: string;
+  treasury_wallet?: string;
+  max_members?: number | null;
+  min_credit_score?: number;
+  require_kyc_verified?: boolean;
+  invite_only?: boolean;
+  payout_commission_percent?: string;
+  reserve_percent?: string;
+}
+export interface TontineInvitationDecision {
+  tontine_id: string;
+  action: 'accept' | 'reject';
 }
 export interface CreateTontineBody {
   name: string;
@@ -20,11 +42,18 @@ export interface CreateTontineBody {
   currency: string;
   frequency: 'weekly' | 'monthly';
   duration_months: number;
-  selection: 'random' | 'ordered';
+  selection: 'random' | 'ordered' | 'credit_score';
   members: string[];
+  max_members?: number;
+  min_credit_score?: number;
+  require_kyc_verified?: boolean;
+  invite_only?: boolean;
+  payout_commission_percent?: number;
+  reserve_percent?: number;
+  escrow_wallet_id?: string;
+  treasury_wallet_id?: string;
+  policy?: Record<string, unknown>;
 }
-
-// ============ FestiPay (events) ============
 export interface FestiEvent {
   id: string;
   name: string;
@@ -34,6 +63,7 @@ export interface FestiEvent {
   attendees: number;
   cover: string;
   organizer: string;
+  ticket_type_id?: string;
 }
 export interface FestiTicket {
   id: string;
@@ -43,21 +73,43 @@ export interface FestiTicket {
   currency: string;
   createdAt: string;
 }
-
-// ============ PayAll (Bills) ============
 export interface BillProvider {
   id: string;
   name: string;
-  category: 'electricity' | 'water' | 'internet' | 'tv';
+  provider_code?: string;
+  category: 'electricity' | 'water' | 'internet' | 'tv' | 'mobile' | 'school' | 'ebillet' | 'other';
   country: string;
+  active?: boolean;
+  supports_otp?: boolean;
+  supports_async?: boolean;
+  requires_customer_name?: boolean;
+  transport_type?: 'flight' | 'bus' | 'ferry' | 'train' | 'other';
+  supports_hold?: boolean;
+  supports_seat_map?: boolean;
+  supports_ticketless?: boolean;
+  booking_timeout_minutes?: number;
+  required_passenger_fields?: unknown[];
+  accept_any_ebillet?: boolean;
+  accepted_formats?: unknown[];
+  validation_rules?: Record<string, unknown>;
+  ticket_schema?: Record<string, unknown>;
+  commission_percent?: number;
+  fixed_fee?: number;
+  min_amount?: number;
+  max_amount?: number;
+  customer_identifier_label?: string;
+  configuration?: Record<string, unknown>;
 }
-
-// ============ Crypto ============
 export interface CryptoAsset {
   symbol: string;
   name: string;
   price_usd: number;
   change_24h: number;
+  market_rate?: string;
+  buy_rate?: string;
+  sell_rate?: string;
+  buy_margin_percent?: number;
+  sell_margin_percent?: number;
 }
 export interface CryptoNetwork {
   id: string;
@@ -71,52 +123,167 @@ export interface CryptoDepositAddress {
   qr_payload: string;
 }
 
+export interface EbilletOffer {
+  reference: string;
+  transport_type: string;
+  provider: string;
+  origin: string;
+  destination: string;
+  departure_at?: string;
+  return_at?: string;
+  currency: string;
+  amount: number;
+  fee_amount: number;
+  total_amount: number;
+  supports_seat_map: boolean;
+  supports_hold: boolean;
+  supports_ticketless: boolean;
+  expires_in_minutes: number;
+  passengers: unknown[];
+  seat_map: Record<string, unknown>;
+  ticket_schema: Record<string, unknown>;
+  required_passenger_fields: unknown[];
+  accept_any_ebillet: boolean;
+  accepted_formats: unknown[];
+  validation_rules: Record<string, unknown>;
+}
+
 export const businessApi = api.injectEndpoints({
   endpoints: (b) => ({
-    // Tontines
     tontines: b.query<Tontine[], void>({
-      query: () => '/api/tontines/',
+      query: () => '/tontines/',
       providesTags: ['Tontine'],
     }),
     createTontine: b.mutation<Tontine, CreateTontineBody>({
-      query: (body) => ({ url: '/api/tontines/', method: 'POST', body }),
+      query: (body) => ({
+        url: '/tontines/',
+        method: 'POST',
+        body,
+      }),
       invalidatesTags: ['Tontine'],
     }),
     contributeTontine: b.mutation<{ detail: string }, { tontine_id: string; wallet_id: string; amount: number }>({
-      query: (body) => ({ url: '/api/tontines/contribute/', method: 'POST', body }),
+      query: (body) => ({
+        url: '/tontines/contribute/',
+        method: 'POST',
+        body,
+      }),
       invalidatesTags: ['Tontine', 'Wallet'],
     }),
-    // FestiPay
+    tontineEligibility: b.query<{ eligible: boolean; score: number; kyc_status: string; policy: Record<string, unknown>; reasons: string[] }, string>({
+      query: (id) => `/tontines/${id}/eligibility/`,
+      providesTags: ['Tontine'],
+    }),
     festiEvents: b.query<FestiEvent[], void>({
-      query: () => '/api/festipay/events/',
+      query: () => '/festpay/events/upcoming/',
+      transformResponse: (response: unknown) =>
+        unwrapData<unknown[]>(response, []).map((item) => normalizeFestiEvent(item)),
       providesTags: ['Festi'],
     }),
-    bookTicket: b.mutation<FestiTicket, { event_id: string; wallet_id: string }>({
-      query: (body) => ({ url: '/api/festipay/book/', method: 'POST', body }),
+    bookTicket: b.mutation<FestiTicket, { event_id: string; ticket_type_id: string; wallet_id: string }>({
+      query: ({ event_id, ticket_type_id, wallet_id }) => ({
+        url: '/festpay/buy-ticket/',
+        method: 'POST',
+        body: { event_id, ticket_type_id, quantity: 1, wallet_id },
+      }),
+      transformResponse: (response: unknown, _meta, arg) => {
+        const raw = (response ?? {}) as Record<string, unknown>;
+        const tickets = Array.isArray(raw.tickets) ? raw.tickets : [];
+        const first = (tickets[0] ?? {}) as Record<string, unknown>;
+        return {
+          id: String(first.id ?? crypto.randomUUID()),
+          event_id: String(arg.event_id),
+          qr_token: String(first.validation_token ?? ''),
+          amount: Number((raw.payment as Record<string, unknown> | undefined)?.amount ?? 0),
+          currency: 'USD',
+          createdAt: new Date().toISOString(),
+        };
+      },
       invalidatesTags: ['Festi', 'Wallet'],
     }),
-    // PayAll
     billProviders: b.query<BillProvider[], string | void>({
-      query: (category) => `/api/payall/providers/${category ? `?category=${category}` : ''}`,
+      query: (category) => category ? `/payall/providers/?category=${encodeURIComponent(category)}` : '/payall/providers/',
       providesTags: ['Bills'],
     }),
-    payBill: b.mutation<{ detail: string; reference: string }, { provider_id: string; reference: string; amount: number; wallet_id: string }>({
-      query: (body) => ({ url: '/api/payall/pay/', method: 'POST', body }),
+    ebilletSearch: b.mutation<{ offers: EbilletOffer[]; search: Record<string, unknown> }, { provider_id?: string; transport_type: string; origin: string; destination: string; departure_at: string; return_at?: string; passengers: unknown[]; currency?: string }>(
+      {
+        query: (body) => ({
+          url: '/ebillet/search/',
+          method: 'POST',
+          body,
+        }),
+      },
+    ),
+    ebilletReserve: b.mutation<{ detail: string; booking_id: string; booking_reference: string; workflow_state: string; status: string; expires_at?: string }, { provider_id: string; offer_reference: string; wallet_id: string; transport_type: string; origin: string; destination: string; departure_at: string; return_at?: string; passengers: unknown[]; seat_map?: Record<string, unknown>; booking_reference?: string; ticket_number?: string; ticket_url?: string; amount: number; fee_amount?: number; customer_name?: string; customer_identifier?: string; ebillet_code?: string; ebillet_type?: string; ticket_type?: string; ebillet_issuer?: string; qr_payload?: string; journey_payload?: Record<string, unknown> }>(
+      {
+        query: (body) => ({
+          url: '/ebillet/reserve/',
+          method: 'POST',
+          body,
+        }),
+      },
+    ),
+    ebilletConfirm: b.mutation<{ detail: string; booking_reference: string; ticket_number: string; ticket_url?: string; status: string; workflow_state: string }, { booking_id: string; wallet_id?: string; ticket_number?: string; ticket_url?: string }>(
+      {
+        query: (body) => ({
+          url: '/ebillet/confirm/',
+          method: 'POST',
+          body,
+        }),
+        invalidatesTags: ['Wallet', 'Transactions'],
+      },
+    ),
+    payBill: b.mutation<{ detail: string; reference: string; status: string; receipt_url?: string }, { provider_id: string; reference: string; amount: number; wallet_id: string; customer_identifier?: string; customer_name?: string; ebillet_code?: string; ebillet_type?: string; ticket_type?: string; ebillet_issuer?: string; qr_payload?: string; otp?: string; auto_pay?: boolean }>({
+      query: (body) => ({
+        url: '/payall/pay/',
+        method: 'POST',
+        body,
+      }),
       invalidatesTags: ['Wallet', 'Transactions'],
     }),
-    // Crypto
+    respondTontineInvitation: b.mutation<{ detail: string; tontine_status: string; join_status: string; member_status: string; accepted_contract: boolean }, TontineInvitationDecision>({
+      query: (body) => ({
+        url: '/tontines/invitations/decision/',
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: ['Tontine'],
+    }),
     cryptoAssets: b.query<CryptoAsset[], void>({
-      query: () => '/api/cryptos/',
+      query: () => '/crypto-market/rates/',
+      transformResponse: (response: unknown) =>
+        unwrapData<unknown[]>(response, []).map((item) => {
+          const raw = (item ?? {}) as Record<string, unknown>;
+          return {
+            symbol: String(raw.symbol ?? ''),
+            name: String(raw.name ?? ''),
+            price_usd: Number(raw.price_usd ?? raw.market_rate ?? 0),
+            change_24h: Number(raw.change_24h ?? 0),
+            market_rate: String(raw.market_rate ?? raw.price_usd ?? ''),
+            buy_rate: String(raw.buy_rate ?? ''),
+            sell_rate: String(raw.sell_rate ?? ''),
+            buy_margin_percent: Number(raw.buy_margin_percent ?? 0),
+            sell_margin_percent: Number(raw.sell_margin_percent ?? 0),
+          };
+        }),
       providesTags: ['Crypto'],
     }),
     cryptoNetworks: b.query<CryptoNetwork[], string>({
-      query: (symbol) => `/api/cryptos/${symbol}/networks/`,
+      query: (symbol) => `/crypto-market/rates/${encodeURIComponent(symbol)}/networks/`,
     }),
     cryptoDepositAddress: b.mutation<CryptoDepositAddress, { symbol: string; network: string; amount: number; wallet_id: string }>({
-      query: (body) => ({ url: '/api/cryptos/deposit-address/', method: 'POST', body }),
+      query: (body) => ({
+        url: '/cryptos/deposit-address/',
+        method: 'POST',
+        body,
+      }),
     }),
     cryptoWithdraw: b.mutation<{ detail: string; reference: string }, { symbol: string; network: string; address: string; amount: number; wallet_id: string }>({
-      query: (body) => ({ url: '/api/cryptos/withdraw/', method: 'POST', body }),
+      query: (body) => ({
+        url: '/cryptos/withdraw/',
+        method: 'POST',
+        body,
+      }),
       invalidatesTags: ['Wallet', 'Transactions'],
     }),
   }),
@@ -126,9 +293,15 @@ export const {
   useTontinesQuery,
   useCreateTontineMutation,
   useContributeTontineMutation,
+  useRespondTontineInvitationMutation,
+  useLazyTontineEligibilityQuery,
+  useTontineEligibilityQuery,
   useFestiEventsQuery,
   useBookTicketMutation,
   useBillProvidersQuery,
+  useEbilletSearchMutation,
+  useEbilletReserveMutation,
+  useEbilletConfirmMutation,
   usePayBillMutation,
   useCryptoAssetsQuery,
   useCryptoNetworksQuery,

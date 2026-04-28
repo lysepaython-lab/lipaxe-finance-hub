@@ -8,6 +8,8 @@ export interface User {
   username: string;
   kycStatus: 'unverified' | 'pending' | 'verified';
   avatar?: string;
+  isStaff?: boolean;
+  isSuperuser?: boolean;
 }
 
 interface AuthState {

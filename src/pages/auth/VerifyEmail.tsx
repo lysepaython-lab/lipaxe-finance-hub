@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { FaShieldAlt } from 'react-icons/fa';
@@ -21,13 +21,12 @@ const RESEND_COOLDOWN = 30;
 const VerifyEmail = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const [params] = useSearchParams();
-
-  // Resolve email from (1) URL param, (2) durable pending state, (3) demo fallback.
   const pending = getPendingVerification();
-  const initialEmail = params.get('email') || pending?.email || 'demo@lipaxe.app';
-  const initialRedirect = params.get('redirect') || pending?.redirect || '';
+  const initialEmail = pending?.email || '';
+  const initialUserId = pending?.userId || '';
+  const initialRedirect = pending?.redirect || '';
 
+  const [userId] = useState(initialUserId);
   const [email, setEmail] = useState(initialEmail);
   const [otp, setOtp] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -38,24 +37,32 @@ const VerifyEmail = () => {
   const [updatePending] = useUpdatePendingEmailMutation();
   const sentOnce = useRef(false);
 
-  // Persist a "pending verification" record so the user can come back later.
   useEffect(() => {
+    if (!userId || !email) return;
     setPendingVerification({
-      email, redirect: initialRedirect, reference: pending?.reference,
+      userId,
+      email,
+      redirect: initialRedirect,
+      reference: pending?.reference,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [email]);
+  }, [email, userId]);
 
-  // Auto-trigger an initial send so the user sees the demo code
   useEffect(() => {
-    if (sentOnce.current) return;
+    if (pending || !initialUserId) return;
+    toast.error('Session de verification introuvable. Veuillez recommencer l\'inscription.');
+    navigate('/register', { replace: true });
+  }, [initialUserId, navigate, pending]);
+
+  useEffect(() => {
+    if (sentOnce.current || !userId) return;
     sentOnce.current = true;
-    resendOtp({ email })
+    resendOtp({ userId, email })
       .unwrap()
       .then((r) => { if (r.otp) toast.info(`${t('auth.demoCode')}: ${r.otp}`); })
       .catch(() => {});
     setCooldown(RESEND_COOLDOWN);
-  }, [email, resendOtp, t]);
+  }, [email, resendOtp, t, userId]);
 
   useEffect(() => {
     if (!cooldown) return;
@@ -64,10 +71,11 @@ const VerifyEmail = () => {
   }, [cooldown]);
 
   const submit = async (code = otp) => {
-    if (code.length !== 6) { setError(t('auth.otpIncomplete')); return; }
+    if (code.length !== 5) { setError(t('auth.otpIncomplete')); return; }
+    if (!userId) { setError("Compte en attente introuvable. Recommencez l'inscription."); return; }
     setError(null);
     try {
-      await verifyEmail({ email, otp: code }).unwrap();
+      await verifyEmail({ userId, otp: code }).unwrap();
       clearPendingVerification();
       toast.success(t('auth.emailVerified'));
       const target = initialRedirect && isSafeRedirect(initialRedirect) ? initialRedirect : '/app/kyc';
@@ -78,9 +86,9 @@ const VerifyEmail = () => {
   };
 
   const onResend = async () => {
-    if (cooldown) return;
+    if (cooldown || !userId) return;
     try {
-      const r = await resendOtp({ email }).unwrap();
+      const r = await resendOtp({ userId, email }).unwrap();
       toast.success(t('auth.codeResent'));
       if (r.otp) toast.info(`${t('auth.demoCode')}: ${r.otp}`);
       setCooldown(RESEND_COOLDOWN);
@@ -89,17 +97,15 @@ const VerifyEmail = () => {
 
   const onChangeEmail = async (newEmail: string) => {
     try {
-      // Backend updates the pending account's email + invalidates old OTPs.
       await updatePending({ email, new_email: newEmail }).unwrap().catch(() => {});
       setEmail(newEmail);
       updatePendingEmail(newEmail);
       setOtp('');
       setError(null);
       setEditOpen(false);
-      toast.success('Email mis à jour — code renvoyé');
-      // Trigger fresh OTP for the new address
+      toast.success('Email mis a jour, code renvoye');
       sentOnce.current = false;
-      const r = await resendOtp({ email: newEmail }).unwrap().catch(() => null);
+      const r = userId ? await resendOtp({ userId, email: newEmail }).unwrap().catch(() => null) : null;
       if (r?.otp) toast.info(`${t('auth.demoCode')}: ${r.otp}`);
       setCooldown(RESEND_COOLDOWN);
     } catch (e: any) {
@@ -135,8 +141,8 @@ const VerifyEmail = () => {
         <div className="mb-4 rounded-xl border border-primary/20 bg-primary/5 p-3 flex items-start gap-2 text-xs">
           <Clock className="h-4 w-4 text-primary shrink-0 mt-0.5" />
           <div>
-            <div className="font-medium text-foreground">Vérification en cours sauvegardée</div>
-            <div className="text-muted-foreground">Vous pouvez fermer cet onglet et revenir terminer la vérification dans les 7 jours.</div>
+            <div className="font-medium text-foreground">Verification en cours sauvegardee</div>
+            <div className="text-muted-foreground">Vous pouvez fermer cet onglet et revenir terminer la verification dans les 7 jours.</div>
           </div>
         </div>
       )}
@@ -144,20 +150,20 @@ const VerifyEmail = () => {
       <form onSubmit={(e) => { e.preventDefault(); submit(); }} className="space-y-6">
         <div className="flex flex-col items-center gap-3">
           <InputOTP
-            maxLength={6}
+            maxLength={5}
             value={otp}
             onChange={(v) => {
               setOtp(v);
               setError(null);
-              if (v.length === 6) submit(v);
+              if (v.length === 5) submit(v);
             }}
           >
             <InputOTPGroup>
-              {[0, 1, 2, 3, 4, 5].map((i) => (
+              {[0, 1, 2, 3, 4].map((i) => (
                 <InputOTPSlot
                   key={i}
                   index={i}
-                  className="h-12 w-11 text-lg font-semibold rounded-xl border-input data-[active=true]:border-primary data-[active=true]:ring-2 data-[active=true]:ring-ring/30"
+                  className="h-12 w-11 rounded-xl border border-border bg-card text-foreground shadow-sm text-lg font-semibold transition-all data-[active=true]:border-primary data-[active=true]:ring-2 data-[active=true]:ring-primary/25 dark:bg-card/80 dark:border-border/80"
                 />
               ))}
             </InputOTPGroup>
@@ -166,7 +172,7 @@ const VerifyEmail = () => {
         </div>
 
         <motion.div whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}>
-          <Button type="submit" className="w-full bg-gradient-brand shadow-brand h-11 rounded-xl" disabled={verifying || otp.length !== 6}>
+          <Button type="submit" className="w-full bg-gradient-brand shadow-brand h-11 rounded-xl" disabled={verifying || otp.length !== 5}>
             {verifying && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             <FaShieldAlt className="mr-2 h-4 w-4" /> {t('auth.verifyAction')}
           </Button>
@@ -176,7 +182,7 @@ const VerifyEmail = () => {
           <button
             type="button"
             onClick={onResend}
-            disabled={cooldown > 0 || resending}
+            disabled={cooldown > 0 || resending || !userId}
             className="inline-flex items-center gap-1.5 text-primary hover:underline disabled:text-muted-foreground disabled:no-underline"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${resending ? 'animate-spin' : ''}`} />

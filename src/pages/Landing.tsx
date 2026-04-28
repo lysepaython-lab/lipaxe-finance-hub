@@ -23,16 +23,22 @@ const Landing = () => {
     { v: '99.99%', k: t('landing.statsUptime') },
   ];
 
+  const heroActions = [t('landing.heroActionSend'), t('landing.heroActionAdd'), t('landing.heroActionSwap')];
+  const mockTransactions = [
+    { d: 'Marie Dubois', a: '+EUR 480.00', c: 'text-success' },
+    { d: t('transfer.international'), a: '-USD 1,500.00', c: 'text-foreground' },
+    { d: t('deposit.title'), a: '+USD 1,250.00', c: 'text-success' },
+  ];
+
   return (
-    <div className="min-h-screen bg-background">
-      {/* NAV */}
-      <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur">
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top,hsl(var(--primary)/0.08),transparent_28%),linear-gradient(180deg,hsl(var(--background)),hsl(var(--muted)/0.62))]">
+      <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur-xl">
         <div className="container flex h-16 items-center justify-between">
           <Logo />
-          <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-muted-foreground">
-            <a href="#features" className="hover:text-foreground transition-smooth">{t('nav.features')}</a>
-            <a href="#security" className="hover:text-foreground transition-smooth">{t('nav.security')}</a>
-            <a href="#pricing" className="hover:text-foreground transition-smooth">{t('nav.pricing')}</a>
+          <nav className="hidden items-center gap-8 text-sm font-medium text-muted-foreground md:flex">
+            <a href="#features" className="transition-smooth hover:text-foreground">{t('nav.features')}</a>
+            <a href="#security" className="transition-smooth hover:text-foreground">{t('nav.security')}</a>
+            <a href="#pricing" className="transition-smooth hover:text-foreground">{t('nav.pricing')}</a>
           </nav>
           <div className="flex items-center gap-1.5">
             <LanguageSwitcher />
@@ -43,110 +49,110 @@ const Landing = () => {
         </div>
       </header>
 
-      {/* HERO */}
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-glow" />
-        <div className="container relative grid lg:grid-cols-2 gap-12 py-20 lg:py-32 items-center">
-          <div className="space-y-6 animate-slide-up">
-            <span className="inline-flex items-center gap-2 rounded-full border border-brand-200 bg-brand-50 px-3 py-1 text-xs font-medium text-brand-700 dark:bg-brand-900/30 dark:border-brand-800 dark:text-brand-300">
+        <div className="container relative grid items-center gap-12 py-20 lg:grid-cols-2 lg:py-32">
+          <div className="animate-slide-up space-y-6">
+            <span className="inline-flex items-center gap-2 rounded-full border border-brand-200 bg-brand-50 px-3 py-1 text-xs font-medium text-brand-700 dark:border-brand-800 dark:bg-brand-900/30 dark:text-brand-300">
               <ShieldCheck className="h-3.5 w-3.5" /> {t('landing.heroEyebrow')}
             </span>
-            <h1 className="font-display text-5xl lg:text-7xl font-bold tracking-tight leading-[1.05]">
+            <h1 className="font-display text-5xl font-bold leading-[1.05] tracking-tight lg:text-7xl">
               {t('landing.heroTitle')}
             </h1>
-            <p className="text-lg text-muted-foreground leading-relaxed max-w-lg">
+            <p className="max-w-lg text-lg leading-relaxed text-muted-foreground">
               {t('landing.heroSubtitle')}
             </p>
-            <div className="flex flex-col sm:flex-row gap-3">
-              <Link to="/register"><Button size="lg" className="bg-gradient-brand shadow-brand text-base">
-                {t('landing.ctaPrimary')} <ArrowRight className="ml-1 h-4 w-4" />
-              </Button></Link>
-              <Button size="lg" variant="outline" className="text-base">{t('landing.ctaSecondary')}</Button>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Link to="/register">
+                <Button size="lg" className="bg-gradient-brand text-base shadow-brand">
+                  {t('landing.ctaPrimary')} <ArrowRight className="ml-1 h-4 w-4" />
+                </Button>
+              </Link>
+              <Button size="lg" variant="outline" className="border-border/70 bg-card/70 text-base backdrop-blur-sm">
+                {t('landing.ctaSecondary')}
+              </Button>
             </div>
             <div className="flex items-center gap-2 pt-2 text-sm text-muted-foreground">
               <Check className="h-4 w-4 text-success" /> {t('landing.trust')}
             </div>
           </div>
 
-          {/* Hero card mockup */}
           <div className="relative animate-fade-in">
             <div className="absolute -inset-8 bg-gradient-brand opacity-20 blur-3xl" />
-            <div className="relative rounded-3xl bg-gradient-card border border-border shadow-elegant p-6 space-y-4">
+            <div className="relative space-y-4 rounded-3xl border border-border bg-gradient-card p-6 shadow-elegant">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">{t('dashboard.totalBalance')}</span>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-success/10 text-success">+4.2%</span>
+                <span className="rounded-full bg-success/10 px-2 py-0.5 text-xs text-success">+4.2%</span>
               </div>
-              <div className="font-display text-4xl font-bold tabular">$12,480.55</div>
+              <div className="font-display tabular text-4xl font-bold">$12,480.55</div>
               <div className="grid grid-cols-3 gap-2">
-                {['Send','Add','Swap'].map((a,i) => (
-                  <button key={a} className={`rounded-xl p-3 text-sm font-semibold transition-smooth ${i===0 ? 'bg-gradient-brand text-primary-foreground shadow-brand' : 'bg-muted hover:bg-accent'}`}>
-                    {a}
+                {heroActions.map((action, i) => (
+                  <button
+                    key={action}
+                    className={`rounded-xl p-3 text-sm font-semibold transition-smooth ${i === 0 ? 'bg-gradient-brand text-primary-foreground shadow-brand' : 'bg-muted/85 hover:bg-accent'}`}
+                  >
+                    {action}
                   </button>
                 ))}
               </div>
-              <div className="rounded-2xl border border-border/60 p-4 space-y-3 bg-card">
-                {[
-                  { d: 'From Marie Dubois', a: '+€480.00', c: 'text-success' },
-                  { d: 'International transfer', a: '-$1,500.00', c: 'text-foreground' },
-                  { d: 'Card top-up', a: '+$1,250.00', c: 'text-success' },
-                ].map((r) => (
-                  <div key={r.d} className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground truncate">{r.d}</span>
-                    <span className={`font-semibold tabular ${r.c}`}>{r.a}</span>
+              <div className="space-y-3 rounded-2xl border border-border/60 bg-card/80 p-4">
+                {mockTransactions.map((row) => (
+                  <div key={`${row.d}-${row.a}`} className="flex items-center justify-between text-sm">
+                    <span className="truncate text-muted-foreground">{row.d}</span>
+                    <span className={`tabular font-semibold ${row.c}`}>{row.a}</span>
                   </div>
                 ))}
               </div>
             </div>
-            <div className="absolute -bottom-6 -right-6 rounded-2xl border border-border bg-card p-3 shadow-elegant flex items-center gap-2 animate-float">
-              <div className="h-8 w-8 rounded-full bg-success/10 text-success flex items-center justify-center"><Check className="h-4 w-4" /></div>
+            <div className="absolute -bottom-6 -right-6 flex items-center gap-2 rounded-2xl border border-border bg-card/95 p-3 shadow-elegant backdrop-blur animate-float">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-success/10 text-success">
+                <Check className="h-4 w-4" />
+              </div>
               <div className="text-xs">
-                <div className="font-semibold">Transfer received</div>
-                <div className="text-muted-foreground">€480 · just now</div>
+                <div className="font-semibold">{t('landing.heroTransferReceived')}</div>
+                <div className="text-muted-foreground">EUR 480 · {t('landing.heroTransferJustNow')}</div>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* STATS */}
       <section className="border-y border-border/60 bg-muted/30">
-        <div className="container grid grid-cols-2 md:grid-cols-4 gap-8 py-12">
+        <div className="container grid grid-cols-2 gap-8 py-12 md:grid-cols-4">
           {stats.map((s) => (
             <div key={s.k} className="text-center">
-              <div className="font-display text-3xl lg:text-4xl font-bold text-primary tabular">{s.v}</div>
-              <div className="text-sm text-muted-foreground mt-1">{s.k}</div>
+              <div className="font-display tabular text-3xl font-bold text-primary lg:text-4xl">{s.v}</div>
+              <div className="mt-1 text-sm text-muted-foreground">{s.k}</div>
             </div>
           ))}
         </div>
       </section>
 
-      {/* FEATURES */}
       <section id="features" className="container py-24">
-        <div className="max-w-2xl mx-auto text-center mb-16 space-y-3">
-          <h2 className="font-display text-4xl lg:text-5xl font-bold">Built for the way you move money.</h2>
-          <p className="text-muted-foreground text-lg">Every detail engineered to feel effortless.</p>
+        <div className="mx-auto mb-16 max-w-2xl space-y-3 text-center">
+          <h2 className="font-display text-4xl font-bold lg:text-5xl">{t('landing.featureSectionTitle')}</h2>
+          <p className="text-lg text-muted-foreground">{t('landing.featureSectionBody')}</p>
         </div>
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
           {features.map((f) => (
-            <div key={f.title} className="group rounded-2xl border border-border/60 bg-card p-6 transition-smooth hover:shadow-elegant hover:-translate-y-1 hover:border-primary/40">
-              <div className="h-12 w-12 rounded-xl bg-gradient-brand text-primary-foreground flex items-center justify-center shadow-brand mb-4">
+            <div key={f.title} className="group rounded-2xl border border-border/60 bg-card/85 p-6 transition-smooth hover:-translate-y-1 hover:border-primary/40 hover:shadow-elegant">
+              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-brand text-primary-foreground shadow-brand">
                 <f.icon className="h-6 w-6" />
               </div>
-              <h3 className="font-display text-lg font-semibold mb-2">{f.title}</h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">{f.body}</p>
+              <h3 className="mb-2 font-display text-lg font-semibold">{f.title}</h3>
+              <p className="text-sm leading-relaxed text-muted-foreground">{f.body}</p>
             </div>
           ))}
         </div>
       </section>
 
-      {/* CTA */}
       <section id="security" className="container pb-24">
-        <div className="relative overflow-hidden rounded-3xl bg-gradient-hero p-10 lg:p-16 text-primary-foreground">
-          <div className="absolute -top-20 -right-20 h-64 w-64 rounded-full bg-primary-glow/30 blur-3xl" />
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-hero p-10 text-primary-foreground lg:p-16">
+          <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-primary-glow/30 blur-3xl" />
           <div className="absolute -bottom-20 -left-20 h-64 w-64 rounded-full bg-brand-300/20 blur-3xl" />
           <div className="relative max-w-2xl space-y-4">
-            <h2 className="font-display text-3xl lg:text-5xl font-bold">{t('landing.ctaTitle')}</h2>
-            <p className="text-primary-foreground/85 text-lg">{t('landing.ctaBody')}</p>
+            <h2 className="font-display text-3xl font-bold lg:text-5xl">{t('landing.ctaTitle')}</h2>
+            <p className="text-lg text-primary-foreground/85">{t('landing.ctaBody')}</p>
             <Link to="/register">
               <Button size="lg" variant="secondary" className="text-base font-semibold">
                 {t('landing.ctaPrimary')} <ArrowRight className="ml-1 h-4 w-4" />
@@ -157,7 +163,7 @@ const Landing = () => {
       </section>
 
       <footer className="border-t border-border/60">
-        <div className="container py-8 flex flex-col md:flex-row items-center justify-between gap-4">
+        <div className="container flex flex-col items-center justify-between gap-4 py-8 md:flex-row">
           <Logo />
           <p className="text-sm text-muted-foreground">© {new Date().getFullYear()} Lipaxe. {t('landing.footerRights')}</p>
         </div>

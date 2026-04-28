@@ -81,7 +81,6 @@ export const AppSidebar = () => {
   const location = useLocation();
   const path = location.pathname;
 
-  // Open the group that matches current path by default
   const initialOpen: Record<string, boolean> = {};
   groups.forEach((g) => {
     if ('items' in g) initialOpen[g.key] = g.items.some((i) => path.startsWith(i.to));
@@ -89,8 +88,8 @@ export const AppSidebar = () => {
   const [open, setOpen] = useState(initialOpen);
 
   return (
-    <Sidebar collapsible="icon" className="border-r border-sidebar-border">
-      <SidebarHeader className="h-16 px-4 flex items-center border-b border-sidebar-border">
+    <Sidebar collapsible="icon" className="border-r border-sidebar-border bg-sidebar/95 backdrop-blur-xl">
+      <SidebarHeader className="flex h-16 items-center border-b border-sidebar-border px-4">
         <Logo compact={collapsed} />
       </SidebarHeader>
 
@@ -98,7 +97,7 @@ export const AppSidebar = () => {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              {groups.map((g, idx) => {
+              {groups.map((g) => {
                 if ('single' in g) {
                   const { to, key, icon: Icon, end } = g.single;
                   const active = end ? path === to : path.startsWith(to);
@@ -113,9 +112,11 @@ export const AppSidebar = () => {
                     </SidebarMenuItem>
                   );
                 }
+
                 const { key, icon: Icon, items } = g;
                 const isOpen = open[key];
-                const groupActive = items.some((i) => path === i.to || path.startsWith(i.to + '/'));
+                const groupActive = items.some((i) => path === i.to || path.startsWith(`${i.to}/`));
+
                 return (
                   <SidebarMenuItem key={key}>
                     <SidebarMenuButton
@@ -133,6 +134,7 @@ export const AppSidebar = () => {
                         )}
                       />
                     </SidebarMenuButton>
+
                     <AnimatePresence initial={false}>
                       {isOpen && !collapsed && (
                         <motion.div
@@ -144,7 +146,7 @@ export const AppSidebar = () => {
                         >
                           <SidebarMenuSub>
                             {items.map((sub) => {
-                              const subActive = path === sub.to || path.startsWith(sub.to + '/');
+                              const subActive = path === sub.to || path.startsWith(`${sub.to}/`);
                               return (
                                 <SidebarMenuSubItem key={sub.to}>
                                   <SidebarMenuSubButton asChild isActive={subActive}>
@@ -170,7 +172,7 @@ export const AppSidebar = () => {
 
       {!collapsed && (
         <SidebarFooter className="p-3">
-          <div className="rounded-xl bg-gradient-hero p-4 text-primary-foreground">
+          <div className="rounded-2xl border border-primary-foreground/10 bg-gradient-hero p-4 text-primary-foreground shadow-brand">
             <p className="font-display text-sm font-semibold">{t('dashboard.verifyPrompt')}</p>
             <NavLink
               to="/app/kyc"

@@ -30,6 +30,7 @@ export const NotificationsInbox = () => {
   const [markAll] = useMarkAllReadMutation();
   const items = data || [];
   const unread = items.filter((n) => !n.read).length;
+  const unreadIds = items.filter((n) => !n.read).map((n) => n.id);
 
   return (
     <Popover>
@@ -50,7 +51,7 @@ export const NotificationsInbox = () => {
             <span className="font-display font-semibold">Notifications</span>
           </div>
           {unread > 0 && (
-            <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => markAll()}>
+            <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => markAll({ ids: unreadIds })}>
               <Check className="mr-1 h-3 w-3" /> Tout lire
             </Button>
           )}

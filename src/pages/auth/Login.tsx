@@ -26,7 +26,7 @@ const Login = () => {
   const dispatch = useAppDispatch();
   const [params] = useSearchParams();
   const [login, { isLoading }] = useLoginMutation();
-  const [form, setForm] = useState({ email: 'demo@lipaxe.app', password: 'demo1234' });
+  const [form, setForm] = useState({ email: '', password: '' });
   const [showPwd, setShowPwd] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const redirect = params.get('redirect') || '';

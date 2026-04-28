@@ -1,15 +1,16 @@
 import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import iconUrl from '/lipaxe-icon.png';
+import iconUrl from '/icones green2.png';
 
 interface LogoProps {
   className?: string;
   compact?: boolean;
   to?: string;
   size?: number;
+  textClassName?: string;
 }
 
-export const Logo = ({ className, compact = false, to = '/', size = 36 }: LogoProps) => (
+export const Logo = ({ className, compact = false, to = '/', size = 36, textClassName }: LogoProps) => (
   <Link to={to} className={cn('flex items-center gap-2.5 group', className)}>
     <img
       src={iconUrl}
@@ -20,7 +21,7 @@ export const Logo = ({ className, compact = false, to = '/', size = 36 }: LogoPr
       style={{ width: size, height: size }}
     />
     {!compact && (
-      <span className="font-display text-xl font-bold tracking-tight text-foreground">
+      <span className={cn('font-display text-xl font-bold tracking-tight text-foreground', textClassName)}>
         Lipaxe
       </span>
     )}

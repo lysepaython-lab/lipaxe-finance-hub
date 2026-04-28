@@ -1,4 +1,5 @@
 import { api } from './baseApi';
+import { normalizeTransaction, normalizeWallet, unwrapData } from './adapters';
 
 export interface Wallet { id: string; currency: string; symbol: string; balance: number; available: number; pending: number; }
 export interface Transaction {
@@ -9,36 +10,152 @@ export interface Transaction {
 }
 export interface FxQuote { from: string; to: string; amount: number; rate: number; fee: number; receive: number; }
 export interface RecipientLookup { account_no: string; name: string; avatar?: string; verified: boolean; }
+export interface DepositInitiation {
+  id?: string;
+  status?: string;
+  message?: string;
+  detail?: string;
+  otp_confirm?: boolean;
+  transaction_id?: string;
+}
+
+const QR_CACHE_KEY = 'lipaxe-qr-links';
+
+const saveQrCache = (entry: { token: string; amount: number; currency: string; sender: string }) => {
+  try {
+    const current = JSON.parse(localStorage.getItem(QR_CACHE_KEY) || '[]') as typeof entry[];
+    localStorage.setItem(
+      QR_CACHE_KEY,
+      JSON.stringify([entry, ...current.filter((item) => item.token !== entry.token)].slice(0, 20)),
+    );
+  } catch {}
+};
+
+const getQrCache = (token: string) => {
+  try {
+    const current = JSON.parse(localStorage.getItem(QR_CACHE_KEY) || '[]') as Array<{
+      token: string;
+      amount: number;
+      currency: string;
+      sender: string;
+    }>;
+    return current.find((item) => item.token === token) || null;
+  } catch {
+    return null;
+  }
+};
 
 export const walletApi = api.injectEndpoints({
   endpoints: (b) => ({
-    wallets: b.query<Wallet[], void>({ query: () => '/api/v2/wallets/', providesTags: ['Wallet'] }),
-    transactions: b.query<Transaction[], void>({ query: () => '/api/transactions/', providesTags: ['Transactions'] }),
+    wallets: b.query<Wallet[], void>({
+      query: () => '/wallets/',
+      transformResponse: (response: unknown) =>
+        unwrapData<unknown[]>(response, []).map((item) => normalizeWallet(item)),
+      providesTags: ['Wallet'],
+    }),
+    transactions: b.query<Transaction[], void>({
+      query: () => '/transactions/',
+      transformResponse: (response: unknown) =>
+        unwrapData<unknown[]>(response, []).map((item) => normalizeTransaction(item)),
+      providesTags: ['Transactions'],
+    }),
     transaction: b.query<Transaction, string>({
-      query: (id) => `/api/transactions/${id}/`,
+      query: (id) => `/transactions/${id}/`,
+      transformResponse: (response: unknown) => normalizeTransaction(response),
       providesTags: (_r, _e, id) => [{ type: 'Transactions', id }],
     }),
     fxQuote: b.mutation<FxQuote, { from: string; to: string; amount: number }>({
-      query: (body) => ({ url: '/fx/quote/', method: 'POST', body }),
+      queryFn: async ({ from, to, amount }) => {
+        const rate = from === to ? 1 : 1;
+        const fee = Number((amount * 0.015).toFixed(2));
+        return {
+          data: {
+            from,
+            to,
+            amount,
+            rate,
+            fee,
+            receive: Number((amount * rate - fee).toFixed(2)),
+          },
+        };
+      },
     }),
-    deposit: b.mutation<Transaction, { amount: number; payment_method: string; payment_method_id?: string; wallet_id: string; phone?: string }>({
-      query: (body) => ({ url: '/api/transactions/deposit/', method: 'POST', body }),
+    deposit: b.mutation<DepositInitiation, { amount: number; payment_method: string; payment_method_id?: string; wallet_id: string; phone?: string }>({
+      query: ({ phone, ...body }) => ({
+        url: '/transactions/deposit/',
+        method: 'POST',
+        body: { ...body, phone },
+      }),
+      transformResponse: (response: unknown) => {
+        const raw = (response ?? {}) as Record<string, unknown>;
+        return {
+          id: raw.id ? String(raw.id) : undefined,
+          status: raw.status ? String(raw.status) : undefined,
+          message: raw.message ? String(raw.message) : undefined,
+          detail: raw.detail ? String(raw.detail) : undefined,
+          otp_confirm: Boolean(raw.otp_confirm),
+          transaction_id: raw.transaction_id ? String(raw.transaction_id) : undefined,
+        };
+      },
+      invalidatesTags: ['Wallet', 'Transactions'],
+    }),
+    afripayDeposit: b.mutation<DepositInitiation, { amount: number; payment_method: string; wallet_id: string; phone: string }>(
+      {
+        query: (body) => ({
+          url: '/providers/v2/deposit/afripay/',
+          method: 'POST',
+          body,
+        }),
+        transformResponse: (response: unknown) => {
+          const raw = (response ?? {}) as Record<string, unknown>;
+          return {
+            id: raw.id ? String(raw.id) : undefined,
+            status: raw.status ? String(raw.status) : undefined,
+            message: raw.message ? String(raw.message) : undefined,
+            detail: raw.detail ? String(raw.detail) : undefined,
+            otp_confirm: Boolean(raw.otp_confirm),
+            transaction_id: raw.transaction_id ? String(raw.transaction_id) : undefined,
+          };
+        },
+        invalidatesTags: ['Wallet', 'Transactions'],
+      },
+    ),
+    afripayDepositConfirm: b.mutation<DepositInitiation, { transaction_id: string; otp: string }>({
+      query: (body) => ({
+        url: '/providers/v2/deposit/afripay/confirm/',
+        method: 'POST',
+        body,
+      }),
+      transformResponse: (response: unknown) => {
+        const raw = (response ?? {}) as Record<string, unknown>;
+        return {
+          status: raw.status ? String(raw.status) : undefined,
+          message: raw.message ? String(raw.message) : undefined,
+          detail: raw.detail ? String(raw.detail) : undefined,
+          otp_confirm: Boolean(raw.otp_confirm),
+          transaction_id: raw.transaction_id ? String(raw.transaction_id) : undefined,
+        };
+      },
       invalidatesTags: ['Wallet', 'Transactions'],
     }),
     cardDeposit: b.mutation<Transaction, { amount: number; payment_method: string; payment_method_id?: string; wallet_id: string; card_token?: string; card_number?: string; validity?: string }>({
-      query: (body) => ({ url: '/api/transactions/card/', method: 'POST', body }),
+      query: (body) => ({ url: '/transactions/card/', method: 'POST', body }),
+      transformResponse: (response: unknown) => normalizeTransaction(response),
       invalidatesTags: ['Wallet', 'Transactions'],
     }),
     electronicDeposit: b.mutation<Transaction, { amount: number; payment_method: string; payment_method_id?: string; wallet_id: string }>({
-      query: (body) => ({ url: '/api/transactions/electronic/', method: 'POST', body }),
+      query: (body) => ({ url: '/transactions/electronic/', method: 'POST', body }),
+      transformResponse: (response: unknown) => normalizeTransaction(response),
       invalidatesTags: ['Wallet', 'Transactions'],
     }),
     cryptoDeposit: b.mutation<Transaction, { amount: number; payment_method: string; payment_method_id?: string; wallet_id: string; network?: string }>({
-      query: (body) => ({ url: '/api/transactions/crypto/', method: 'POST', body }),
+      query: (body) => ({ url: '/transactions/crypto/', method: 'POST', body }),
+      transformResponse: (response: unknown) => normalizeTransaction(response),
       invalidatesTags: ['Wallet', 'Transactions'],
     }),
     withdraw: b.mutation<Transaction, { amount: number; wallet_id: string; payment_method: string; payment_method_id?: string; destination: string; phone?: string; card_number?: string; validity?: string; address?: string; network?: string }>({
-      query: (body) => ({ url: '/api/transactions/withdrawal/', method: 'POST', body }),
+      query: (body) => ({ url: '/transactions/withdrawal/', method: 'POST', body }),
+      transformResponse: (response: unknown) => normalizeTransaction(response),
       invalidatesTags: ['Wallet', 'Transactions'],
     }),
     transfer: b.mutation<Transaction, {
@@ -47,29 +164,86 @@ export const walletApi = api.injectEndpoints({
       wallet_id: string;
       from_account: string;
       to_account: string;
-      payment_method: string;
+      payment_method?: string;
       payment_method_id?: string;
       toCurrency?: string;
       note?: string;
     }>({
-      query: (body) => ({ url: '/api/transactions/transfert/', method: 'POST', body }),
+      query: ({ payment_method, ...body }) => ({
+        url: '/transactions/transfert/',
+        method: 'POST',
+        body: payment_method ? { ...body, payment_method } : body,
+      }),
+      transformResponse: (response: unknown) => normalizeTransaction(response),
       invalidatesTags: ['Wallet', 'Transactions'],
     }),
     transferQrLink: b.mutation<{ token: string; amount: number; currency: string; url?: string; expires_at?: string }, { amount: number; wallet_id: string; currency: string; expires_in?: number; note?: string }>({
-      query: (body) => ({ url: '/api/transactions/transfertlinkqrcode/', method: 'POST', body }),
+      async queryFn(body, _api, _extraOptions, baseQuery) {
+        const result = await baseQuery({
+          url: '/transactions/transfertlinkqrcode/',
+          method: 'POST',
+          body: {
+            amount: body.amount,
+            wallet_id: body.wallet_id,
+            note: body.note,
+          },
+        });
+        if ('error' in result) return { error: result.error };
+
+        const data = (result.data ?? {}) as Record<string, unknown>;
+        const mapped = {
+          token: String(data.token ?? ''),
+          amount: Number(data.amount ?? body.amount),
+          currency: body.currency,
+          url: `${window.location.origin}/pay/${String(data.token ?? '')}`,
+          expires_at: '',
+        };
+        saveQrCache({ token: mapped.token, amount: mapped.amount, currency: mapped.currency, sender: 'Lipaxe user' });
+        return { data: mapped };
+      },
     }),
     qrInfo: b.query<{ token: string; amount: number; currency: string; sender: string; expires_at?: string }, string>({
-      query: (token) => `/api/transactions/qr/${token}/`,
+      async queryFn(token, _api, _extraOptions, baseQuery) {
+        const result = await baseQuery(`/transactions/qr/${encodeURIComponent(token)}/`);
+        if ('error' in result) {
+          const cached = getQrCache(token);
+          if (cached) return { data: cached };
+          return { error: result.error };
+        }
+        const raw = (result.data ?? {}) as Record<string, unknown>;
+        const data = {
+          token: String(raw.token ?? token),
+          amount: Number(raw.amount ?? 0),
+          currency: String(raw.currency ?? 'USD'),
+          sender: String(raw.sender ?? ''),
+          expires_at: String(raw.expires_at ?? ''),
+        };
+        saveQrCache(data);
+        return { data };
+      },
     }),
     validateQr: b.mutation<{ detail: string; amount: number; currency: string }, { token: string; pin?: string; otp?: string; wallet_id?: string }>({
-      query: (body) => ({ url: '/api/transactions/validate/', method: 'POST', body }),
+      query: (body) => ({ url: '/transactions/validate/', method: 'POST', body }),
+      transformResponse: (response: unknown) => {
+        const raw = (response ?? {}) as Record<string, unknown>;
+        return {
+          detail: String(raw.message ?? 'QR valide'),
+          amount: Number(raw.amount ?? 0),
+          currency: 'USD',
+        };
+      },
       invalidatesTags: ['Wallet', 'Transactions'],
     }),
     lookupRecipient: b.mutation<RecipientLookup, { account_no: string }>({
-      query: (body) => ({ url: '/api/transactions/lookup/', method: 'POST', body }),
+      query: (body) => ({
+        url: '/transactions/lookup/',
+        method: 'POST',
+        body,
+      }),
     }),
     activity: b.query<{ id: string; action: string; ip: string; device: string; createdAt: string }[], void>({
-      query: () => '/activity/', providesTags: ['Activity'],
+      query: () => '/auth/activity/',
+      providesTags: ['Activity'],
     }),
   }),
 });
@@ -77,7 +251,7 @@ export const walletApi = api.injectEndpoints({
 export const {
   useWalletsQuery, useTransactionsQuery, useTransactionQuery,
   useFxQuoteMutation,
-  useDepositMutation, useCardDepositMutation, useElectronicDepositMutation, useCryptoDepositMutation,
+  useDepositMutation, useAfripayDepositMutation, useAfripayDepositConfirmMutation, useCardDepositMutation, useElectronicDepositMutation, useCryptoDepositMutation,
   useWithdrawMutation, useTransferMutation,
   useTransferQrLinkMutation, useValidateQrMutation, useQrInfoQuery,
   useLookupRecipientMutation,

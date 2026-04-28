@@ -4,22 +4,18 @@ import { useTranslation } from 'react-i18next';
 import { PageHeader } from '@/components/PageHeader';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { useAppSelector } from '@/store/hooks';
 import { formatMoney } from '@/lib/format';
 import { toast } from 'sonner';
-
-const referrals = [
-  { name: 'Marie D.', date: '2 days ago', earned: 12.5 },
-  { name: 'John K.', date: '1 week ago', earned: 25 },
-  { name: 'Adaeze O.', date: '3 weeks ago', earned: 8 },
-];
+import { useAffiliateCodeQuery, useCommissionsQuery } from '@/store/api/affiliationApi';
 
 const Affiliation = () => {
   const { t } = useTranslation();
-  const user = useAppSelector((s) => s.auth.user);
-  const code = (user?.username?.toUpperCase().replace(/\./g, '') || 'LIPAXE') + '2025';
-  const link = `${window.location.origin}/register?ref=${code}`;
-  const total = referrals.reduce((s, r) => s + r.earned, 0);
+  const { data: affiliate } = useAffiliateCodeQuery();
+  const { data: commissions } = useCommissionsQuery();
+
+  const code = affiliate?.code || 'LIPAXE';
+  const link = affiliate?.link || `${window.location.origin}/register?reference=${code}`;
+  const total = (commissions || []).reduce((sum, item) => sum + item.amount, 0);
 
   return (
     <div>
@@ -47,7 +43,7 @@ const Affiliation = () => {
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
           <Card>
             <CardContent className="p-6 space-y-4">
-              <div className="flex items-center justify-between"><span className="text-sm text-muted-foreground flex items-center gap-2"><Trophy className="h-4 w-4" />{t('affiliation.referrals')}</span><span className="font-display text-2xl font-bold">{referrals.length}</span></div>
+              <div className="flex items-center justify-between"><span className="text-sm text-muted-foreground flex items-center gap-2"><Trophy className="h-4 w-4" />{t('affiliation.referrals')}</span><span className="font-display text-2xl font-bold">{affiliate?.total_referrals || 0}</span></div>
               <div className="flex items-center justify-between"><span className="text-sm text-muted-foreground flex items-center gap-2"><DollarSign className="h-4 w-4" />{t('affiliation.earned')}</span><span className="font-display text-2xl font-bold tabular">{formatMoney(total, 'USD')}</span></div>
             </CardContent>
           </Card>
@@ -57,15 +53,21 @@ const Affiliation = () => {
       <Card className="mt-6">
         <CardContent className="p-0">
           <div className="px-6 py-4 border-b border-border font-display font-semibold">{t('affiliation.history')}</div>
-          {referrals.map((r, i) => (
-            <motion.div key={r.name} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }} className="px-6 py-4 flex items-center justify-between border-b border-border last:border-0">
+          {(commissions || []).map((entry, i) => (
+            <motion.div key={entry.id} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }} className="px-6 py-4 flex items-center justify-between border-b border-border last:border-0">
               <div>
-                <div className="font-medium">{r.name}</div>
-                <div className="text-xs text-muted-foreground">{r.date}</div>
+                <div className="font-medium">{entry.from_user || 'Referral'}</div>
+                <div className="text-xs text-muted-foreground">{new Date(entry.createdAt).toLocaleString()}</div>
               </div>
-              <div className="font-display font-bold text-success tabular">+{formatMoney(r.earned, 'USD')}</div>
+              <div className="text-right">
+                <div className="font-display font-bold text-success tabular">+{formatMoney(entry.amount, entry.currency)}</div>
+                <div className="text-[11px] uppercase text-muted-foreground">{entry.status}</div>
+              </div>
             </motion.div>
           ))}
+          {(commissions || []).length === 0 && (
+            <div className="px-6 py-8 text-sm text-muted-foreground text-center">Aucune commission enregistrée pour le moment.</div>
+          )}
         </CardContent>
       </Card>
     </div>

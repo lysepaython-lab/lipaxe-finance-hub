@@ -1,16 +1,20 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
+import { BrowserRouter, Route, Routes, Navigate, useLocation } from "react-router-dom";
 import { Provider } from "react-redux";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { store } from "./store";
+import { useAppSelector } from "./store/hooks";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { AppLayout } from "./components/AppLayout";
+import { HostRedirect } from "./components/HostRedirect";
+import { buildAppUrl } from "./config/site";
+import { getPendingVerification } from "./lib/pendingVerification";
 import "./i18n";
 
-import Landing from "./pages/Landing";
+import LaunchScreen from "./pages/LaunchScreen";
 import Login from "./pages/auth/Login";
 import Register from "./pages/auth/Register";
 import ForgotPassword from "./pages/auth/ForgotPassword";
@@ -43,6 +47,67 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
+const PathRedirect = ({ buildTarget }: { buildTarget: (path: string) => string }) => {
+  const location = useLocation();
+  return <HostRedirect to={buildTarget(`${location.pathname}${location.search}${location.hash}`)} />;
+};
+
+const PublicAuthRoute = ({ children }: { children: JSX.Element }) => {
+  const token = useAppSelector((s) => s.auth.accessToken);
+  const pending = getPendingVerification();
+  if (token) return <Navigate to="/app" replace />;
+  if (pending?.userId) return <Navigate to="/verify-email" replace />;
+  return children;
+};
+
+const VerifyEmailRoute = ({ children }: { children: JSX.Element }) => {
+  const token = useAppSelector((s) => s.auth.accessToken);
+  const pending = getPendingVerification();
+  if (token) return <Navigate to="/app" replace />;
+  if (!pending?.userId || !pending.email) return <Navigate to="/register" replace />;
+  return children;
+};
+
+const AppRoutes = () => (
+  <Routes>
+    <Route path="/" element={<LaunchScreen />} />
+    <Route path="/login" element={<PublicAuthRoute><Login /></PublicAuthRoute>} />
+    <Route path="/register" element={<PublicAuthRoute><Register /></PublicAuthRoute>} />
+    <Route path="/verify-email" element={<VerifyEmailRoute><VerifyEmail /></VerifyEmailRoute>} />
+    <Route path="/forgot-password" element={<PublicAuthRoute><ForgotPassword /></PublicAuthRoute>} />
+    <Route path="/reset-password" element={<PublicAuthRoute><ResetPassword /></PublicAuthRoute>} />
+    <Route path="/pay/:token" element={<PublicQrLanding />} />
+
+    <Route path="/app" element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
+      <Route index element={<Dashboard />} />
+      <Route path="transactions" element={<Transactions />} />
+      <Route path="deposit" element={<Deposit />} />
+      <Route path="withdraw" element={<Withdraw />} />
+      <Route path="transfer" element={<Transfer />} />
+      <Route path="transfer/international" element={<Transfer />} />
+      <Route path="transfer/qr" element={<TransferQr />} />
+      <Route path="transfer/nfc" element={<TransferNfc />} />
+      <Route path="cards/virtual" element={<VirtualCard />} />
+      <Route path="cards/gift" element={<GiftCards />} />
+      <Route path="cards/nfc" element={<NfcCards />} />
+      <Route path="payments/payall" element={<PayAll />} />
+      <Route path="payments/festipay" element={<FestiPay />} />
+      <Route path="strone/exchange" element={<Exchange />} />
+      <Route path="strone/business" element={<BusinessAll />} />
+      <Route path="strone/cryptos" element={<Cryptos />} />
+      <Route path="profile" element={<Profile />} />
+      <Route path="affiliation" element={<Affiliation />} />
+      <Route path="kyc" element={<Kyc />} />
+      <Route path="notifications" element={<Notifications />} />
+      <Route path="activity" element={<Activity />} />
+      <Route path="settings" element={<Settings />} />
+      <Route path="security" element={<Security />} />
+    </Route>
+
+    <Route path="*" element={<NotFound />} />
+  </Routes>
+);
+
 const App = () => (
   <Provider store={store}>
     <ThemeProvider>
@@ -51,44 +116,7 @@ const App = () => (
           <Toaster />
           <Sonner position="top-right" />
           <BrowserRouter>
-            <Routes>
-              <Route path="/" element={<Landing />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
-              <Route path="/verify-email" element={<VerifyEmail />} />
-              <Route path="/forgot-password" element={<ForgotPassword />} />
-              <Route path="/reset-password" element={<ResetPassword />} />
-              <Route path="/pay/:token" element={<PublicQrLanding />} />
-
-              <Route path="/app" element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
-                <Route index element={<Dashboard />} />
-                <Route path="transactions" element={<Transactions />} />
-                <Route path="deposit" element={<Deposit />} />
-                <Route path="withdraw" element={<Withdraw />} />
-                <Route path="transfer" element={<Transfer />} />
-                <Route path="transfer/international" element={<Transfer />} />
-                <Route path="transfer/qr" element={<TransferQr />} />
-                <Route path="transfer/nfc" element={<TransferNfc />} />
-                <Route path="cards/virtual" element={<VirtualCard />} />
-                <Route path="cards/gift" element={<GiftCards />} />
-                <Route path="cards/nfc" element={<NfcCards />} />
-                <Route path="payments/payall" element={<PayAll />} />
-                <Route path="payments/festipay" element={<FestiPay />} />
-                <Route path="strone/exchange" element={<Exchange />} />
-                <Route path="strone/business" element={<BusinessAll />} />
-                <Route path="strone/cryptos" element={<Cryptos />} />
-                <Route path="profile" element={<Profile />} />
-                <Route path="affiliation" element={<Affiliation />} />
-                <Route path="kyc" element={<Kyc />} />
-                <Route path="notifications" element={<Notifications />} />
-                <Route path="activity" element={<Activity />} />
-                <Route path="settings" element={<Settings />} />
-                <Route path="security" element={<Security />} />
-              </Route>
-
-              <Route path="/dashboard" element={<Navigate to="/app" replace />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
+            <AppRoutes />
           </BrowserRouter>
         </TooltipProvider>
       </QueryClientProvider>

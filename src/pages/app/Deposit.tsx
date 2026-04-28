@@ -7,6 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
   useDepositMutation,
+  useAfripayDepositMutation,
+  useAfripayDepositConfirmMutation,
   useCardDepositMutation,
   useElectronicDepositMutation,
   useCryptoDepositMutation,
@@ -36,6 +38,8 @@ const Deposit = () => {
   const { t } = useTranslation();
   const { data: methods } = usePaymentMethodsDepositQuery();
   const [deposit, { isLoading: l1 }] = useDepositMutation();
+  const [afripayDeposit, { isLoading: lAfripay }] = useAfripayDepositMutation();
+  const [afripayDepositConfirm, { isLoading: lAfripayConfirm }] = useAfripayDepositConfirmMutation();
   const [cardDeposit, { isLoading: l2 }] = useCardDepositMutation();
   const [elecDeposit, { isLoading: l3 }] = useElectronicDepositMutation();
   const [cryptoDeposit, { isLoading: l4 }] = useCryptoDepositMutation();
@@ -50,6 +54,8 @@ const Deposit = () => {
   const [done, setDone] = useState(false);
   const [txId, setTxId] = useState<string | null>(null);
   const [cryptoAddress, setCryptoAddress] = useState<{ address: string; network: string; symbol: string } | null>(null);
+  const [otpCode, setOtpCode] = useState('');
+  const [pendingAfripayTxId, setPendingAfripayTxId] = useState<string | null>(null);
   const status = useTransactionPolling(txId);
 
   const allMethods = methods || [];
@@ -68,7 +74,7 @@ const Deposit = () => {
 
   const amt = parseFloat(amount) || 0;
   const fee = selectedMethod ? (selectedMethod.fees?.fixed || 0) + amt * ((selectedMethod.fees?.percent || 0) / 100) : 0;
-  const isLoading = l1 || l2 || l3 || l4;
+  const isLoading = l1 || lAfripay || lAfripayConfirm || l2 || l3 || l4;
 
   const validateExtra = (): string | null => {
     const typeName = selectedMethod?.payment_type?.name;
@@ -121,17 +127,62 @@ const Deposit = () => {
         }).unwrap();
         setTxId(tx.id);
       } else {
-        // Mobile Payment (default)
-        const tx = await deposit({
-          amount: amt, payment_method: methodId, wallet_id: walletId!,
-          phone: fields.phone ? sanitizeText(fields.phone) : undefined,
-        }).unwrap();
-        setTxId(tx.id);
+        const phone = fields.phone ? sanitizeText(fields.phone) : undefined;
+        if (!phone) {
+          toast.error('Numéro mobile invalide');
+          return;
+        }
+
+        if (selectedMethod?.provider?.toLowerCase() === 'afripay') {
+          const res = await afripayDeposit({
+            amount: amt,
+            payment_method: methodId,
+            wallet_id: walletId!,
+            phone,
+          }).unwrap();
+
+          if (res.otp_confirm && res.transaction_id) {
+            setPendingAfripayTxId(res.transaction_id);
+            toast.success(res.message || 'Code OTP demandé. Entrez-le pour finaliser le dépôt.');
+            return;
+          }
+
+          if (res.transaction_id) setTxId(res.transaction_id);
+        } else {
+          const res = await deposit({
+            amount: amt, payment_method: methodId, wallet_id: walletId!, phone,
+          }).unwrap();
+          if (res.transaction_id) setTxId(res.transaction_id);
+        }
       }
       toast.success(t('deposit.success'));
       setDone(true);
     } catch (e) {
       const detail = (e as { data?: { detail?: string } })?.data?.detail || t('common.error');
+      toast.error(detail);
+    }
+  };
+
+  const doConfirmAfripayOtp = async () => {
+    if (!pendingAfripayTxId) return;
+    if (!otpCode.trim()) {
+      toast.error('Entrez le code OTP');
+      return;
+    }
+    try {
+      const res = await afripayDepositConfirm({
+        transaction_id: pendingAfripayTxId,
+        otp: sanitizeText(otpCode),
+      }).unwrap();
+      if (res.transaction_id) setTxId(res.transaction_id);
+      setPendingAfripayTxId(null);
+      setOtpCode('');
+      toast.success(res.message || 'Dépôt Afripay initié avec succès');
+      setDone(true);
+    } catch (e) {
+      const detail = (e as { data?: { erreur?: string; detail?: string } })?.data?.erreur
+        || (e as { data?: { erreur?: string; detail?: string } })?.data?.detail
+        || t('common.error');
       toast.error(detail);
     }
   };
@@ -260,6 +311,33 @@ const Deposit = () => {
 
             <PaymentMethodFields method={selectedMethod} values={fields} onChange={(p) => setFields((f) => ({ ...f, ...p }))} context="deposit" />
 
+            {pendingAfripayTxId && (
+              <div className="space-y-2 rounded-xl border border-primary/20 bg-primary/5 p-4">
+                <Label>Code OTP Lumitel</Label>
+                <Input
+                  inputMode="numeric"
+                  value={otpCode}
+                  onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 8))}
+                  placeholder="Entrez le code reçu"
+                  className="h-11 rounded-xl"
+                  maxLength={8}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Afripay/Lumitel demande une confirmation OTP avant l’initiation finale du dépôt.
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  onClick={doConfirmAfripayOtp}
+                  disabled={isLoading}
+                >
+                  {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  Valider l’OTP
+                </Button>
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label>{t('deposit.amount')}</Label>
               <Input
@@ -291,7 +369,7 @@ const Deposit = () => {
             <Button
               type="submit"
               className="w-full h-12 bg-gradient-brand shadow-brand text-base rounded-xl"
-              disabled={isLoading || busy}
+              disabled={isLoading || busy || Boolean(pendingAfripayTxId)}
             >
               {(isLoading || busy) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}
               {t('deposit.confirm')}

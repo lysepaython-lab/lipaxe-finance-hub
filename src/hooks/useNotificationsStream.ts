@@ -7,8 +7,8 @@ import { showLocalNotification, isPushSupported, ensureServiceWorker } from '@/l
 
 /**
  * Subscribes to a realtime channel for high-priority notifications.
- * - WebSocket first (wss://host/ws/notifications/?token=…)
- * - SSE fallback (host/api/notifications/stream/)
+ * - WebSocket first (wss://host/ws/notifications/?token=...)
+ * - SSE fallback (host/api/v1/auth/notifications/stream/)
  * - Polling already handled by RTK Query as a baseline.
  *
  * On any incoming push, we invalidate the Notifications tag so the inbox
@@ -27,8 +27,7 @@ export const useNotificationsStream = () => {
 
     let stopped = false;
 
-    const refetch = () =>
-      dispatch(notificationsApi.util.invalidateTags(['Notifications']));
+    const refetch = () => dispatch(notificationsApi.util.invalidateTags(['Notifications']));
 
     const handlePush = (raw: string) => {
       try {
@@ -52,7 +51,7 @@ export const useNotificationsStream = () => {
     const connectSSE = () => {
       if (!API_URL || stopped) return;
       try {
-        const url = `${API_URL}/api/notifications/stream/`;
+        const url = `${API_URL}/auth/notifications/stream/`;
         const es = new EventSource(url, { withCredentials: true });
         esRef.current = es;
         es.onmessage = (ev) => handlePush(ev.data);
@@ -62,7 +61,7 @@ export const useNotificationsStream = () => {
           if (!stopped) setTimeout(connectSSE, Math.min(30000, 2000 * ++retryRef.current));
         };
       } catch {
-        /* SSE unavailable — polling fallback already in place */
+        /* SSE unavailable - polling fallback already in place */
       }
     };
 
@@ -75,13 +74,16 @@ export const useNotificationsStream = () => {
         const ws = new WebSocket(wsUrl);
         wsRef.current = ws;
         ws.onmessage = (ev) => handlePush(typeof ev.data === 'string' ? ev.data : '');
-        ws.onopen = () => { retryRef.current = 0; };
-        ws.onerror = () => { /* fall through to onclose */ };
+        ws.onopen = () => {
+          retryRef.current = 0;
+        };
+        ws.onerror = () => {
+          /* fall through to onclose */
+        };
         ws.onclose = () => {
           wsRef.current = null;
           if (stopped) return;
           retryRef.current += 1;
-          // After 3 failures, fall back to SSE.
           if (retryRef.current >= 3) connectSSE();
           else setTimeout(connectWS, Math.min(15000, 1500 * retryRef.current));
         };

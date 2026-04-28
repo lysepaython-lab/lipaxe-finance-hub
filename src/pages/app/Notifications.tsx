@@ -16,13 +16,14 @@ const Notifications = () => {
   const [markRead] = useMarkReadMutation();
   const [markAll] = useMarkAllReadMutation();
   const list = items || [];
+  const unreadIds = list.filter((n) => !n.read).map((n) => n.id);
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="font-display text-3xl font-bold">{t('notifications.title')}</h1>
-        {list.some((n) => !n.read) && (
-          <Button variant="outline" size="sm" onClick={() => markAll()}>{t('notifications.markRead')}</Button>
+        {unreadIds.length > 0 && (
+          <Button variant="outline" size="sm" onClick={() => markAll({ ids: unreadIds })}>{t('notifications.markRead')}</Button>
         )}
       </div>
       <Card className="shadow-elegant border-border/60">

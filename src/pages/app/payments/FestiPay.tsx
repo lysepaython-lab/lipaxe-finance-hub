@@ -29,10 +29,10 @@ const FestiPay = () => {
   const event = events?.find((e) => e.id === eventId);
 
   const submit = () => {
-    if (!eventId || !walletId) { toast.error('Sélectionnez un portefeuille'); return; }
+    if (!eventId || !walletId || !event?.ticket_type_id) { toast.error('Sélectionnez un portefeuille'); return; }
     pin.guard(async () => {
       try {
-        const tk = await book({ event_id: eventId, wallet_id: walletId }).unwrap();
+        const tk = await book({ event_id: eventId, ticket_type_id: event.ticket_type_id, wallet_id: walletId }).unwrap();
         setTicket(tk);
         toast.success(t('payments.ticketBooked'));
       } catch (e) {

@@ -16,7 +16,7 @@ const features = [
 export const AuthLayout = ({ children, side }: { children: React.ReactNode; side: { title: string; subtitle: string } }) => (
   <div className="min-h-screen lg:grid lg:grid-cols-2 bg-background">
     {/* Illustration panel */}
-    <div className="relative hidden lg:flex flex-col justify-between p-12 bg-gradient-hero text-primary-foreground overflow-hidden">
+    <div className="relative hidden lg:flex flex-col justify-between p-12 bg-gradient-hero  overflow-hidden">
       <AnimatedBackground />
 
       {/* Floating mini-cards */}
@@ -30,16 +30,7 @@ export const AuthLayout = ({ children, side }: { children: React.ReactNode; side
           <FaWifi className="h-4 w-4" /> NFC actif
         </div>
       </motion.div>
-      <motion.div
-        initial={{ opacity: 0, x: -20 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.6, delay: 0.2 }}
-        className="absolute bottom-32 right-16 rounded-2xl border border-primary-foreground/20 bg-primary-foreground/10 backdrop-blur-md px-4 py-3 shadow-lg"
-      >
-        <div className="flex items-center gap-2 text-sm font-medium">
-          <FaLock className="h-4 w-4" /> Transfert sécurisé
-        </div>
-      </motion.div>
+      
 
       <Logo className="relative z-10" />
 
@@ -51,7 +42,7 @@ export const AuthLayout = ({ children, side }: { children: React.ReactNode; side
           className="space-y-4"
         >
           <h2 className="font-display text-4xl font-bold leading-tight">{side.title}</h2>
-          <p className="text-lg text-primary-foreground/85 leading-relaxed">{side.subtitle}</p>
+          {/* <p className="text-lg text-primary-foreground/85 leading-relaxed">{side.subtitle}</p> */}
         </motion.div>
 
         <div className="grid grid-cols-2 gap-3">
@@ -73,7 +64,7 @@ export const AuthLayout = ({ children, side }: { children: React.ReactNode; side
         </div>
       </div>
 
-      <p className="relative z-10 text-xs text-primary-foreground/60">© {new Date().getFullYear()} Lipaxe. Bank-grade security.</p>
+      <p className="relative z-10 text-xs text-primary-foreground/60">© {new Date().getFullYear()} Lipaxe - security.</p>
     </div>
 
     {/* Form panel */}

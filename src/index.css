@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Sora:wght@500;600;700;800&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -22,27 +22,27 @@
     --brand-950: 169 98% 4%;
 
     /* Surfaces */
-    --background: 160 25% 98%;
-    --foreground: 169 60% 8%;
+    --background: 156 28% 98%;
+    --foreground: 168 54% 10%;
 
     --card: 0 0% 100%;
-    --card-foreground: 169 60% 8%;
+    --card-foreground: 168 54% 10%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 169 60% 8%;
+    --popover-foreground: 168 54% 10%;
 
     --primary: 169 98% 18%;
     --primary-foreground: 0 0% 100%;
     --primary-glow: 169 50% 40%;
 
-    --secondary: 169 38% 93%;
-    --secondary-foreground: 169 98% 12%;
+    --secondary: 160 30% 94%;
+    --secondary-foreground: 169 74% 14%;
 
-    --muted: 160 20% 95%;
-    --muted-foreground: 169 12% 38%;
+    --muted: 158 24% 95%;
+    --muted-foreground: 170 10% 40%;
 
-    --accent: 169 38% 93%;
-    --accent-foreground: 169 98% 12%;
+    --accent: 160 34% 92%;
+    --accent-foreground: 169 74% 14%;
 
     --destructive: 0 78% 56%;
     --destructive-foreground: 0 0% 100%;
@@ -53,8 +53,8 @@
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
 
-    --border: 169 20% 88%;
-    --input: 169 20% 92%;
+    --border: 165 18% 86%;
+    --input: 162 24% 92%;
     --ring: 169 98% 18%;
 
     --radius: 0.875rem;
@@ -62,8 +62,8 @@
     /* Gradients */
     --gradient-brand: linear-gradient(135deg, hsl(169 50% 40%), hsl(169 98% 18%));
     --gradient-hero: linear-gradient(135deg, hsl(169 50% 40%) 0%, hsl(169 98% 9%) 100%);
-    --gradient-card: linear-gradient(160deg, hsl(0 0% 100%) 0%, hsl(169 38% 97%) 100%);
-    --gradient-glow: radial-gradient(circle at 50% 0%, hsl(169 50% 40% / 0.18), transparent 60%);
+    --gradient-card: linear-gradient(160deg, hsl(0 0% 100%) 0%, hsl(160 40% 97%) 100%);
+    --gradient-glow: radial-gradient(circle at 50% 0%, hsl(169 50% 40% / 0.16), transparent 60%);
 
     /* Shadows */
     --shadow-sm: 0 1px 2px hsl(169 60% 10% / 0.04), 0 1px 3px hsl(169 60% 10% / 0.06);
@@ -72,40 +72,40 @@
     --shadow-brand: 0 12px 32px hsl(169 98% 18% / 0.25);
     --shadow-glow: 0 0 40px hsl(169 50% 40% / 0.35);
 
-    --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 169 60% 8%;
+    --sidebar-background: 155 20% 99%;
+    --sidebar-foreground: 168 54% 10%;
     --sidebar-primary: 169 98% 18%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 169 38% 95%;
-    --sidebar-accent-foreground: 169 98% 12%;
-    --sidebar-border: 169 20% 92%;
+    --sidebar-accent: 160 34% 95%;
+    --sidebar-accent-foreground: 169 74% 14%;
+    --sidebar-border: 165 18% 90%;
     --sidebar-ring: 169 98% 18%;
 
     --transition-smooth: cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .dark {
-    --background: 169 50% 6%;
-    --foreground: 169 30% 95%;
+    --background: 170 39% 7%;
+    --foreground: 160 24% 95%;
 
-    --card: 169 45% 9%;
-    --card-foreground: 169 30% 95%;
+    --card: 170 36% 10%;
+    --card-foreground: 160 24% 95%;
 
-    --popover: 169 45% 9%;
-    --popover-foreground: 169 30% 95%;
+    --popover: 170 36% 10%;
+    --popover-foreground: 160 24% 95%;
 
     --primary: 169 50% 45%;
     --primary-foreground: 169 80% 6%;
     --primary-glow: 169 55% 60%;
 
-    --secondary: 169 40% 13%;
-    --secondary-foreground: 169 30% 95%;
+    --secondary: 170 28% 14%;
+    --secondary-foreground: 160 24% 95%;
 
-    --muted: 169 35% 13%;
-    --muted-foreground: 169 15% 65%;
+    --muted: 170 24% 13%;
+    --muted-foreground: 162 12% 68%;
 
-    --accent: 169 40% 16%;
-    --accent-foreground: 169 55% 70%;
+    --accent: 169 28% 16%;
+    --accent-foreground: 160 36% 76%;
 
     --destructive: 0 70% 55%;
     --destructive-foreground: 0 0% 100%;
@@ -116,14 +116,14 @@
     --warning: 38 92% 55%;
     --warning-foreground: 0 0% 8%;
 
-    --border: 169 35% 17%;
-    --input: 169 35% 15%;
+    --border: 170 22% 18%;
+    --input: 170 22% 15%;
     --ring: 169 50% 45%;
 
     --gradient-brand: linear-gradient(135deg, hsl(169 50% 40%), hsl(169 98% 15%));
     --gradient-hero: linear-gradient(135deg, hsl(169 50% 40%) 0%, hsl(169 98% 8%) 100%);
-    --gradient-card: linear-gradient(160deg, hsl(169 45% 9%) 0%, hsl(169 50% 7%) 100%);
-    --gradient-glow: radial-gradient(circle at 50% 0%, hsl(169 50% 45% / 0.20), transparent 60%);
+    --gradient-card: linear-gradient(160deg, hsl(170 36% 10%) 0%, hsl(170 42% 8%) 100%);
+    --gradient-glow: radial-gradient(circle at 50% 0%, hsl(169 50% 45% / 0.18), transparent 60%);
 
     --shadow-sm: 0 1px 2px hsl(0 0% 0% / 0.3);
     --shadow-md: 0 4px 12px hsl(0 0% 0% / 0.4);
@@ -131,13 +131,13 @@
     --shadow-brand: 0 12px 32px hsl(169 50% 40% / 0.35);
     --shadow-glow: 0 0 60px hsl(169 50% 45% / 0.4);
 
-    --sidebar-background: 169 50% 7%;
-    --sidebar-foreground: 169 30% 95%;
+    --sidebar-background: 170 35% 8%;
+    --sidebar-foreground: 160 24% 95%;
     --sidebar-primary: 169 50% 45%;
     --sidebar-primary-foreground: 169 80% 6%;
-    --sidebar-accent: 169 40% 13%;
-    --sidebar-accent-foreground: 169 55% 70%;
-    --sidebar-border: 169 35% 15%;
+    --sidebar-accent: 170 24% 14%;
+    --sidebar-accent-foreground: 160 36% 76%;
+    --sidebar-border: 170 22% 15%;
     --sidebar-ring: 169 50% 45%;
   }
 }
@@ -148,7 +148,7 @@
   }
 
   html {
-    font-family: 'Inter', system-ui, sans-serif;
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
@@ -156,10 +156,17 @@
   body {
     @apply bg-background text-foreground;
     font-feature-settings: 'cv11', 'ss01', 'ss03';
+    background-image: radial-gradient(circle at top, hsl(var(--primary) / 0.08), transparent 32%);
+    background-attachment: fixed;
+  }
+
+  ::selection {
+    background: hsl(var(--primary) / 0.22);
+    color: hsl(var(--foreground));
   }
 
   .font-display {
-    font-family: 'Space Grotesk', 'Inter', sans-serif;
+    font-family: 'Sora', 'Plus Jakarta Sans', sans-serif;
     letter-spacing: -0.02em;
   }
 

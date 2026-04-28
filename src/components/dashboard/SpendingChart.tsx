@@ -1,18 +1,16 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { useTranslation } from 'react-i18next';
-
-const data = Array.from({ length: 12 }, (_, i) => {
-  const inflow = 1500 + Math.round(Math.sin(i / 2) * 600 + Math.random() * 400 + i * 80);
-  const outflow = 800 + Math.round(Math.cos(i / 2) * 400 + Math.random() * 350 + i * 50);
-  return {
-    name: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][i],
-    inflow, outflow,
-  };
-});
+import { useTransactionsQuery, useWalletsQuery } from '@/store/api/walletApi';
+import { buildMonthlyFlowFromTransactions } from '@/lib/dashboardStats';
 
 export const SpendingChart = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const { data: transactions } = useTransactionsQuery();
+  const { data: wallets } = useWalletsQuery();
+  const currency = wallets?.[0]?.currency;
+  const data = buildMonthlyFlowFromTransactions(transactions, { currency, locale: i18n.language });
+
   return (
     <Card className="shadow-elegant border-border/60">
       <CardHeader className="flex flex-row items-center justify-between">

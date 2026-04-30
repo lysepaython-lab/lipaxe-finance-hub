@@ -1,15 +1,12 @@
 import { useEffect, useRef } from 'react';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { notificationsApi } from '@/store/api/notificationsApi';
-import { toast } from 'sonner';
-import { API_URL } from '@/store/api/baseApi';
-import { showLocalNotification, isPushSupported, ensureServiceWorker } from '@/lib/pushNotifications';
+import { isPushSupported, ensureServiceWorker } from '@/lib/pushNotifications';
 
 /**
- * Subscribes to a realtime channel for high-priority notifications.
- * - WebSocket first (wss://host/ws/notifications/?token=...)
- * - SSE fallback (host/api/v1/auth/notifications/stream/)
- * - Polling already handled by RTK Query as a baseline.
+ * Backend currently exposes only the REST notifications API.
+ * We therefore keep polling via RTK Query and avoid opening missing
+ * websocket/SSE endpoints that generate 404 noise in production.
  *
  * On any incoming push, we invalidate the Notifications tag so the inbox
  * refetches immediately, and we surface a toast for high-priority items.
@@ -17,89 +14,18 @@ import { showLocalNotification, isPushSupported, ensureServiceWorker } from '@/l
 export const useNotificationsStream = () => {
   const dispatch = useAppDispatch();
   const isAuthed = useAppSelector((s) => !!s.auth.accessToken);
-  const token = useAppSelector((s) => s.auth.accessToken);
-  const wsRef = useRef<WebSocket | null>(null);
-  const esRef = useRef<EventSource | null>(null);
-  const retryRef = useRef(0);
+  const lastUnreadRef = useRef(0);
 
   useEffect(() => {
     if (!isAuthed) return;
 
-    let stopped = false;
-
     const refetch = () => dispatch(notificationsApi.util.invalidateTags(['Notifications']));
 
-    const handlePush = (raw: string) => {
-      try {
-        const n = JSON.parse(raw);
-        refetch();
-        const title = n?.title || 'Nouvelle notification';
-        const body = n?.body || n?.message || '';
-        if (n?.priority === 'high') {
-          toast(title, { description: body, duration: 8000 });
-          showLocalNotification(title, body, { tag: n?.id || 'lipaxe-high', requireInteraction: true });
-        } else if (n?.priority !== 'low') {
-          showLocalNotification(title, body, { tag: n?.id });
-        }
-      } catch {
-        refetch();
-      }
-    };
-
     if (isPushSupported()) ensureServiceWorker().catch(() => {});
-
-    const connectSSE = () => {
-      if (!API_URL || stopped) return;
-      try {
-        const url = `${API_URL}/auth/notifications/stream/`;
-        const es = new EventSource(url, { withCredentials: true });
-        esRef.current = es;
-        es.onmessage = (ev) => handlePush(ev.data);
-        es.onerror = () => {
-          es.close();
-          esRef.current = null;
-          if (!stopped) setTimeout(connectSSE, Math.min(30000, 2000 * ++retryRef.current));
-        };
-      } catch {
-        /* SSE unavailable - polling fallback already in place */
-      }
-    };
-
-    const connectWS = () => {
-      if (!API_URL || stopped) return connectSSE();
-      try {
-        const wsUrl =
-          API_URL.replace(/^http/, 'ws').replace(/\/$/, '') +
-          `/ws/notifications/${token ? `?token=${encodeURIComponent(token)}` : ''}`;
-        const ws = new WebSocket(wsUrl);
-        wsRef.current = ws;
-        ws.onmessage = (ev) => handlePush(typeof ev.data === 'string' ? ev.data : '');
-        ws.onopen = () => {
-          retryRef.current = 0;
-        };
-        ws.onerror = () => {
-          /* fall through to onclose */
-        };
-        ws.onclose = () => {
-          wsRef.current = null;
-          if (stopped) return;
-          retryRef.current += 1;
-          if (retryRef.current >= 3) connectSSE();
-          else setTimeout(connectWS, Math.min(15000, 1500 * retryRef.current));
-        };
-      } catch {
-        connectSSE();
-      }
-    };
-
-    connectWS();
+    refetch();
 
     return () => {
-      stopped = true;
-      wsRef.current?.close();
-      esRef.current?.close();
-      wsRef.current = null;
-      esRef.current = null;
+      lastUnreadRef.current = 0;
     };
-  }, [isAuthed, token, dispatch]);
+  }, [isAuthed, dispatch]);
 };

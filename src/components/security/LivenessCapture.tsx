@@ -1,14 +1,23 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Camera, CheckCircle2, XCircle, Loader2, Eye, ArrowLeftRight, Smile, RefreshCw } from 'lucide-react';
+import { Camera, CheckCircle2, XCircle, Loader2, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Progress } from '@/components/ui/progress';
-import { useLivenessMutation, type LivenessResult } from '@/store/api/kycApi';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { API_URL } from '@/store/api/baseApi';
 
-type Step = 'idle' | 'look' | 'blink' | 'turn' | 'smile' | 'capture' | 'processing' | 'success' | 'failed';
+type Step = 'idle' | 'connecting' | 'ready' | 'processing' | 'success' | 'failed';
+
+export interface LivenessResult {
+  is_live: boolean;
+  blink_valid: boolean;
+  blinks_detected: boolean;
+  head_movement: boolean;
+  smile_detected: boolean;
+  error: string | null;
+}
 
 interface LivenessCaptureProps {
   open: boolean;
@@ -16,147 +25,209 @@ interface LivenessCaptureProps {
   onSuccess: (result: LivenessResult) => void;
 }
 
-const STEPS: { key: Step; label: string; instruction: string; icon: React.ReactNode; durationMs: number }[] = [
-  { key: 'look', label: 'Centrez votre visage', instruction: 'Regardez droit la caméra', icon: <Camera className="h-5 w-5" />, durationMs: 2500 },
-  { key: 'blink', label: 'Clignez 2 fois', instruction: 'Clignez des yeux deux fois', icon: <Eye className="h-5 w-5" />, durationMs: 3500 },
-  { key: 'turn', label: 'Tournez la tête', instruction: 'Tournez doucement à gauche puis à droite', icon: <ArrowLeftRight className="h-5 w-5" />, durationMs: 4000 },
-  { key: 'smile', label: 'Souriez', instruction: 'Faites un grand sourire', icon: <Smile className="h-5 w-5" />, durationMs: 2500 },
-];
-
 const MAX_ATTEMPTS = 3;
+
+const buildWsUrl = () => {
+  const base = API_URL.replace(/^http/, 'ws').replace(/\/+$/, '');
+  return `${base}/ws/liveness/`;
+};
+
+const mapInstruction = (instruction?: string) => {
+  const raw = (instruction || '').toLowerCase();
+  if (raw.includes('blink')) return 'Clignez des yeux';
+  if (raw.includes('smile')) return 'Souriez';
+  if (raw.includes('mouth')) return 'Ouvrez la bouche';
+  if (raw.includes('left')) return 'Tournez la tete a gauche';
+  if (raw.includes('right')) return 'Tournez la tete a droite';
+  return instruction || 'Suivez l’instruction affichée';
+};
 
 export const LivenessCapture = ({ open, onOpenChange, onSuccess }: LivenessCaptureProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const framesRef = useRef<Blob[]>([]);
-  const captureIntervalRef = useRef<number | null>(null);
+  const wsRef = useRef<WebSocket | null>(null);
+  const sendIntervalRef = useRef<number | null>(null);
 
   const [step, setStep] = useState<Step>('idle');
-  const [stepIdx, setStepIdx] = useState(0);
-  const [progress, setProgress] = useState(0);
-  const [errors, setErrors] = useState<string[]>([]);
   const [attempts, setAttempts] = useState(0);
-  const [submit, { isLoading }] = useLivenessMutation();
+  const [errors, setErrors] = useState<string[]>([]);
+  const [challengeText, setChallengeText] = useState('Cadrez votre visage au centre');
+  const [progress, setProgress] = useState(0);
+  const [connected, setConnected] = useState(false);
+  const [cameraReady, setCameraReady] = useState(false);
 
-  const stopCamera = useCallback(() => {
-    streamRef.current?.getTracks().forEach((t) => t.stop());
-    streamRef.current = null;
-    if (captureIntervalRef.current) {
-      clearInterval(captureIntervalRef.current);
-      captureIntervalRef.current = null;
+  const stopFrameSending = useCallback(() => {
+    if (sendIntervalRef.current) {
+      window.clearInterval(sendIntervalRef.current);
+      sendIntervalRef.current = null;
     }
   }, []);
 
-  // Cleanup on close
+  const stopCamera = useCallback(() => {
+    streamRef.current?.getTracks().forEach((track) => track.stop());
+    streamRef.current = null;
+    setCameraReady(false);
+  }, []);
+
+  const closeSocket = useCallback(() => {
+    if (wsRef.current) {
+      wsRef.current.close();
+      wsRef.current = null;
+    }
+    setConnected(false);
+  }, []);
+
+  const resetState = useCallback(() => {
+    setStep('idle');
+    setErrors([]);
+    setChallengeText('Cadrez votre visage au centre');
+    setProgress(0);
+    setConnected(false);
+    setCameraReady(false);
+  }, []);
+
   useEffect(() => {
     if (!open) {
+      stopFrameSending();
       stopCamera();
-      setStep('idle');
-      setStepIdx(0);
-      setProgress(0);
-      setErrors([]);
-      framesRef.current = [];
+      closeSocket();
+      resetState();
     }
-  }, [open, stopCamera]);
+  }, [open, stopFrameSending, stopCamera, closeSocket, resetState]);
 
-  const startCamera = async () => {
+  const captureFrame = useCallback(() => {
+    const video = videoRef.current;
+    if (!video || video.readyState < 2 || !video.videoWidth || !video.videoHeight) return null;
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    if (!ctx) return null;
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL('image/jpeg', 0.75);
+  }, []);
+
+  const startFrameSending = useCallback(() => {
+    stopFrameSending();
+    sendIntervalRef.current = window.setInterval(() => {
+      const ws = wsRef.current;
+      if (!ws || ws.readyState !== WebSocket.OPEN) return;
+      const frame = captureFrame();
+      if (!frame) return;
+      ws.send(JSON.stringify({ type: 'liveness_frame', frame }));
+    }, 120);
+  }, [captureFrame, stopFrameSending]);
+
+  const handleServerMessage = useCallback((data: any) => {
+    if (data.type === 'liveness_started') {
+      setStep('ready');
+      setProgress(10);
+      setChallengeText(mapInstruction(data.current_challenge?.instruction));
+      startFrameSending();
+      return;
+    }
+
+    if (data.type === 'challenge_feedback') {
+      setStep('ready');
+      setChallengeText(mapInstruction(data.message));
+      return;
+    }
+
+    if (data.type === 'challenge_completed') {
+      const completed = Number(data.progress?.completed_challenges || 0);
+      const total = Number(data.progress?.total_challenges || 1);
+      setProgress(Math.max(15, Math.min(95, Math.round((completed / total) * 100))));
+      setChallengeText(mapInstruction(data.next_challenge?.instruction || data.message));
+      return;
+    }
+
+    if (data.type === 'liveness_completed') {
+      setProgress(100);
+      setStep('success');
+      stopFrameSending();
+      stopCamera();
+      closeSocket();
+      const result: LivenessResult = {
+        is_live: true,
+        blink_valid: true,
+        blinks_detected: true,
+        head_movement: true,
+        smile_detected: true,
+        error: null,
+      };
+      setTimeout(() => {
+        onSuccess(result);
+        onOpenChange(false);
+      }, 900);
+      return;
+    }
+
+    if (data.type === 'challenge_failed' || data.type === 'liveness_failed' || data.type === 'liveness_error' || data.status === 'error') {
+      setErrors([data.message || 'Verification echouee']);
+      setStep('failed');
+      stopFrameSending();
+      stopCamera();
+      closeSocket();
+      setAttempts((value) => value + 1);
+    }
+  }, [closeSocket, onOpenChange, onSuccess, startFrameSending, stopCamera, stopFrameSending]);
+
+  const startCamera = useCallback(async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user', width: 640, height: 480 },
+        video: {
+          facingMode: 'user',
+          width: { ideal: 640 },
+          height: { ideal: 480 },
+        },
         audio: false,
       });
       streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
+        videoRef.current.muted = true;
+        videoRef.current.playsInline = true;
         await videoRef.current.play();
       }
-      framesRef.current = [];
-      // Capture a frame every 400ms during the guided flow
-      captureIntervalRef.current = window.setInterval(() => {
-        captureFrame();
-      }, 400);
-      runSequence();
-    } catch (err) {
-      const msg = (err as Error)?.message || 'Camera access denied';
-      toast.error(`Caméra: ${msg}`);
-      setStep('failed');
-      setErrors(['Accès caméra refusé. Autorisez l’accès dans le navigateur.']);
-    }
-  };
+      setCameraReady(true);
+      setStep('connecting');
+      setErrors([]);
 
-  const captureFrame = () => {
-    const v = videoRef.current;
-    const c = canvasRef.current;
-    if (!v || !c || v.readyState < 2) return;
-    c.width = v.videoWidth;
-    c.height = v.videoHeight;
-    const ctx = c.getContext('2d');
-    if (!ctx) return;
-    ctx.drawImage(v, 0, 0, c.width, c.height);
-    c.toBlob((blob) => { if (blob) framesRef.current.push(blob); }, 'image/jpeg', 0.7);
-  };
+      const ws = new WebSocket(buildWsUrl());
+      wsRef.current = ws;
 
-  const runSequence = async () => {
-    for (let i = 0; i < STEPS.length; i++) {
-      setStepIdx(i);
-      setStep(STEPS[i].key);
-      const start = Date.now();
-      const dur = STEPS[i].durationMs;
-      await new Promise<void>((resolve) => {
-        const id = setInterval(() => {
-          const p = Math.min(100, ((Date.now() - start) / dur) * 100);
-          setProgress(p);
-          if (p >= 100) { clearInterval(id); resolve(); }
-        }, 50);
-      });
-    }
-    setStep('capture');
-    await new Promise((r) => setTimeout(r, 300));
-    if (captureIntervalRef.current) {
-      clearInterval(captureIntervalRef.current);
-      captureIntervalRef.current = null;
-    }
-    await sendForVerification();
-  };
+      ws.onopen = () => {
+        setConnected(true);
+        ws.send(JSON.stringify({ type: 'start_liveness' }));
+      };
 
-  const sendForVerification = async () => {
-    setStep('processing');
-    setErrors([]);
-    const fd = new FormData();
-    // Take last 8 representative frames to keep payload reasonable
-    const frames = framesRef.current.slice(-8);
-    if (frames.length === 0) {
-      setErrors(['Aucune image capturée. Réessayez.']);
-      setStep('failed');
-      return;
-    }
-    frames.forEach((blob, i) => fd.append('frames', blob, `frame_${i}.jpg`));
-    try {
-      const res = await submit(fd).unwrap();
-      const errs: string[] = [];
-      if (!res.is_live) errs.push('Présence non détectée');
-      if (res.blink_valid === false) errs.push('Clignements insuffisants');
-      if (!res.head_movement) errs.push('Mouvement de tête insuffisant');
-      if (!res.smile_detected) errs.push('Sourire non détecté');
-      if (errs.length === 0 && res.is_live) {
-        setStep('success');
-        stopCamera();
-        setTimeout(() => { onSuccess(res); onOpenChange(false); }, 900);
-      } else {
-        setErrors(errs.length ? errs : [res.error || 'Vérification échouée']);
+      ws.onmessage = (event) => {
+        try {
+          handleServerMessage(JSON.parse(event.data));
+        } catch {
+          setErrors(['Reponse serveur invalide']);
+          setStep('failed');
+        }
+      };
+
+      ws.onerror = () => {
+        setErrors(['Connexion liveness indisponible']);
         setStep('failed');
+        stopFrameSending();
         stopCamera();
-        setAttempts((a) => a + 1);
-      }
-    } catch (e) {
-      const detail = (e as { data?: { detail?: string } })?.data?.detail || 'Erreur de vérification';
-      setErrors([detail]);
+        closeSocket();
+      };
+
+      ws.onclose = () => {
+        setConnected(false);
+      };
+    } catch (error) {
+      const message = (error as Error)?.message || 'Camera access denied';
+      toast.error(`Camera: ${message}`);
+      setErrors(['Acces camera refuse. Autorisez la camera dans le navigateur.']);
       setStep('failed');
-      stopCamera();
-      setAttempts((a) => a + 1);
     }
-  };
+  }, [closeSocket, handleServerMessage, stopCamera, stopFrameSending]);
 
   const retry = () => {
     if (attempts >= MAX_ATTEMPTS) {
@@ -164,138 +235,117 @@ export const LivenessCapture = ({ open, onOpenChange, onSuccess }: LivenessCaptu
       onOpenChange(false);
       return;
     }
-    setStep('idle');
-    setStepIdx(0);
-    setProgress(0);
-    setErrors([]);
-    framesRef.current = [];
+    stopFrameSending();
+    stopCamera();
+    closeSocket();
+    resetState();
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl p-0 overflow-hidden">
+      <DialogContent className="max-w-2xl overflow-hidden p-0">
         <DialogHeader className="p-6 pb-2">
-          <DialogTitle className="font-display text-xl">Vérification de présence</DialogTitle>
+          <DialogTitle className="font-display text-xl">Verification de presence</DialogTitle>
           <DialogDescription>
-            Pour votre sécurité, nous vérifions que c'est bien vous via la caméra.
+            Le controle se fait en direct avec le serveur pour verifier les mouvements attendus.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="px-6 pb-6 space-y-4">
-          {/* Steps stepper */}
-          <div className="flex items-center justify-between gap-2">
-            {STEPS.map((s, i) => (
-              <div key={s.key} className="flex-1 flex items-center gap-1.5">
-                <div className={cn(
-                  'h-7 w-7 rounded-full flex items-center justify-center text-xs font-bold border-2 shrink-0',
-                  i < stepIdx || step === 'success' ? 'bg-success text-success-foreground border-success' :
-                  i === stepIdx && step !== 'idle' ? 'border-primary text-primary bg-primary/10' :
-                  'border-input text-muted-foreground',
-                )}>
-                  {i < stepIdx || step === 'success' ? <CheckCircle2 className="h-4 w-4" /> : i + 1}
-                </div>
-                {i < STEPS.length - 1 && (
-                  <div className={cn('h-0.5 flex-1 rounded-full', i < stepIdx ? 'bg-success' : 'bg-input')} />
-                )}
-              </div>
-            ))}
-          </div>
-
-          {/* Camera preview */}
-          <div className="relative aspect-video rounded-xl overflow-hidden bg-muted border-2 border-border">
+        <div className="space-y-4 px-6 pb-6">
+          <div className="relative aspect-video overflow-hidden rounded-xl border-2 border-border bg-muted">
             <video
               ref={videoRef}
               playsInline
               muted
-              className="w-full h-full object-cover scale-x-[-1]"
+              className="h-full w-full scale-x-[-1] object-cover"
               aria-label="Camera preview"
             />
-            <canvas ref={canvasRef} className="hidden" />
 
-            {/* Overlay states */}
             <AnimatePresence>
               {step === 'idle' && (
                 <motion.div
-                  initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
                   className="absolute inset-0 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm"
                 >
-                  <Camera className="h-12 w-12 text-primary mb-3" />
-                  <p className="font-display font-semibold">Prêt à commencer ?</p>
-                  <p className="text-sm text-muted-foreground mb-4 text-center max-w-xs px-4">
-                    Placez votre visage dans le cadre et suivez les instructions.
+                  <Camera className="mb-3 h-12 w-12 text-primary" />
+                  <p className="font-display font-semibold">Pret a commencer ?</p>
+                  <p className="mb-4 max-w-xs px-4 text-center text-sm text-muted-foreground">
+                    Placez votre visage dans le cadre. Les challenges seront envoyes par le serveur en temps reel.
                   </p>
                   <Button onClick={startCamera} className="bg-gradient-brand shadow-brand">
-                    <Camera className="mr-2 h-4 w-4" /> Démarrer
+                    <Camera className="mr-2 h-4 w-4" /> Demarrer
                   </Button>
                 </motion.div>
               )}
 
-              {(step === 'processing' || isLoading) && (
+              {(step === 'connecting' || step === 'processing') && (
                 <motion.div
-                  initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-                  className="absolute inset-0 flex flex-col items-center justify-center bg-background/85 backdrop-blur-sm"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="absolute inset-0 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm"
                 >
-                  <Loader2 className="h-10 w-10 text-primary animate-spin mb-3" />
-                  <p className="font-medium">Analyse en cours…</p>
+                  <Loader2 className="mb-3 h-10 w-10 animate-spin text-primary" />
+                  <p className="font-medium">{connected ? 'Preparation des challenges...' : 'Connexion au serveur...'}</p>
                 </motion.div>
               )}
 
               {step === 'success' && (
                 <motion.div
-                  initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
                   className="absolute inset-0 flex flex-col items-center justify-center bg-success/15 backdrop-blur-sm"
                 >
-                  <CheckCircle2 className="h-16 w-16 text-success mb-2" />
-                  <p className="font-display text-lg font-bold text-success">Vérifié</p>
+                  <CheckCircle2 className="mb-2 h-16 w-16 text-success" />
+                  <p className="font-display text-lg font-bold text-success">Presence verifiee</p>
                 </motion.div>
               )}
 
               {step === 'failed' && (
                 <motion.div
-                  initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
-                  className="absolute inset-0 flex flex-col items-center justify-center bg-destructive/10 backdrop-blur-sm p-4"
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className="absolute inset-0 flex flex-col items-center justify-center bg-destructive/10 p-4 backdrop-blur-sm"
                 >
-                  <XCircle className="h-12 w-12 text-destructive mb-2" />
-                  <p className="font-semibold text-destructive mb-2">Vérification échouée</p>
-                  <ul className="text-sm text-center space-y-0.5 mb-3">
-                    {errors.map((e, i) => <li key={i} className="text-muted-foreground">• {e}</li>)}
+                  <XCircle className="mb-2 h-12 w-12 text-destructive" />
+                  <p className="mb-2 font-semibold text-destructive">Verification echouee</p>
+                  <ul className="mb-3 space-y-0.5 text-center text-sm">
+                    {errors.map((error, index) => (
+                      <li key={index} className="text-muted-foreground">- {error}</li>
+                    ))}
                   </ul>
                   {attempts < MAX_ATTEMPTS ? (
                     <Button onClick={retry} variant="outline" size="sm">
-                      <RefreshCw className="mr-2 h-3.5 w-3.5" /> Réessayer ({MAX_ATTEMPTS - attempts} restantes)
+                      <RefreshCw className="mr-2 h-3.5 w-3.5" /> Reessayer ({MAX_ATTEMPTS - attempts} restantes)
                     </Button>
                   ) : (
-                    <p className="text-xs text-muted-foreground">Tentatives épuisées. Réessayez plus tard.</p>
+                    <p className="text-xs text-muted-foreground">Tentatives epuisees. Reessayez plus tard.</p>
                   )}
                 </motion.div>
               )}
             </AnimatePresence>
 
-            {/* Active instruction overlay */}
-            {(['look', 'blink', 'turn', 'smile', 'capture'] as Step[]).includes(step) && (
+            {(step === 'ready' || step === 'processing') && (
               <motion.div
-                key={step}
-                initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-                className="absolute top-3 left-3 right-3 rounded-xl bg-background/85 backdrop-blur px-4 py-2.5 flex items-center gap-3 border border-border shadow-lg"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="absolute left-3 right-3 top-3 rounded-xl border border-border bg-background/85 px-4 py-2.5 shadow-lg backdrop-blur"
               >
-                <div className="h-9 w-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
-                  {STEPS[stepIdx]?.icon}
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm font-semibold">{STEPS[stepIdx]?.label}</p>
-                  <p className="text-xs text-muted-foreground">{STEPS[stepIdx]?.instruction}</p>
-                </div>
+                <p className="text-sm font-semibold">{challengeText}</p>
+                <p className="text-xs text-muted-foreground">
+                  {cameraReady ? 'Suivez exactement le challenge demande par le serveur.' : 'Initialisation de la camera...'}
+                </p>
               </motion.div>
             )}
           </div>
 
-          {/* Step progress */}
-          {(['look', 'blink', 'turn', 'smile'] as Step[]).includes(step) && (
+          {(step === 'ready' || step === 'processing' || step === 'success') && (
             <Progress value={progress} className="h-1.5" />
           )}
 
-          <p className="text-[11px] text-center text-muted-foreground">
-            🔒 Aucune image n'est stockée localement. Seul le résultat de la vérification est conservé.
+          <p className="text-center text-[11px] text-muted-foreground">
+            Verification temps reel synchronisee avec le backend. Aucun faux endpoint REST n'est utilise.
           </p>
         </div>
       </DialogContent>

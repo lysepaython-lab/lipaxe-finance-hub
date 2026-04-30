@@ -17,7 +17,7 @@ import {
 } from '@/store/api/kycApi';
 import { useCountriesQuery } from '@/store/api/platformApi';
 import { updateUser } from '@/store/slices/authSlice';
-import { Check, ChevronRight, ChevronLeft, ShieldCheck, Camera, RotateCcw, Loader2, ScanLine, Sparkles, CheckCircle2 } from 'lucide-react';
+import { Check, ChevronRight, ChevronLeft, ShieldCheck, Camera, RotateCcw, Loader2, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { CountryPicker } from '@/components/security/CountryPicker';
@@ -51,29 +51,25 @@ const Kyc = () => {
   const [submitDocuments, { isLoading: l3 }] = useSubmitDocumentsMutation();
   const isLoading = l1 || l2 || l3;
 
-  const steps = [t('kyc.step1'), t('kyc.step2'), t('kyc.step3'), t('kyc.step4'), t('kyc.step5')];
+  const steps = ['Informations', 'Piece d’identite', 'Selfie'];
   const isStepValid = (step: number) => {
     if (step === 0) {
       return Boolean(
         kyc.personal.dob?.trim() &&
         kyc.personal.nationality?.trim() &&
-        kyc.personal.phone?.trim(),
-      );
-    }
-    if (step === 1) {
-      return Boolean(
+        kyc.personal.phone?.trim() &&
         kyc.address.street?.trim() &&
         kyc.address.city?.trim() &&
         kyc.address.postalCode?.trim() &&
         kyc.address.country?.trim(),
       );
     }
-    if (step === 2) {
+    if (step === 1) {
       const hasFront = Boolean(kyc.document.frontName?.trim());
       const hasBack = kyc.document.type === 'passport' || Boolean(kyc.document.backName?.trim());
       return Boolean(kyc.document.type && hasFront && hasBack);
     }
-    if (step === 3) return Boolean(kyc.selfie.livenessOk);
+    if (step === 2) return Boolean(kyc.selfie.livenessOk);
     return true;
   };
   const next = () => {
@@ -86,7 +82,7 @@ const Kyc = () => {
   const back = () => dispatch(setStep(Math.max(kyc.step - 1, 0)));
 
   const onSubmit = async () => {
-    if (![0, 1, 2, 3].every((step) => isStepValid(step))) {
+    if (![0, 1, 2].every((step) => isStepValid(step))) {
       toast.error('Completer toutes les etapes KYC avant de soumettre.');
       return;
     }
@@ -177,11 +173,9 @@ const Kyc = () => {
 
       <Card className="shadow-elegant border-border/60">
         <CardContent className="p-6 space-y-5">
-          {kyc.step === 0 && <PersonalStep />}
-          {kyc.step === 1 && <AddressStep />}
-          {kyc.step === 2 && <DocumentsStep />}
-          {kyc.step === 3 && <SelfieLivenessStep />}
-          {kyc.step === 4 && <ReviewStep />}
+          {kyc.step === 0 && <IdentityStep />}
+          {kyc.step === 1 && <DocumentsStep />}
+          {kyc.step === 2 && <SelfieLivenessStep />}
 
           <div className="flex justify-between pt-4">
             <Button variant="outline" onClick={back} disabled={kyc.step === 0}>
@@ -208,47 +202,47 @@ const Kyc = () => {
 
 /* ----------------------------- Step components ---------------------------- */
 
-const PersonalStep = () => {
+const IdentityStep = () => {
   const { t } = useTranslation();
   const dispatch = useAppDispatch();
   const personal = useAppSelector((s) => s.kyc.personal);
-  return (
-    <>
-      <div className="space-y-2">
-        <Label>{t('kyc.dob')}</Label>
-        <Input
-          type="date"
-          value={personal.dob}
-          max={new Date().toISOString().split('T')[0]}
-          onChange={(e) => dispatch(updatePersonal({ dob: e.target.value }))}
-          className="h-11 rounded-xl"
-        />
-      </div>
-      <CountryPicker
-        label={t('kyc.nationality')}
-        value={personal.nationality}
-        onChange={(code) => dispatch(updatePersonal({ nationality: code }))}
-      />
-      <div className="space-y-2">
-        <Label>{t('kyc.phone')}</Label>
-        <Input
-          value={personal.phone}
-          onChange={(e) => dispatch(updatePersonal({ phone: e.target.value }))}
-          placeholder="+33 6 12 34 56 78"
-          className="h-11 rounded-xl"
-          maxLength={20}
-        />
-      </div>
-    </>
-  );
-};
-
-const AddressStep = () => {
-  const { t } = useTranslation();
-  const dispatch = useAppDispatch();
   const address = useAppSelector((s) => s.kyc.address);
   return (
-    <>
+    <div className="space-y-5">
+      <div className="grid gap-3 md:grid-cols-2">
+        <div className="space-y-2">
+          <Label>{t('kyc.dob')}</Label>
+          <Input
+            type="date"
+            value={personal.dob}
+            max={new Date().toISOString().split('T')[0]}
+            onChange={(e) => dispatch(updatePersonal({ dob: e.target.value }))}
+            className="h-11 rounded-xl"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>{t('kyc.phone')}</Label>
+          <Input
+            value={personal.phone}
+            onChange={(e) => dispatch(updatePersonal({ phone: e.target.value }))}
+            placeholder="+33 6 12 34 56 78"
+            className="h-11 rounded-xl"
+            maxLength={20}
+          />
+        </div>
+      </div>
+      <div className="grid gap-3 md:grid-cols-2">
+        <CountryPicker
+          label={t('kyc.nationality')}
+          value={personal.nationality}
+          onChange={(code) => dispatch(updatePersonal({ nationality: code }))}
+        />
+        <CountryPicker
+          label={t('kyc.country')}
+          value={address.country}
+          onChange={(code) => dispatch(updateAddress({ country: code }))}
+        />
+      </div>
       <div className="space-y-2">
         <Label>{t('kyc.street')}</Label>
         <Input
@@ -258,7 +252,7 @@ const AddressStep = () => {
           maxLength={120}
         />
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid gap-3 md:grid-cols-2">
         <div className="space-y-2">
           <Label>{t('kyc.city')}</Label>
           <Input
@@ -278,12 +272,7 @@ const AddressStep = () => {
           />
         </div>
       </div>
-      <CountryPicker
-        label={t('kyc.country')}
-        value={address.country}
-        onChange={(code) => dispatch(updateAddress({ country: code }))}
-      />
-    </>
+    </div>
   );
 };
 
@@ -444,7 +433,7 @@ const DocumentCapture = ({
     const previewH = 480;
     c.width = previewW;
     c.height = previewH;
-    const ctx = c.getContext('2d');
+    const ctx = c.getContext('2d', { willReadFrequently: true });
     if (!ctx) return;
     drawVideoCover(ctx, v, previewW, previewH);
 
@@ -455,7 +444,7 @@ const DocumentCapture = ({
     const output = document.createElement('canvas');
     output.width = frameW;
     output.height = frameH;
-    const outCtx = output.getContext('2d');
+    const outCtx = output.getContext('2d', { willReadFrequently: true });
     if (!outCtx) return;
     outCtx.drawImage(c, frameX, frameY, frameW, frameH, 0, 0, frameW, frameH);
     const dataUrl = output.toDataURL('image/jpeg', 0.88);
@@ -522,7 +511,7 @@ const DocumentCapture = ({
     const height = 240;
     canvas.width = width;
     canvas.height = height;
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
     if (!ctx) return;
     drawVideoCover(ctx, video, width, height);
     const image = ctx.getImageData(0, 0, width, height);
@@ -666,19 +655,21 @@ const DocumentCapture = ({
     height: `${(analysis.bbox.height / 240) * 100}%`,
   } : null;
 
-  const qualityPills = [
-    { label: 'Lumiere', ok: analysis.brightness >= 55 },
-    { label: 'Nettete', ok: analysis.sharpness >= 20 },
-    { label: 'Cadrage', ok: analysis.withinFrame && analysis.centered },
-    { label: documentType === 'passport' ? 'MRZ' : 'Format', ok: documentType === 'passport' ? analysis.mrzConfidence >= 0.2 : analysis.hasDocument },
-  ];
+  const qualitySummary = [
+    analysis.brightness >= 55 ? 'Lumiere OK' : 'Lumiere faible',
+    analysis.sharpness >= 20 ? 'Image nette' : 'Image floue',
+    analysis.withinFrame && analysis.centered ? 'Bien cadre' : 'Recadrez le document',
+  ].join(' • ');
 
   return (
-    <div className="rounded-xl border-2 border-dashed border-border p-3 space-y-2 bg-muted/30">
-      <p className="text-sm font-medium">{label}</p>
+    <div className="space-y-3 rounded-2xl border border-border/70 bg-card/50 p-4">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm font-semibold">{label}</p>
+        {value && <span className="text-xs font-medium text-success">Capturee</span>}
+      </div>
       {preview ? (
         <div className="space-y-2">
-          <img src={preview} alt={label} className="rounded-lg w-full aspect-[4/3] object-cover" />
+          <img src={preview} alt={label} className="w-full rounded-xl aspect-[4/3] object-cover" />
           <div className="flex gap-2">
             <Button type="button" variant="outline" size="sm" onClick={reset} className="flex-1">
               <RotateCcw className="h-3.5 w-3.5 mr-1.5" /> Reprendre
@@ -686,8 +677,8 @@ const DocumentCapture = ({
           </div>
         </div>
       ) : active ? (
-        <div className="space-y-2">
-          <div className="relative rounded-[1.25rem] w-full aspect-[4/3] overflow-hidden bg-black shadow-inner ring-1 ring-white/10">
+        <div className="space-y-3">
+          <div className="relative w-full overflow-hidden rounded-[1.25rem] bg-black shadow-inner aspect-[4/3] ring-1 ring-white/10">
             <video ref={videoRef} playsInline muted autoPlay className="absolute inset-0 h-full w-full object-contain bg-black" />
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/35" />
             <div
@@ -697,10 +688,10 @@ const DocumentCapture = ({
               )}
             />
             <div className="pointer-events-none absolute inset-[9%] rounded-[1.1rem]">
-              <div className="absolute left-3 top-3 flex items-center gap-1 rounded-full bg-black/55 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white">
-                <ScanLine className="h-3 w-3" /> Live check
+              <div className="absolute left-3 top-3 rounded-full bg-black/55 px-2.5 py-1 text-[10px] font-semibold text-white">
+                Document
               </div>
-              <div className="absolute right-3 top-3 rounded-full bg-emerald-500/15 px-2 py-1 text-[10px] font-semibold text-emerald-300">
+              <div className="absolute right-3 top-3 rounded-full bg-emerald-500/15 px-2.5 py-1 text-[10px] font-semibold text-emerald-300">
                 {videoAttached ? 'Camera active' : 'Initialisation...'}
               </div>
               {overlayBox && (
@@ -722,28 +713,12 @@ const DocumentCapture = ({
             </div>
           </div>
           <canvas ref={canvasRef} className="hidden" />
-          <div className="space-y-3 rounded-lg border border-border bg-background/85 p-3">
+          <div className="rounded-xl bg-background/70 px-3 py-3">
             <div className="flex items-center justify-between gap-3">
-              <p className={cn('text-xs font-medium', isReadyToCapture ? 'text-success' : 'text-foreground')}>{hint}</p>
-              <div className="flex items-center gap-1 rounded-full bg-primary/10 px-2 py-1 text-[10px] font-semibold text-primary">
-                <Sparkles className="h-3 w-3" /> {autoScore}/100
-              </div>
+              <p className={cn('text-sm font-medium', isReadyToCapture ? 'text-success' : 'text-foreground')}>{hint}</p>
+              <span className="text-xs font-semibold text-primary">{autoScore}/100</span>
             </div>
-            <Progress value={autoScore} className="h-2" />
-            <div className="grid grid-cols-2 gap-2">
-              {qualityPills.map((pill) => (
-                <div
-                  key={pill.label}
-                  className={cn(
-                    'rounded-md border px-2 py-1.5 text-[11px] font-medium',
-                    pill.ok ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-300' :
-                    'border-border bg-muted/50 text-muted-foreground',
-                  )}
-                >
-                  {pill.label}
-                </div>
-              ))}
-            </div>
+            <p className="mt-1 text-xs text-muted-foreground">{qualitySummary}</p>
           </div>
           <div className="flex gap-2">
             <Button
@@ -753,7 +728,7 @@ const DocumentCapture = ({
               className="w-full bg-gradient-brand shadow-brand"
             >
               <CheckCircle2 className="h-4 w-4 mr-2" />
-              Capturer maintenant
+              Capturer
             </Button>
             <Button type="button" variant="outline" size="sm" onClick={stop} className="w-full">Annuler</Button>
           </div>
@@ -768,7 +743,7 @@ const DocumentCapture = ({
           </Button>
         </div>
       ) : (
-        <Button type="button" variant="outline" onClick={start} className="w-full h-20 border-dashed">
+        <Button type="button" variant="outline" onClick={start} className="h-16 w-full border-dashed rounded-xl">
           <Camera className="h-5 w-5 mr-2" /> Ouvrir la camera
         </Button>
       )}

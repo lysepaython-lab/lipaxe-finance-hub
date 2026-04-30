@@ -370,6 +370,7 @@ const DocumentCapture = ({
   const [autoScore, setAutoScore] = useState(0);
   const [isReadyToCapture, setIsReadyToCapture] = useState(false);
   const [analysis, setAnalysis] = useState<AnalyzerResult>(defaultAnalysis);
+  const [videoAttached, setVideoAttached] = useState(false);
 
   const getDocumentVideoConstraints = async (): Promise<MediaStreamConstraints['video']> => {
     const devices = await navigator.mediaDevices.enumerateDevices().catch(() => []);
@@ -431,6 +432,7 @@ const DocumentCapture = ({
     frameLoopRef.current = null;
     frameCallbackRef.current = null;
     workerBusyRef.current = false;
+    setVideoAttached(false);
     setActive(false);
   };
 
@@ -579,18 +581,13 @@ const DocumentCapture = ({
       }
       if (!stream) throw new Error('camera_unavailable');
       streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.muted = true;
-        videoRef.current.playsInline = true;
-        await videoRef.current.play();
-      }
       okFramesRef.current = 0;
       lastMetricsRef.current = null;
       setAnalysis(defaultAnalysis);
       setAutoScore(0);
       setHint('Placez votre document dans le cadre');
       setIsReadyToCapture(false);
+      setVideoAttached(false);
       setActive(true);
     } catch {
       toast.error('Acces camera refuse');
@@ -603,6 +600,7 @@ const DocumentCapture = ({
     setAutoScore(0);
     setIsReadyToCapture(false);
     setAnalysis(defaultAnalysis);
+    setVideoAttached(false);
     onCapture('');
   };
 
@@ -618,6 +616,38 @@ const DocumentCapture = ({
       workerRef.current = null;
     };
   }, [documentType]);
+
+  useEffect(() => {
+    if (!active || !videoRef.current || !streamRef.current) return;
+
+    const video = videoRef.current;
+    video.srcObject = streamRef.current;
+    video.muted = true;
+    video.playsInline = true;
+    video.autoplay = true;
+
+    const attachAndPlay = async () => {
+      try {
+        await video.play();
+        setVideoAttached(true);
+      } catch {
+        setVideoAttached(false);
+      }
+    };
+
+    const handleLoadedData = () => {
+      void attachAndPlay();
+    };
+
+    video.addEventListener('loadeddata', handleLoadedData);
+    if (video.readyState >= 2) {
+      void attachAndPlay();
+    }
+
+    return () => {
+      video.removeEventListener('loadeddata', handleLoadedData);
+    };
+  }, [active]);
 
   useEffect(() => {
     if (!active) return;
@@ -671,7 +701,7 @@ const DocumentCapture = ({
                 <ScanLine className="h-3 w-3" /> Live check
               </div>
               <div className="absolute right-3 top-3 rounded-full bg-emerald-500/15 px-2 py-1 text-[10px] font-semibold text-emerald-300">
-                Camera active
+                {videoAttached ? 'Camera active' : 'Initialisation...'}
               </div>
               {overlayBox && (
                 <div
@@ -681,6 +711,13 @@ const DocumentCapture = ({
                   )}
                   style={overlayBox}
                 />
+              )}
+              {!videoAttached && (
+                <div className="absolute inset-0 flex items-center justify-center rounded-[1.1rem] bg-black/42">
+                  <div className="rounded-full border border-white/10 bg-black/65 px-3 py-2 text-xs font-medium text-white">
+                    Ouverture du flux camera...
+                  </div>
+                </div>
               )}
             </div>
           </div>

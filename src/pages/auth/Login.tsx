@@ -58,13 +58,16 @@ const Login = () => {
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
-        className="space-y-2 mb-8"
+        className="mb-8 space-y-3"
       >
-        <h1 className="font-display text-3xl font-bold">{t('auth.loginTitle')}</h1>
-        <p className="text-muted-foreground">{t('auth.loginSubtitle')}</p>
+        <div className="inline-flex items-center rounded-full border border-border/70 bg-background/70 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.26em] text-muted-foreground">
+          Web access
+        </div>
+        <h1 className="font-display text-4xl font-bold leading-tight">{t('auth.loginTitle')}</h1>
+        <p className="max-w-md text-sm leading-6 text-muted-foreground">{t('auth.loginSubtitle')}</p>
       </motion.div>
 
-      <form onSubmit={onSubmit} className="space-y-4">
+      <form onSubmit={onSubmit} className="space-y-5">
         <IconInput
           icon={<FaEnvelope className="h-4 w-4" />}
           label={t('auth.email')}
@@ -98,7 +101,7 @@ const Login = () => {
         />
 
         <div className="flex items-center justify-between">
-          <label className="flex items-center gap-2 text-sm cursor-pointer">
+          <label className="flex cursor-pointer items-center gap-2 text-sm">
             <Checkbox /> {t('auth.rememberMe')}
           </label>
           <Link to="/forgot-password" className="text-sm font-medium text-primary hover:underline">
@@ -107,11 +110,18 @@ const Login = () => {
         </div>
 
         <motion.div whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}>
-          <Button type="submit" className="w-full bg-gradient-brand shadow-brand h-11 rounded-xl" disabled={isLoading}>
+          <Button type="submit" className="h-12 w-full rounded-2xl bg-gradient-brand text-[15px] shadow-brand" disabled={isLoading}>
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} {t('auth.signIn')}
           </Button>
         </motion.div>
       </form>
+
+      <div className="mt-8 rounded-[1.5rem] border border-border/70 bg-secondary/40 p-4 text-sm text-muted-foreground">
+        <div className="font-medium text-foreground">Connexion securisee</div>
+        <p className="mt-1 leading-6">
+          Cette session utilise l’API Lipaxe en mode web avec verification serveur et persistance protegee des jetons.
+        </p>
+      </div>
 
       <p className="mt-6 text-center text-sm text-muted-foreground">
         {t('auth.noAccount')}{' '}

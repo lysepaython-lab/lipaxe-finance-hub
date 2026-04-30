@@ -658,7 +658,7 @@ const DocumentCapture = ({
       ) : active ? (
         <div className="space-y-2">
           <div className="relative rounded-[1.25rem] w-full aspect-[4/3] overflow-hidden bg-black shadow-inner ring-1 ring-white/10">
-            <video ref={videoRef} playsInline muted autoPlay className="absolute inset-0 h-full w-full object-cover bg-black" />
+            <video ref={videoRef} playsInline muted autoPlay className="absolute inset-0 h-full w-full object-contain bg-black" />
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/35" />
             <div
               className={cn(

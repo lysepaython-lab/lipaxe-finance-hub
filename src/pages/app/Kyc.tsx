@@ -51,7 +51,7 @@ const Kyc = () => {
   const [submitDocuments, { isLoading: l3 }] = useSubmitDocumentsMutation();
   const isLoading = l1 || l2 || l3;
 
-  const steps = ['Informations', 'Piece d’identite', 'Selfie'];
+  const steps = ['Informations', "Piece d'identite", 'Selfie'];
   const isStepValid = (step: number) => {
     if (step === 0) {
       return Boolean(

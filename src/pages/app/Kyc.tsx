@@ -17,7 +17,7 @@ import {
 } from '@/store/api/kycApi';
 import { useCountriesQuery } from '@/store/api/platformApi';
 import { updateUser } from '@/store/slices/authSlice';
-import { Check, ChevronRight, ChevronLeft, ShieldCheck, Camera, RotateCcw, Loader2, ScanLine, Sparkles } from 'lucide-react';
+import { Check, ChevronRight, ChevronLeft, ShieldCheck, Camera, RotateCcw, Loader2, ScanLine, Sparkles, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { CountryPicker } from '@/components/security/CountryPicker';
@@ -371,6 +371,23 @@ const DocumentCapture = ({
   const [isReadyToCapture, setIsReadyToCapture] = useState(false);
   const [analysis, setAnalysis] = useState<AnalyzerResult>(defaultAnalysis);
 
+  const getDocumentVideoConstraints = async (): Promise<MediaStreamConstraints['video']> => {
+    const devices = await navigator.mediaDevices.enumerateDevices().catch(() => []);
+    const hasMultipleVideoInputs = devices.filter((device) => device.kind === 'videoinput').length > 1;
+    if (hasMultipleVideoInputs) {
+      return {
+        facingMode: { ideal: 'environment' },
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+      };
+    }
+    return {
+      facingMode: { ideal: 'user' },
+      width: { ideal: 1280 },
+      height: { ideal: 720 },
+    };
+  };
+
   const drawVideoCover = (
     ctx: CanvasRenderingContext2D,
     video: HTMLVideoElement,
@@ -541,10 +558,31 @@ const DocumentCapture = ({
 
   const start = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      let stream: MediaStream | null = null;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: await getDocumentVideoConstraints(),
+          audio: false,
+        });
+      } catch {
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: {
+              width: { ideal: 1280 },
+              height: { ideal: 720 },
+            },
+            audio: false,
+          });
+        } catch {
+          stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        }
+      }
+      if (!stream) throw new Error('camera_unavailable');
       streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
+        videoRef.current.muted = true;
+        videoRef.current.playsInline = true;
         await videoRef.current.play();
       }
       okFramesRef.current = 0;
@@ -619,19 +657,21 @@ const DocumentCapture = ({
         </div>
       ) : active ? (
         <div className="space-y-2">
-          <div className="relative rounded-lg w-full aspect-[4/3] overflow-hidden bg-black shadow-inner">
-            <div className="pointer-events-none absolute inset-0 bg-black/50" />
+          <div className="relative rounded-[1.25rem] w-full aspect-[4/3] overflow-hidden bg-black shadow-inner ring-1 ring-white/10">
+            <video ref={videoRef} playsInline muted autoPlay className="absolute inset-0 h-full w-full object-cover bg-black" />
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/35" />
             <div
               className={cn(
-                'absolute inset-[10%] rounded-lg border-2 transition-colors overflow-hidden',
-                isReadyToCapture ? 'border-success' : 'border-white/85',
+                'absolute inset-[9%] rounded-[1.1rem] border-2 transition-colors',
+                isReadyToCapture ? 'border-emerald-400 shadow-[0_0_0_2px_rgba(52,211,153,0.22)]' : 'border-white/90',
               )}
-            >
-              <video ref={videoRef} playsInline muted className="h-full w-full object-cover bg-black" />
-            </div>
-            <div className="pointer-events-none absolute inset-[10%] rounded-lg">
+            />
+            <div className="pointer-events-none absolute inset-[9%] rounded-[1.1rem]">
               <div className="absolute left-3 top-3 flex items-center gap-1 rounded-full bg-black/55 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white">
                 <ScanLine className="h-3 w-3" /> Live check
+              </div>
+              <div className="absolute right-3 top-3 rounded-full bg-emerald-500/15 px-2 py-1 text-[10px] font-semibold text-emerald-300">
+                Camera active
               </div>
               {overlayBox && (
                 <div
@@ -669,6 +709,15 @@ const DocumentCapture = ({
             </div>
           </div>
           <div className="flex gap-2">
+            <Button
+              type="button"
+              onClick={snap}
+              disabled={!analysis.hasDocument}
+              className="w-full bg-gradient-brand shadow-brand"
+            >
+              <CheckCircle2 className="h-4 w-4 mr-2" />
+              Capturer maintenant
+            </Button>
             <Button type="button" variant="outline" size="sm" onClick={stop} className="w-full">Annuler</Button>
           </div>
         </div>

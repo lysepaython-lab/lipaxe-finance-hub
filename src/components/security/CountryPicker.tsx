@@ -1,8 +1,7 @@
 import { useMemo, useState } from 'react';
-import { Check, ChevronsUpDown, Search } from 'lucide-react';
+import { Check, ChevronsUpDown } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useCountriesQuery } from '@/store/api/platformApi';
 import { cn } from '@/lib/utils';
@@ -27,7 +26,6 @@ interface CountryPickerProps {
 export const CountryPicker = ({ value, onChange, placeholder, label, paymentMethods }: CountryPickerProps) => {
   const { data: countries, isLoading } = useCountriesQuery();
   const [open, setOpen] = useState(false);
-  const [q, setQ] = useState('');
 
   const allowed = useMemo(() => {
     if (!paymentMethods) return null;
@@ -42,10 +40,8 @@ export const CountryPicker = ({ value, onChange, placeholder, label, paymentMeth
     const base = (countries || []).map((c) => c.country);
     return base
       .filter((c) => !allowed || allowed.has(c.alpha_2.toUpperCase()))
-      .filter((c) =>
-        !q ? true : c.name.toLowerCase().includes(q.toLowerCase()) || c.alpha_2.toLowerCase().includes(q.toLowerCase()),
-      );
-  }, [countries, allowed, q]);
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [countries, allowed]);
 
   const selected = (countries || []).find((c) => c.country.alpha_2 === value)?.country;
 
@@ -70,18 +66,6 @@ export const CountryPicker = ({ value, onChange, placeholder, label, paymentMeth
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-          <div className="p-2 border-b">
-            <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder="Rechercher…"
-                className="pl-8 h-9"
-                autoFocus
-              />
-            </div>
-          </div>
           <ScrollArea className="max-h-72">
             <div className="p-1">
               {list.map((c) => (
@@ -91,7 +75,6 @@ export const CountryPicker = ({ value, onChange, placeholder, label, paymentMeth
                   onClick={() => {
                     onChange(c.alpha_2, c.name);
                     setOpen(false);
-                    setQ('');
                   }}
                   className={cn(
                     'w-full text-left flex items-center gap-2 rounded-md px-2.5 py-2 text-sm hover:bg-muted',

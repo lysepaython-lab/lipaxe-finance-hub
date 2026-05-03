@@ -13,7 +13,7 @@ import {
   setStep, updatePersonal, updateAddress, updateDocument, updateSelfie, resetKyc,
 } from '@/store/slices/kycSlice';
 import {
-  useSubmitPersonalMutation, useSubmitAddressMutation, useSubmitDocumentsMutation,
+  useSubmitPersonalMutation, useSubmitAddressMutation, useVerifyPhoneMutation, useRequestPhoneOtpMutation,
 } from '@/store/api/kycApi';
 import { useCountriesQuery } from '@/store/api/platformApi';
 import { updateUser } from '@/store/slices/authSlice';
@@ -39,6 +39,11 @@ type AnalyzerResult = {
   orientationHint: 'landscape' | 'portrait' | 'unknown';
 };
 
+type CapturedFile = {
+  name: string;
+  file: File | null;
+};
+
 const Kyc = () => {
   const { t } = useTranslation();
   const dispatch = useAppDispatch();
@@ -48,8 +53,14 @@ const Kyc = () => {
   const { data: countries } = useCountriesQuery();
   const [submitPersonal, { isLoading: l1 }] = useSubmitPersonalMutation();
   const [submitAddress, { isLoading: l2 }] = useSubmitAddressMutation();
-  const [submitDocuments, { isLoading: l3 }] = useSubmitDocumentsMutation();
-  const isLoading = l1 || l2 || l3;
+  const [verifyPhone, { isLoading: l3 }] = useVerifyPhoneMutation();
+  const [requestPhoneOtp, { isLoading: l4 }] = useRequestPhoneOtpMutation();
+  const isLoading = l1 || l2 || l3 || l4;
+  const [phoneOtp, setPhoneOtp] = useState('');
+  const [otpRequested, setOtpRequested] = useState(false);
+  const [frontCapture, setFrontCapture] = useState<CapturedFile>({ name: '', file: null });
+  const [backCapture, setBackCapture] = useState<CapturedFile>({ name: '', file: null });
+  const [selfieCapture, setSelfieCapture] = useState<CapturedFile>({ name: '', file: null });
 
   const steps = ['Informations', "Piece d'identite", 'Selfie'];
   const isStepValid = (step: number) => {
@@ -67,7 +78,7 @@ const Kyc = () => {
     if (step === 1) {
       const hasFront = Boolean(kyc.document.frontName?.trim());
       const hasBack = kyc.document.type === 'passport' || Boolean(kyc.document.backName?.trim());
-      return Boolean(kyc.document.type && hasFront && hasBack);
+      return Boolean(kyc.document.type && kyc.document.idNumber?.trim() && hasFront && hasBack);
     }
     if (step === 2) return Boolean(kyc.selfie.livenessOk);
     return true;
@@ -106,30 +117,77 @@ const Kyc = () => {
       if (user?.firstName) personal.append('first_name', user.firstName);
       if (user?.lastName) personal.append('last_name', user.lastName);
 
-      const address = new FormData();
-      address.append('date_of_birth', kyc.personal.dob || '');
-      address.append('phone', kyc.personal.phone || '');
-      address.append('country_code', kyc.personal.nationality || '');
-      address.append('country', selectedCountry.id);
-      address.append('address', kyc.address.street || '');
-      address.append('city', kyc.address.city || '');
-      address.append('postalCode', kyc.address.postalCode || '');
-      if (user?.firstName) address.append('first_name', user.firstName);
-      if (user?.lastName) address.append('last_name', user.lastName);
+      const finalPayload = new FormData();
+      finalPayload.append('date_of_birth', kyc.personal.dob || '');
+      finalPayload.append('phone', kyc.personal.phone || '');
+      finalPayload.append('country_code', kyc.personal.nationality || '');
+      finalPayload.append('country', selectedCountry.id);
+      finalPayload.append('address', kyc.address.street || '');
+      finalPayload.append('city', kyc.address.city || '');
+      finalPayload.append('postalCode', kyc.address.postalCode || '');
+      finalPayload.append('identity_type', kyc.document.type || '');
+      finalPayload.append('id_number', kyc.document.idNumber || '');
+      finalPayload.append('is_terms_conditions', 'true');
+      if (user?.firstName) finalPayload.append('first_name', user.firstName);
+      if (user?.lastName) finalPayload.append('last_name', user.lastName);
+      if (frontCapture.file) finalPayload.append('photo_id_front', frontCapture.file, frontCapture.name);
+      if (backCapture.file) finalPayload.append('photo_id_back', backCapture.file, backCapture.name);
+      if (selfieCapture.file) finalPayload.append('selfie_with_id', selfieCapture.file, selfieCapture.name);
 
-      const docs = new FormData();
-      docs.append('identity_type', kyc.document.type || '');
-      docs.append('is_terms_conditions', 'true');
+      if (!frontCapture.file) {
+        toast.error('Capturez le recto de votre pièce.');
+        return;
+      }
+      if (kyc.document.type !== 'passport' && !backCapture.file) {
+        toast.error('Capturez aussi le verso de votre pièce.');
+        return;
+      }
+      if (!selfieCapture.file) {
+        toast.error('Finalisez la vérification selfie avant de soumettre.');
+        return;
+      }
 
       await submitPersonal(personal).unwrap();
-      await submitAddress(address).unwrap();
-      await submitDocuments(docs).unwrap();
+      await submitAddress(finalPayload).unwrap();
       dispatch(updateUser({ kycStatus: 'pending' }));
       dispatch(resetKyc());
+      setFrontCapture({ name: '', file: null });
+      setBackCapture({ name: '', file: null });
+      setSelfieCapture({ name: '', file: null });
+      setPhoneOtp('');
+      setOtpRequested(false);
       toast.success(t('kyc.submitted'));
       navigate('/app');
     } catch {
       toast.error(t('common.error'));
+    }
+  };
+
+  const requestOtp = async () => {
+    if (!kyc.personal.phone?.trim()) {
+      toast.error('Entrez d’abord votre numéro.');
+      return;
+    }
+    try {
+      const result = await requestPhoneOtp({ phone: kyc.personal.phone.trim() }).unwrap();
+      setOtpRequested(true);
+      toast.success(result.detail || result.message || 'Code OTP envoyé.');
+    } catch {
+      toast.error('Impossible d’envoyer le code OTP pour le moment.');
+    }
+  };
+
+  const confirmPhoneOtp = async () => {
+    if (!kyc.personal.phone?.trim() || !phoneOtp.trim()) {
+      toast.error('Entrez le numéro et le code OTP.');
+      return;
+    }
+    try {
+      await verifyPhone({ phone: kyc.personal.phone.trim(), otp: phoneOtp.trim() }).unwrap();
+      dispatch(updatePersonal({ phoneVerified: true }));
+      toast.success('Numéro vérifié.');
+    } catch {
+      toast.error('Code OTP invalide.');
     }
   };
 
@@ -173,9 +231,25 @@ const Kyc = () => {
 
       <Card className="shadow-elegant border-border/60">
         <CardContent className="p-6 space-y-5">
-          {kyc.step === 0 && <IdentityStep />}
-          {kyc.step === 1 && <DocumentsStep />}
-          {kyc.step === 2 && <SelfieLivenessStep />}
+          {kyc.step === 0 && (
+            <IdentityStep
+              phoneOtp={phoneOtp}
+              otpRequested={otpRequested}
+              otpLoading={l3 || l4}
+              onPhoneOtpChange={setPhoneOtp}
+              onRequestOtp={requestOtp}
+              onConfirmOtp={confirmPhoneOtp}
+            />
+          )}
+          {kyc.step === 1 && (
+            <DocumentsStep
+              onFrontCapture={setFrontCapture}
+              onBackCapture={setBackCapture}
+            />
+          )}
+          {kyc.step === 2 && (
+            <SelfieLivenessStep onCapture={setSelfieCapture} />
+          )}
 
           <div className="flex justify-between pt-4">
             <Button variant="outline" onClick={back} disabled={kyc.step === 0}>
@@ -202,7 +276,21 @@ const Kyc = () => {
 
 /* ----------------------------- Step components ---------------------------- */
 
-const IdentityStep = () => {
+const IdentityStep = ({
+  phoneOtp,
+  otpRequested,
+  otpLoading,
+  onPhoneOtpChange,
+  onRequestOtp,
+  onConfirmOtp,
+}: {
+  phoneOtp: string;
+  otpRequested: boolean;
+  otpLoading: boolean;
+  onPhoneOtpChange: (value: string) => void;
+  onRequestOtp: () => Promise<void>;
+  onConfirmOtp: () => Promise<void>;
+}) => {
   const { t } = useTranslation();
   const dispatch = useAppDispatch();
   const personal = useAppSelector((s) => s.kyc.personal);
@@ -224,11 +312,34 @@ const IdentityStep = () => {
           <Label>{t('kyc.phone')}</Label>
           <Input
             value={personal.phone}
-            onChange={(e) => dispatch(updatePersonal({ phone: e.target.value }))}
+            onChange={(e) => dispatch(updatePersonal({ phone: e.target.value, phoneVerified: false }))}
             placeholder="+33 6 12 34 56 78"
             className="h-11 rounded-xl"
             maxLength={20}
           />
+          <div className="flex items-center justify-between gap-3 text-xs">
+            <span className={personal.phoneVerified ? 'text-success font-medium' : 'text-muted-foreground'}>
+              {personal.phoneVerified ? 'Numéro vérifié' : 'Numéro non vérifié'}
+            </span>
+            <Button type="button" variant="ghost" size="sm" className="h-8 px-2" onClick={onRequestOtp} disabled={otpLoading}>
+              Envoyer OTP
+            </Button>
+          </div>
+          {otpRequested && !personal.phoneVerified && (
+            <div className="flex gap-2">
+              <Input
+                value={phoneOtp}
+                onChange={(e) => onPhoneOtpChange(e.target.value.replace(/\D/g, '').slice(0, 8))}
+                placeholder="Code OTP"
+                inputMode="numeric"
+                className="h-10 rounded-xl"
+                maxLength={8}
+              />
+              <Button type="button" variant="outline" className="shrink-0" onClick={onConfirmOtp} disabled={otpLoading}>
+                Vérifier
+              </Button>
+            </div>
+          )}
         </div>
       </div>
       <div className="grid gap-3 md:grid-cols-2">
@@ -276,7 +387,13 @@ const IdentityStep = () => {
   );
 };
 
-const DocumentsStep = () => {
+const DocumentsStep = ({
+  onFrontCapture,
+  onBackCapture,
+}: {
+  onFrontCapture: (capture: CapturedFile) => void;
+  onBackCapture: (capture: CapturedFile) => void;
+}) => {
   const { t } = useTranslation();
   const dispatch = useAppDispatch();
   const document = useAppSelector((s) => s.kyc.document);
@@ -296,19 +413,35 @@ const DocumentsStep = () => {
           </SelectContent>
         </Select>
       </div>
+      <div className="space-y-2">
+        <Label>Numéro de pièce</Label>
+        <Input
+          value={document.idNumber}
+          onChange={(e) => dispatch(updateDocument({ idNumber: e.target.value }))}
+          className="h-11 rounded-xl"
+          maxLength={40}
+          placeholder="Numéro d’identification"
+        />
+      </div>
       <div className="grid md:grid-cols-2 gap-3">
         <DocumentCapture
           label={t('kyc.uploadFront')}
           value={document.frontName}
           documentType={(document.type as DocumentKind) || 'unknown'}
-          onCapture={(name) => dispatch(updateDocument({ frontName: name }))}
+          onCapture={(capture) => {
+            dispatch(updateDocument({ frontName: capture.name }));
+            onFrontCapture(capture);
+          }}
         />
         {document.type !== 'passport' && (
           <DocumentCapture
             label={t('kyc.uploadBack')}
             value={document.backName}
             documentType={(document.type as DocumentKind) || 'unknown'}
-            onCapture={(name) => dispatch(updateDocument({ backName: name }))}
+            onCapture={(capture) => {
+              dispatch(updateDocument({ backName: capture.name }));
+              onBackCapture(capture);
+            }}
           />
         )}
       </div>
@@ -341,7 +474,7 @@ const DocumentCapture = ({
   label: string;
   value: string;
   documentType: DocumentKind;
-  onCapture: (n: string) => void;
+  onCapture: (capture: CapturedFile) => void;
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -447,10 +580,15 @@ const DocumentCapture = ({
     const outCtx = output.getContext('2d', { willReadFrequently: true });
     if (!outCtx) return;
     outCtx.drawImage(c, frameX, frameY, frameW, frameH, 0, 0, frameW, frameH);
-    const dataUrl = output.toDataURL('image/jpeg', 0.88);
-    setPreview(dataUrl);
-    onCapture(`${label.replace(/\s+/g, '-')}-${Date.now()}.jpg`);
-    stop();
+    output.toBlob((blob) => {
+      if (!blob) return;
+      const fileName = `${label.replace(/\s+/g, '-')}-${Date.now()}.jpg`;
+      const file = new File([blob], fileName, { type: 'image/jpeg' });
+      const dataUrl = URL.createObjectURL(file);
+      setPreview(dataUrl);
+      onCapture({ name: fileName, file });
+      stop();
+    }, 'image/jpeg', 0.88);
   };
 
   const applyAnalysisResult = (result: AnalyzerResult) => {
@@ -590,7 +728,7 @@ const DocumentCapture = ({
     setIsReadyToCapture(false);
     setAnalysis(defaultAnalysis);
     setVideoAttached(false);
-    onCapture('');
+    onCapture({ name: '', file: null });
   };
 
   useEffect(() => {
@@ -751,7 +889,11 @@ const DocumentCapture = ({
   );
 };
 
-const SelfieLivenessStep = () => {
+const SelfieLivenessStep = ({
+  onCapture,
+}: {
+  onCapture: (capture: CapturedFile) => void;
+}) => {
   const dispatch = useAppDispatch();
   const selfie = useAppSelector((s) => s.kyc.selfie);
   const [open, setOpen] = useState(false);
@@ -795,8 +937,10 @@ const SelfieLivenessStep = () => {
       <LivenessCapture
         open={open}
         onOpenChange={setOpen}
-        onSuccess={() => {
-          dispatch(updateSelfie({ selfieName: `liveness-${Date.now()}.jpg`, livenessOk: true }));
+        onSuccess={(result) => {
+          const selfieName = result.snapshotFile?.name || `liveness-${Date.now()}.jpg`;
+          dispatch(updateSelfie({ selfieName, livenessOk: true }));
+          onCapture({ name: selfieName, file: result.snapshotFile || null });
           toast.success('Vérification de présence réussie');
         }}
       />

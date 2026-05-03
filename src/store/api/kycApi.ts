@@ -38,6 +38,21 @@ export const kycApi = api.injectEndpoints({
     verifyPhone: b.mutation<{ detail: string }, { phone: string; otp: string }>({
       query: (body) => ({ url: '/kyc/phoneverify/', method: 'POST', body }),
     }),
+    requestPhoneOtp: b.mutation<{ detail?: string; message?: string }, { phone: string }>({
+      query: ({ phone }) => ({
+        url: '/kyc/regenerate_phone/',
+        method: 'POST',
+        body: { phone, otp: '1' },
+      }),
+      transformResponse: (response: unknown) => {
+        if (typeof response === 'string') return { detail: response };
+        const raw = (response ?? {}) as Record<string, unknown>;
+        return {
+          detail: typeof raw.detail === 'string' ? raw.detail : undefined,
+          message: typeof raw.message === 'string' ? raw.message : undefined,
+        };
+      },
+    }),
     /**
      * Liveness check: send a sequence of frames captured from the camera.
      * The browser sets the multipart Content-Type automatically.
@@ -55,5 +70,6 @@ export const {
   useSubmitDocumentsMutation,
   useSubmitFinanceMutation,
   useVerifyPhoneMutation,
+  useRequestPhoneOtpMutation,
   useLivenessMutation,
 } = kycApi;

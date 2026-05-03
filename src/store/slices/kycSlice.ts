@@ -2,17 +2,17 @@ import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
 export interface KYCData {
   step: number;
-  personal: { dob: string; nationality: string; phone: string };
+  personal: { dob: string; nationality: string; phone: string; phoneVerified: boolean };
   address: { street: string; city: string; postalCode: string; country: string };
-  document: { type: 'passport' | 'nationalId' | 'drivingLicense' | ''; frontName: string; backName: string };
+  document: { type: 'passport' | 'nationalId' | 'drivingLicense' | ''; idNumber: string; frontName: string; backName: string };
   selfie: { selfieName: string; livenessOk: boolean };
 }
 
 const initial: KYCData = {
   step: 0,
-  personal: { dob: '', nationality: '', phone: '' },
+  personal: { dob: '', nationality: '', phone: '', phoneVerified: false },
   address: { street: '', city: '', postalCode: '', country: '' },
-  document: { type: '', frontName: '', backName: '' },
+  document: { type: '', idNumber: '', frontName: '', backName: '' },
   selfie: { selfieName: '', livenessOk: false },
 };
 
@@ -22,7 +22,13 @@ const load = (): KYCData => {
     if (raw) {
       const parsed = JSON.parse(raw);
       // Ensure new fields exist on stored state
-      return { ...initial, ...parsed, selfie: { ...initial.selfie, ...(parsed.selfie || {}) } };
+      return {
+        ...initial,
+        ...parsed,
+        personal: { ...initial.personal, ...(parsed.personal || {}) },
+        document: { ...initial.document, ...(parsed.document || {}) },
+        selfie: { ...initial.selfie, ...(parsed.selfie || {}) },
+      };
     }
   } catch {
     /* ignore parse errors */

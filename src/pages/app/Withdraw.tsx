@@ -106,13 +106,17 @@ const Withdraw = () => {
         setDone(true);
         return;
       }
+      const resolvedPaymentMethod =
+        selectedMethod?.provider?.toLowerCase() === 'afripay'
+          ? (selectedMethod.correspondent || selectedMethod.name || methodId)
+          : methodId;
       const destination =
         typeName === 'Mobile Payment' ? sanitizeText(fields.phone || '') :
         typeName === 'Bank Transfer' ? `${(fields.card_number || '').slice(-4)}` :
         selectedMethod?.name || '';
       tx = await withdraw({
         amount: amt,
-        payment_method: methodId,
+        payment_method: resolvedPaymentMethod,
         wallet_id: walletId!,
         destination,
         phone: fields.phone,

@@ -17,6 +17,7 @@ export interface LivenessResult {
   head_movement: boolean;
   smile_detected: boolean;
   error: string | null;
+  snapshotFile?: File | null;
 }
 
 interface LivenessCaptureProps {
@@ -107,6 +108,20 @@ export const LivenessCapture = ({ open, onOpenChange, onSuccess }: LivenessCaptu
     return canvas.toDataURL('image/jpeg', 0.75);
   }, []);
 
+  const captureSnapshotFile = useCallback(() => {
+    const frame = captureFrame();
+    if (!frame) return null;
+    const [meta, base64] = frame.split(',');
+    if (!meta || !base64) return null;
+    const mime = /data:(.*?);base64/.exec(meta)?.[1] || 'image/jpeg';
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let index = 0; index < binary.length; index += 1) {
+      bytes[index] = binary.charCodeAt(index);
+    }
+    return new File([bytes], `liveness-${Date.now()}.jpg`, { type: mime });
+  }, [captureFrame]);
+
   const startFrameSending = useCallback(() => {
     stopFrameSending();
     sendIntervalRef.current = window.setInterval(() => {
@@ -144,6 +159,7 @@ export const LivenessCapture = ({ open, onOpenChange, onSuccess }: LivenessCaptu
     if (data.type === 'liveness_completed') {
       setProgress(100);
       setStep('success');
+      const snapshotFile = captureSnapshotFile();
       stopFrameSending();
       stopCamera();
       closeSocket();
@@ -154,6 +170,7 @@ export const LivenessCapture = ({ open, onOpenChange, onSuccess }: LivenessCaptu
         head_movement: true,
         smile_detected: true,
         error: null,
+        snapshotFile,
       };
       setTimeout(() => {
         onSuccess(result);

@@ -60,7 +60,7 @@ const baseQueryWithReauth: BaseQueryFn<
       const release = await refreshMutex.acquire();
       try {
         const refresh = await realBaseQuery(
-          { url: '/token/refresh/', method: 'POST' },
+          { url: '/auth/token/refresh/', method: 'POST' },
           apiCtx,
           extraOptions,
         );
@@ -109,6 +109,8 @@ export const api = createApi({
     'Festi',
     'Bills',
     'Crypto',
+    'Savings',
+    'YieldVault',
     'Qr',
     'Devices',
     'TwoFA',

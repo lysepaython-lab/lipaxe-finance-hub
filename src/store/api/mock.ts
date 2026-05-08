@@ -96,6 +96,356 @@ let tontines: Tontine[] = [
   },
 ];
 
+// ---------- Savings -------------------------------------------------------
+interface SavingsRule {
+  title: string;
+  value: string;
+}
+interface SavingsPlan {
+  id: string;
+  code: string;
+  name: string;
+  kind: 'flexible' | 'goal' | 'locked';
+  headline: string;
+  description: string;
+  min_contribution: number;
+  suggested_contribution: number;
+  allowed_durations_months: number[];
+  frequencies: ('daily' | 'weekly' | 'monthly')[];
+  currencies: string[];
+  auto_debit_allowed: boolean;
+  early_exit_penalty_percent: number;
+  target_required: boolean;
+  liquidity: 'on_demand' | 'maturity';
+  rules: SavingsRule[];
+  policies: string[];
+}
+interface SavingsAccount {
+  id: string;
+  name: string;
+  plan_id: string;
+  plan_name: string;
+  kind: 'flexible' | 'goal' | 'locked';
+  currency: string;
+  goal_amount: number;
+  current_amount: number;
+  contribution_amount: number;
+  frequency: 'daily' | 'weekly' | 'monthly';
+  duration_months: number;
+  auto_debit: boolean;
+  status: 'active' | 'paused' | 'matured';
+  source_wallet_id: string;
+  next_contribution_at?: string;
+  maturity_date?: string;
+  progress_percent: number;
+  rules: SavingsRule[];
+  policies: string[];
+}
+
+const SAVINGS_PLANS: SavingsPlan[] = [
+  {
+    id: 'sv_flex',
+    code: 'FLEX',
+    name: 'Flexible Starter',
+    kind: 'flexible',
+    headline: 'Commencez petit et gardez une sortie souple.',
+    description: 'Pour une epargne de routine avec petites contributions et acces rapide.',
+    min_contribution: 5,
+    suggested_contribution: 15,
+    allowed_durations_months: [1, 3, 6],
+    frequencies: ['daily', 'weekly', 'monthly'],
+    currencies: ['USD', 'EUR', 'BIF', 'CDF'],
+    auto_debit_allowed: true,
+    early_exit_penalty_percent: 0,
+    target_required: false,
+    liquidity: 'on_demand',
+    rules: [
+      { title: 'Ticket minimum', value: 'A partir de 5' },
+      { title: 'Sortie', value: 'Disponible a la demande' },
+      { title: 'Debit auto', value: 'Autorise' },
+    ],
+    policies: [
+      'Le plan peut etre alimente par petites contributions recurrentes.',
+      'La liquidite reste souple, sous reserve des controles de securite et de conformite.',
+      'Les frais et regles de sortie doivent etre affiches avant confirmation.',
+    ],
+  },
+  {
+    id: 'sv_goal',
+    code: 'GOAL',
+    name: 'Goal Builder',
+    kind: 'goal',
+    headline: 'Atteignez un objectif cible avec un rythme previsible.',
+    description: 'Pour financer une depense future avec discipline et visibilite.',
+    min_contribution: 10,
+    suggested_contribution: 25,
+    allowed_durations_months: [3, 6, 9, 12],
+    frequencies: ['weekly', 'monthly'],
+    currencies: ['USD', 'EUR', 'BIF', 'CDF'],
+    auto_debit_allowed: true,
+    early_exit_penalty_percent: 1.5,
+    target_required: true,
+    liquidity: 'maturity',
+    rules: [
+      { title: 'Objectif requis', value: 'Oui' },
+      { title: 'Sortie anticipee', value: 'Penalite legere' },
+      { title: 'Frequence', value: 'Hebdo ou mensuel' },
+    ],
+    policies: [
+      'Le client fixe une cible et une duree avant ouverture.',
+      'Une sortie anticipee peut reduire la performance attendue du plan.',
+      'Le plan reste associe a un wallet source unique pour la trace des flux.',
+    ],
+  },
+  {
+    id: 'sv_locked',
+    code: 'LOCK',
+    name: 'Locked Reserve',
+    kind: 'locked',
+    headline: 'Bloquez un montant plus ferme pour une discipline plus forte.',
+    description: 'Pour une reserve protegee avec horizon defini et moins de liquidite.',
+    min_contribution: 25,
+    suggested_contribution: 50,
+    allowed_durations_months: [6, 12],
+    frequencies: ['weekly', 'monthly'],
+    currencies: ['USD', 'BIF'],
+    auto_debit_allowed: true,
+    early_exit_penalty_percent: 4,
+    target_required: false,
+    liquidity: 'maturity',
+    rules: [
+      { title: 'Liquidite', value: 'A echeance' },
+      { title: 'Sortie anticipee', value: 'Penalite forte' },
+      { title: 'Discipline', value: 'Verrou renforcé' },
+    ],
+    policies: [
+      'Ce plan suppose un engagement de duree plus strict.',
+      'Les demandes de sortie avant echeance doivent suivre une politique d exception.',
+      'Le client doit accepter un cadre plus ferme avant activation.',
+    ],
+  },
+];
+
+let savingsAccounts: SavingsAccount[] = [
+  {
+    id: 'sav_1',
+    name: 'Loyer septembre',
+    plan_id: 'sv_goal',
+    plan_name: 'Goal Builder',
+    kind: 'goal',
+    currency: 'USD',
+    goal_amount: 900,
+    current_amount: 315,
+    contribution_amount: 35,
+    frequency: 'weekly',
+    duration_months: 6,
+    auto_debit: true,
+    status: 'active',
+    source_wallet_id: 'w_usd',
+    next_contribution_at: new Date(now + day * 4).toISOString(),
+    maturity_date: new Date(now + day * 120).toISOString(),
+    progress_percent: 35,
+    rules: SAVINGS_PLANS[1].rules,
+    policies: SAVINGS_PLANS[1].policies,
+  },
+  {
+    id: 'sav_2',
+    name: 'Reserve famille',
+    plan_id: 'sv_flex',
+    plan_name: 'Flexible Starter',
+    kind: 'flexible',
+    currency: 'BIF',
+    goal_amount: 800000,
+    current_amount: 225000,
+    contribution_amount: 25000,
+    frequency: 'monthly',
+    duration_months: 6,
+    auto_debit: true,
+    status: 'active',
+    source_wallet_id: 'w_bif',
+    next_contribution_at: new Date(now + day * 18).toISOString(),
+    maturity_date: new Date(now + day * 170).toISOString(),
+    progress_percent: 28,
+    rules: SAVINGS_PLANS[0].rules,
+    policies: SAVINGS_PLANS[0].policies,
+  },
+];
+
+// ---------- Yield Vaults --------------------------------------------------
+interface YieldVaultRule {
+  title: string;
+  value: string;
+}
+interface YieldVaultPlan {
+  id: string;
+  code: string;
+  name: string;
+  headline: string;
+  description: string;
+  currencies: string[];
+  stablecoins: string[];
+  corridors: string[];
+  min_contribution: number;
+  suggested_contribution: number;
+  allowed_lock_days: number[];
+  notice_period_days: number;
+  yield_mode: 'variable' | 'projected';
+  target_apy_min: number;
+  target_apy_max: number;
+  reserve_ratio_percent: number;
+  client_yield_share_percent: number;
+  auto_rollover_allowed: boolean;
+  liquidity: 'open' | 'notice';
+  rules: YieldVaultRule[];
+  policies: string[];
+  disclosures: string[];
+}
+interface YieldVaultPosition {
+  id: string;
+  name: string;
+  plan_id: string;
+  plan_name: string;
+  stablecoins: string[];
+  corridors: string[];
+  yield_mode: 'variable' | 'projected';
+  liquidity: 'open' | 'notice';
+  target_apy_min: number;
+  target_apy_max: number;
+  reserve_ratio_percent: number;
+  client_yield_share_percent: number;
+  currency: string;
+  principal_amount: number;
+  current_value: number;
+  accrued_yield: number;
+  yield_percent: number;
+  lock_days: number;
+  notice_period_days: number;
+  auto_rollover: boolean;
+  status: 'active' | 'redeeming' | 'closed';
+  source_wallet_id: string;
+  unlock_at?: string;
+  next_redemption_at?: string;
+  rules: YieldVaultRule[];
+  policies: string[];
+  disclosures: string[];
+  recent_movements: Array<{ id: string; kind: string; amount: number; reference?: string; note?: string; created_at: string }>;
+  recent_distributions: Array<{ id: string; amount: number; principal_basis: number; share_percent: number; status: string; note?: string; distributed_at?: string; snapshot_date?: string; created_at: string }>;
+}
+
+const YIELD_VAULT_PLANS: YieldVaultPlan[] = [
+  {
+    id: 'yv_usdt_bi',
+    code: 'USDT-BI-30',
+    name: 'USDT Corridor Vault',
+    headline: 'Liquidite stablecoin pour corridors BIF et CDF.',
+    description: 'Alimente les demandes OTC d achat et de vente de USDT et USDC avec reserve de securite.',
+    currencies: ['USD', 'BIF', 'CDF'],
+    stablecoins: ['USDT', 'USDC'],
+    corridors: ['BIF', 'CDF'],
+    min_contribution: 25,
+    suggested_contribution: 100,
+    allowed_lock_days: [30, 90, 180],
+    notice_period_days: 7,
+    yield_mode: 'variable',
+    target_apy_min: 6,
+    target_apy_max: 12,
+    reserve_ratio_percent: 35,
+    client_yield_share_percent: 45,
+    auto_rollover_allowed: true,
+    liquidity: 'notice',
+    rules: [
+      { title: 'Capital minimum', value: 'A partir de 25' },
+      { title: 'Blocage', value: '30 a 180 jours' },
+      { title: 'Sortie', value: 'Preavis de 7 jours' },
+    ],
+    policies: [
+      'Les fonds servent uniquement a la liquidite achat et vente de stablecoins.',
+      'Une reserve minimale doit rester disponible avant toute allocation de flux.',
+      'Les demandes de sortie passent par une fenetre de preavis avant decaissement.',
+    ],
+    disclosures: [
+      'Le rendement n est pas garanti et depend de l activite reelle du desk.',
+      'Ce produit est distinct du savings classique et suppose un opt-in explicite.',
+      'Les fonds clients doivent rester traces separement de la tresorerie generale.',
+    ],
+  },
+  {
+    id: 'yv_usdc_desk',
+    code: 'USDC-DESK-90',
+    name: 'USDC Desk Reserve',
+    headline: 'Reserve plus longue pour la profondeur du desk stablecoin.',
+    description: 'Position de liquidite pour servir les flux OTC et de settlement en USDC.',
+    currencies: ['USD', 'EUR'],
+    stablecoins: ['USDC'],
+    corridors: ['USD', 'EUR', 'BIF'],
+    min_contribution: 100,
+    suggested_contribution: 250,
+    allowed_lock_days: [90, 180, 365],
+    notice_period_days: 14,
+    yield_mode: 'projected',
+    target_apy_min: 8,
+    target_apy_max: 14,
+    reserve_ratio_percent: 40,
+    client_yield_share_percent: 50,
+    auto_rollover_allowed: true,
+    liquidity: 'notice',
+    rules: [
+      { title: 'Ticket minimum', value: 'A partir de 100' },
+      { title: 'Preavis', value: '14 jours' },
+      { title: 'Rollover', value: 'Optionnel' },
+    ],
+    policies: [
+      'La reserve soutient les operations de liquidite USDC et settlement externe.',
+      'Les plans longs privilegient la stabilite de liquidite plutot que la sortie immediate.',
+      'Le rendement distribue provient uniquement des marges et frais realises.',
+    ],
+    disclosures: [
+      'Aucun rendement fixe n est garanti avant la realisation effective des revenus.',
+      'Le produit vise des clients acceptant un blocage et une fenetre de rachat.',
+      'La conformite et les limites de corridor peuvent reduire la capacite d allocation.',
+    ],
+  },
+];
+
+let yieldVaultPositions: YieldVaultPosition[] = [
+  {
+    id: 'yv_pos_1',
+    name: 'BIF Liquidity 30J',
+    plan_id: 'yv_usdt_bi',
+    plan_name: 'USDT Corridor Vault',
+    stablecoins: ['USDT', 'USDC'],
+    corridors: ['BIF', 'CDF'],
+    yield_mode: 'variable',
+    liquidity: 'notice',
+    target_apy_min: 6,
+    target_apy_max: 12,
+    reserve_ratio_percent: 35,
+    client_yield_share_percent: 45,
+    currency: 'USD',
+    principal_amount: 350,
+    current_value: 362,
+    accrued_yield: 12,
+    yield_percent: 3.43,
+    lock_days: 90,
+    notice_period_days: 7,
+    auto_rollover: true,
+    status: 'active',
+    source_wallet_id: 'w_usd',
+    unlock_at: new Date(now + day * 74).toISOString(),
+    next_redemption_at: '',
+    rules: YIELD_VAULT_PLANS[0].rules,
+    policies: YIELD_VAULT_PLANS[0].policies,
+    disclosures: YIELD_VAULT_PLANS[0].disclosures,
+    recent_movements: [
+      { id: 'yvm_1', kind: 'initial', amount: 350, reference: 'YV-OPEN-1', note: 'Initial yield vault contribution', created_at: new Date(now - day * 15).toISOString() },
+      { id: 'yvm_2', kind: 'payout', amount: 12, reference: 'YV-PAYOUT-1', note: 'Yield distribution posted', created_at: new Date(now - day * 2).toISOString() },
+    ],
+    recent_distributions: [
+      { id: 'yvd_1', amount: 12, principal_basis: 350, share_percent: 100, status: 'posted', note: 'Stablecoin liquidity revenue share', distributed_at: new Date(now - day * 2).toISOString(), snapshot_date: new Date(now - day * 2).toISOString().slice(0, 10), created_at: new Date(now - day * 2).toISOString() },
+    ],
+  },
+];
+
 // ---------- FestiPay events ----------
 interface FestiEvent {
   id: string; name: string; date: string; price: number; currency: string;
@@ -309,6 +659,222 @@ export async function mockHandler(url: string, method: string, body: any): Promi
 
   // ---------- WALLETS ------------------------------------------------------
   if ((url === '/wallets/' || url === '/api/v2/wallets/') && method === 'GET') return ok(wallets);
+
+  // ---------- SAVINGS -----------------------------------------------------
+  if (url === '/savings/plans/' && method === 'GET') return ok(SAVINGS_PLANS);
+  if (url === '/savings/' && method === 'GET') return ok(savingsAccounts);
+  if (url.match(/^\/savings\/[^/]+\/$/) && method === 'GET') {
+    const id = url.split('/').filter(Boolean)[1];
+    const account = savingsAccounts.find((item) => item.id === id);
+    if (!account) throw new Error('Savings introuvable');
+    return ok(account);
+  }
+  if (url === '/savings/' && method === 'POST') {
+    const plan = SAVINGS_PLANS.find((item) => item.id === body.plan_id);
+    const wallet = wallets.find((item) => item.id === body.source_wallet_id);
+    if (!plan || !wallet) throw new Error('Plan ou portefeuille introuvable');
+    if (wallet.currency !== body.currency) throw new Error('Le wallet source doit correspondre a la devise du plan');
+    if (wallet.available < Number(body.contribution_amount || 0)) throw new Error('Solde insuffisant pour ouvrir ce plan');
+
+    const contribution = Number(body.contribution_amount || 0);
+    wallet.available -= contribution;
+    wallet.balance -= contribution;
+
+    const account: SavingsAccount = {
+      id: 'sav_' + Date.now(),
+      name: body.name || plan.name,
+      plan_id: plan.id,
+      plan_name: plan.name,
+      kind: plan.kind,
+      currency: body.currency,
+      goal_amount: Number(body.goal_amount || contribution),
+      current_amount: contribution,
+      contribution_amount: contribution,
+      frequency: body.frequency,
+      duration_months: Number(body.duration_months || plan.allowed_durations_months[0] || 3),
+      auto_debit: Boolean(body.auto_debit),
+      status: 'active',
+      source_wallet_id: wallet.id,
+      next_contribution_at: new Date(Date.now() + (body.frequency === 'daily' ? day : body.frequency === 'weekly' ? day * 7 : day * 30)).toISOString(),
+      maturity_date: new Date(Date.now() + Number(body.duration_months || 3) * 30 * day).toISOString(),
+      progress_percent: Math.min(100, Math.round((contribution / Math.max(Number(body.goal_amount || contribution), 1)) * 100)),
+      rules: plan.rules,
+      policies: plan.policies,
+    };
+    savingsAccounts.unshift(account);
+    transactions.unshift({
+      id: 'savtx' + Date.now(),
+      type: 'transfer',
+      direction: 'out',
+      amount: contribution,
+      currency: account.currency,
+      status: 'completed',
+      description: `Savings opening ${account.name}`,
+      counterparty: account.plan_name,
+      reference: 'SAV-' + Math.floor(Math.random() * 9000 + 1000),
+      createdAt: new Date().toISOString(),
+      wallet_id: wallet.id,
+    });
+    pushNotif({ title: 'Savings ouvert', body: `${account.name} est actif.`, level: 'success', priority: 'normal', read: false, link: '/app/savings' });
+    return ok(account);
+  }
+  if (url === '/savings/contribute/' && method === 'POST') {
+    const account = savingsAccounts.find((item) => item.id === body.savings_id);
+    const wallet = wallets.find((item) => item.id === body.wallet_id);
+    const amount = Number(body.amount || 0);
+    if (!account || !wallet) throw new Error('Savings ou portefeuille introuvable');
+    if (wallet.currency !== account.currency) throw new Error('Le portefeuille doit etre dans la meme devise');
+    if (wallet.available < amount) throw new Error('Solde insuffisant');
+
+    wallet.available -= amount;
+    wallet.balance -= amount;
+    account.current_amount += amount;
+    account.progress_percent = Math.min(100, Math.round((account.current_amount / Math.max(account.goal_amount, 1)) * 100));
+    account.next_contribution_at = new Date(Date.now() + (account.frequency === 'daily' ? day : account.frequency === 'weekly' ? day * 7 : day * 30)).toISOString();
+    if (account.progress_percent >= 100) account.status = 'matured';
+
+    transactions.unshift({
+      id: 'savc' + Date.now(),
+      type: 'transfer',
+      direction: 'out',
+      amount,
+      currency: account.currency,
+      status: 'completed',
+      description: `Savings contribution ${account.name}`,
+      counterparty: account.plan_name,
+      reference: 'SAV-' + Math.floor(Math.random() * 9000 + 1000),
+      createdAt: new Date().toISOString(),
+      wallet_id: wallet.id,
+    });
+    pushNotif({ title: 'Contribution savings', body: `${amount} ${account.currency} ajoutes a ${account.name}.`, level: 'success', priority: 'normal', read: false, link: `/app/savings/${account.id}` });
+    return ok({ detail: 'Contribution enregistree', account });
+  }
+
+  // ---------- YIELD VAULTS ------------------------------------------------
+  if (url === '/yield-vaults/plans/' && method === 'GET') return ok(YIELD_VAULT_PLANS);
+  if (url === '/yield-vaults/' && method === 'GET') return ok(yieldVaultPositions);
+  if (url.match(/^\/yield-vaults\/[^/]+\/$/) && method === 'GET') {
+    const id = url.split('/').filter(Boolean)[1];
+    const position = yieldVaultPositions.find((item) => item.id === id);
+    if (!position) throw new Error('Vault introuvable');
+    return ok(position);
+  }
+  if (url === '/yield-vaults/' && method === 'POST') {
+    const plan = YIELD_VAULT_PLANS.find((item) => item.id === body.plan_id);
+    const wallet = wallets.find((item) => item.id === body.source_wallet_id);
+    if (!plan || !wallet) throw new Error('Plan ou portefeuille introuvable');
+    if (wallet.currency !== body.currency) throw new Error('Le wallet source doit correspondre a la devise du vault');
+    if (wallet.available < Number(body.principal_amount || 0)) throw new Error('Solde insuffisant pour ouvrir ce vault');
+
+    const principal = Number(body.principal_amount || 0);
+    wallet.available -= principal;
+    wallet.balance -= principal;
+
+    const position: YieldVaultPosition = {
+      id: 'yv_' + Date.now(),
+      name: body.name || plan.name,
+      plan_id: plan.id,
+      plan_name: plan.name,
+      stablecoins: plan.stablecoins,
+      corridors: plan.corridors,
+      yield_mode: plan.yield_mode,
+      liquidity: plan.liquidity,
+      target_apy_min: plan.target_apy_min,
+      target_apy_max: plan.target_apy_max,
+      reserve_ratio_percent: plan.reserve_ratio_percent,
+      client_yield_share_percent: plan.client_yield_share_percent,
+      currency: body.currency,
+      principal_amount: principal,
+      current_value: principal,
+      accrued_yield: 0,
+      yield_percent: 0,
+      lock_days: Number(body.lock_days || plan.allowed_lock_days[0] || 30),
+      notice_period_days: plan.notice_period_days,
+      auto_rollover: Boolean(body.auto_rollover),
+      status: 'active',
+      source_wallet_id: wallet.id,
+      unlock_at: new Date(Date.now() + Number(body.lock_days || 30) * day).toISOString(),
+      next_redemption_at: '',
+      rules: plan.rules,
+      policies: plan.policies,
+      disclosures: plan.disclosures,
+      recent_movements: [
+        { id: 'yvm_' + Date.now(), kind: 'initial', amount: principal, reference: 'YV-OPEN', note: 'Initial yield vault contribution', created_at: new Date().toISOString() },
+      ],
+      recent_distributions: [],
+    };
+    yieldVaultPositions.unshift(position);
+    transactions.unshift({
+      id: 'yvtx' + Date.now(),
+      type: 'transfer',
+      direction: 'out',
+      amount: principal,
+      currency: position.currency,
+      status: 'completed',
+      description: `Yield vault opening ${position.name}`,
+      counterparty: position.plan_name,
+      reference: 'YV-' + Math.floor(Math.random() * 9000 + 1000),
+      createdAt: new Date().toISOString(),
+      wallet_id: wallet.id,
+    });
+    pushNotif({ title: 'Yield vault actif', body: `${position.name} est ouvert.`, level: 'success', priority: 'normal', read: false, link: '/app/strone/vaults' });
+    return ok(position);
+  }
+  if (url === '/yield-vaults/contribute/' && method === 'POST') {
+    const position = yieldVaultPositions.find((item) => item.id === body.position_id);
+    const wallet = wallets.find((item) => item.id === body.wallet_id);
+    const amount = Number(body.amount || 0);
+    if (!position || !wallet) throw new Error('Vault ou portefeuille introuvable');
+    if (wallet.currency !== position.currency) throw new Error('Le portefeuille doit etre dans la meme devise');
+    if (wallet.available < amount) throw new Error('Solde insuffisant');
+
+    wallet.available -= amount;
+    wallet.balance -= amount;
+    position.principal_amount += amount;
+    position.current_value += amount;
+    position.yield_percent = Number((((position.current_value - position.principal_amount) / Math.max(position.principal_amount, 1)) * 100).toFixed(2));
+    position.recent_movements.unshift({
+      id: 'yvm_' + Date.now(),
+      kind: 'topup',
+      amount,
+      reference: 'YV-TOPUP',
+      note: 'Manual vault top up',
+      created_at: new Date().toISOString(),
+    });
+
+    transactions.unshift({
+      id: 'yvc' + Date.now(),
+      type: 'transfer',
+      direction: 'out',
+      amount,
+      currency: position.currency,
+      status: 'completed',
+      description: `Yield vault top up ${position.name}`,
+      counterparty: position.plan_name,
+      reference: 'YV-' + Math.floor(Math.random() * 9000 + 1000),
+      createdAt: new Date().toISOString(),
+      wallet_id: wallet.id,
+    });
+    pushNotif({ title: 'Contribution vault', body: `${amount} ${position.currency} ajoutes a ${position.name}.`, level: 'success', priority: 'normal', read: false, link: `/app/strone/vaults/${position.id}` });
+    return ok({ detail: 'Contribution enregistree', position });
+  }
+  if (url === '/yield-vaults/redeem/' && method === 'POST') {
+    const position = yieldVaultPositions.find((item) => item.id === body.position_id);
+    if (!position) throw new Error('Vault introuvable');
+    if (position.status !== 'active') throw new Error('Cette position ne peut pas etre rachetee pour le moment');
+    position.status = 'redeeming';
+    position.next_redemption_at = new Date(Date.now() + position.notice_period_days * day).toISOString();
+    position.recent_movements.unshift({
+      id: 'yvm_' + Date.now(),
+      kind: 'redemption_request',
+      amount: position.current_value,
+      reference: 'YV-REDEEM',
+      note: body.note || 'Yield redemption requested',
+      created_at: new Date().toISOString(),
+    });
+    pushNotif({ title: 'Rachat programme', body: `${position.name} passe en sortie programmee.`, level: 'warning', priority: 'high', read: false, link: `/app/strone/vaults/${position.id}` });
+    return ok({ detail: 'Demande de sortie enregistree', position });
+  }
 
   // ---------- TRANSACTIONS -------------------------------------------------
   if ((url === '/transactions/' || url === '/api/transactions/') && method === 'GET') return ok(transactions);

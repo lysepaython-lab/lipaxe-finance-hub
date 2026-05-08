@@ -42,6 +42,10 @@ import Notifications from "./pages/app/Notifications";
 import Activity from "./pages/app/Activity";
 import Settings from "./pages/app/Settings";
 import Security from "./pages/app/Security";
+import SavingsHub from "./pages/app/savings/SavingsHub";
+import SavingsDetail from "./pages/app/savings/SavingsDetail";
+import YieldVaultHub from "./pages/app/vaults/YieldVaultHub";
+import YieldVaultDetail from "./pages/app/vaults/YieldVaultDetail";
 import PublicQrLanding from "./pages/PublicQrLanding";
 import NotFound from "./pages/NotFound";
 
@@ -81,6 +85,8 @@ const AppRoutes = () => (
     <Route path="/app" element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
       <Route index element={<Dashboard />} />
       <Route path="transactions" element={<Transactions />} />
+      <Route path="savings" element={<SavingsHub />} />
+      <Route path="savings/:id" element={<SavingsDetail />} />
       <Route path="deposit" element={<Deposit />} />
       <Route path="withdraw" element={<Withdraw />} />
       <Route path="transfer" element={<Transfer />} />
@@ -95,6 +101,8 @@ const AppRoutes = () => (
       <Route path="strone/exchange" element={<Exchange />} />
       <Route path="strone/business" element={<BusinessAll />} />
       <Route path="strone/cryptos" element={<Cryptos />} />
+      <Route path="strone/vaults" element={<YieldVaultHub />} />
+      <Route path="strone/vaults/:id" element={<YieldVaultDetail />} />
       <Route path="profile" element={<Profile />} />
       <Route path="affiliation" element={<Affiliation />} />
       <Route path="kyc" element={<Kyc />} />

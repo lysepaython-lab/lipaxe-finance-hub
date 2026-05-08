@@ -6,7 +6,7 @@ import {
   LayoutDashboard, CreditCard, Send, Wallet, Network, User,
   ArrowDownToLine, ArrowUpFromLine, Gift, Nfc, QrCode, Globe2,
   Users2, PartyPopper, Repeat, Briefcase, Bitcoin, Receipt,
-  Settings, ShieldCheck, History, UserCircle2, ChevronDown,
+  Settings, ShieldCheck, History, UserCircle2, ChevronDown, PiggyBank, Landmark,
 } from 'lucide-react';
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent,
@@ -55,6 +55,7 @@ const groups: Group[] = [
       { to: '/app/strone/exchange', key: 'lipaxeExchange', icon: Repeat },
       { to: '/app/strone/business', key: 'businessAll', icon: Briefcase },
       { to: '/app/strone/cryptos', key: 'lipaxeCryptos', icon: Bitcoin },
+      { to: '/app/strone/vaults', key: 'yieldVaults', icon: Landmark },
     ],
   },
   {
@@ -62,6 +63,7 @@ const groups: Group[] = [
     icon: User,
     items: [
       { to: '/app/transactions', key: 'transactions', icon: Receipt },
+      { to: '/app/savings', key: 'savings', icon: PiggyBank },
       { to: '/app/deposit', key: 'deposit', icon: ArrowDownToLine },
       { to: '/app/withdraw', key: 'withdraw', icon: ArrowUpFromLine },
       { to: '/app/profile', key: 'profile', icon: UserCircle2 },

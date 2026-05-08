@@ -13,7 +13,7 @@ export function useTransactionPolling(
   txId: string | null,
   options: { intervalMs?: number; maxAttempts?: number } = {},
 ) {
-  const { intervalMs = 2000, maxAttempts = 15 } = options;
+  const { intervalMs = 2000, maxAttempts = 45 } = options;
   const dispatch = useAppDispatch();
   const [status, setStatus] = useState<Status>('idle');
   const attempts = useRef(0);
@@ -36,7 +36,12 @@ export function useTransactionPolling(
       } catch {
         // keep polling silently
       }
-      if (attempts.current >= maxAttempts) { setStatus('failed'); return; }
+      if (attempts.current >= maxAttempts) {
+        // Async providers like mobile money can settle after the local polling window.
+        // Keep the UI in a non-terminal state instead of showing a false failure.
+        setStatus('processing');
+        return;
+      }
       setTimeout(tick, intervalMs);
     };
 

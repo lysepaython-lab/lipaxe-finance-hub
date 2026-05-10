@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,12 +13,25 @@ import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import {
   setStep, updatePersonal, updateAddress, updateDocument, updateSelfie, resetKyc,
 } from '@/store/slices/kycSlice';
+import type { KYCData } from '@/store/slices/kycSlice';
 import {
   useSubmitPersonalMutation, useSubmitAddressMutation, useVerifyPhoneMutation, useRequestPhoneOtpMutation,
 } from '@/store/api/kycApi';
 import { useCountriesQuery } from '@/store/api/platformApi';
 import { updateUser } from '@/store/slices/authSlice';
-import { Check, ChevronRight, ChevronLeft, ShieldCheck, Camera, RotateCcw, Loader2, CheckCircle2 } from 'lucide-react';
+import {
+  AlertTriangle,
+  Check,
+  ChevronRight,
+  ChevronLeft,
+  ClipboardCheck,
+  FileCheck2,
+  ShieldCheck,
+  Camera,
+  RotateCcw,
+  Loader2,
+  CheckCircle2,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { CountryPicker } from '@/components/security/CountryPicker';
@@ -42,6 +56,86 @@ type AnalyzerResult = {
 type CapturedFile = {
   name: string;
   file: File | null;
+  qualityScore?: number;
+  mrzConfidence?: number;
+  signals?: string[];
+};
+
+type KycVerdict = 'ready' | 'review' | 'retry' | 'blocked';
+
+type KycDecision = {
+  verdict: KycVerdict;
+  riskLevel: 'low' | 'medium' | 'high';
+  riskScore: number;
+  reasons: string[];
+  gates: { label: string; status: 'pass' | 'review' | 'retry' | 'blocked'; detail: string }[];
+};
+
+const DOCUMENT_MIN_SCORE = 78;
+const PASSPORT_MRZ_MIN = 0.2;
+
+const getAge = (dob: string) => {
+  if (!dob) return 0;
+  const birth = new Date(dob);
+  if (Number.isNaN(birth.getTime())) return 0;
+  const today = new Date();
+  let age = today.getFullYear() - birth.getFullYear();
+  const monthDiff = today.getMonth() - birth.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) age -= 1;
+  return age;
+};
+
+const buildKycDecision = (kyc: KYCData): KycDecision => {
+  const reasons: string[] = [];
+  const gates: KycDecision['gates'] = [];
+  let riskScore = 0;
+
+  const addGate = (label: string, status: KycDecision['gates'][number]['status'], detail: string, risk = 0) => {
+    gates.push({ label, status, detail });
+    riskScore += risk;
+    if (status !== 'pass') reasons.push(detail);
+  };
+
+  const age = getAge(kyc.personal.dob);
+  if (!kyc.personal.consentAccepted) addGate('Consentement', 'retry', 'Consentement KYC non accepte.', 35);
+  else addGate('Consentement', 'pass', 'Consentement explicite enregistre.');
+
+  if (age < 18) addGate('Age', 'blocked', 'Utilisateur mineur ou date de naissance invalide.', 100);
+  else addGate('Age', 'pass', `${age} ans.`);
+
+  if (!kyc.personal.phoneVerified) addGate('Telephone', 'retry', 'Numero telephone non verifie par OTP.', 40);
+  else addGate('Telephone', 'pass', 'Possession du numero confirmee.');
+
+  const frontScore = kyc.document.frontQualityScore || 0;
+  const backScore = kyc.document.backQualityScore || 0;
+  const needsBack = kyc.document.type !== 'passport';
+  if (!kyc.document.idNumber?.trim()) addGate('Document', 'retry', 'Numero de piece manquant.', 30);
+  else if (!kyc.document.frontName || frontScore < DOCUMENT_MIN_SCORE) {
+    addGate('Document recto', 'retry', `Qualite recto insuffisante (${frontScore}/100).`, 35);
+  } else if (needsBack && (!kyc.document.backName || backScore < DOCUMENT_MIN_SCORE)) {
+    addGate('Document verso', 'retry', `Qualite verso insuffisante (${backScore}/100).`, 35);
+  } else {
+    addGate('Document', 'pass', 'Capture exploitable.');
+  }
+
+  if (kyc.document.type === 'passport' && (kyc.document.frontMrzConfidence || 0) < PASSPORT_MRZ_MIN) {
+    addGate('MRZ passeport', 'review', 'MRZ faible: une revue humaine sera necessaire.', 20);
+  } else if (kyc.document.type === 'passport') {
+    addGate('MRZ passeport', 'pass', 'Zone MRZ detectee.');
+  }
+
+  if (!kyc.selfie.livenessOk) addGate('Vivacite', 'retry', 'Verification de presence manquante.', 45);
+  else addGate('Vivacite', 'pass', 'Presence verifiee.');
+
+  const sameCountry = kyc.personal.nationality && kyc.address.country && kyc.personal.nationality === kyc.address.country;
+  if (!sameCountry) addGate('Pays', 'review', 'Nationalite et pays de residence differents.', 12);
+  else addGate('Pays', 'pass', 'Pays coherent.');
+
+  const hasBlockedGate = gates.some((gate) => gate.status === 'retry' || gate.status === 'blocked');
+  const riskLevel = riskScore >= 70 ? 'high' : riskScore >= 25 ? 'medium' : 'low';
+  const verdict: KycVerdict = hasBlockedGate ? 'retry' : riskScore >= 25 ? 'review' : 'ready';
+
+  return { verdict, riskLevel, riskScore: Math.min(100, riskScore), reasons, gates };
 };
 
 const Kyc = () => {
@@ -61,14 +155,17 @@ const Kyc = () => {
   const [frontCapture, setFrontCapture] = useState<CapturedFile>({ name: '', file: null });
   const [backCapture, setBackCapture] = useState<CapturedFile>({ name: '', file: null });
   const [selfieCapture, setSelfieCapture] = useState<CapturedFile>({ name: '', file: null });
+  const decision = useMemo(() => buildKycDecision(kyc), [kyc]);
 
-  const steps = ['Informations', "Piece d'identite", 'Selfie'];
+  const steps = ['Identite', "Piece d'identite", 'Vivacite', 'Decision'];
   const isStepValid = (step: number) => {
     if (step === 0) {
       return Boolean(
         kyc.personal.dob?.trim() &&
         kyc.personal.nationality?.trim() &&
         kyc.personal.phone?.trim() &&
+        kyc.personal.phoneVerified &&
+        kyc.personal.consentAccepted &&
         kyc.address.street?.trim() &&
         kyc.address.city?.trim() &&
         kyc.address.postalCode?.trim() &&
@@ -78,9 +175,12 @@ const Kyc = () => {
     if (step === 1) {
       const hasFront = Boolean(kyc.document.frontName?.trim());
       const hasBack = kyc.document.type === 'passport' || Boolean(kyc.document.backName?.trim());
-      return Boolean(kyc.document.type && kyc.document.idNumber?.trim() && hasFront && hasBack);
+      const frontQualityOk = (kyc.document.frontQualityScore || 0) >= DOCUMENT_MIN_SCORE;
+      const backQualityOk = kyc.document.type === 'passport' || (kyc.document.backQualityScore || 0) >= DOCUMENT_MIN_SCORE;
+      return Boolean(kyc.document.type && kyc.document.idNumber?.trim() && hasFront && hasBack && frontQualityOk && backQualityOk);
     }
     if (step === 2) return Boolean(kyc.selfie.livenessOk);
+    if (step === 3) return decision.verdict === 'ready' || decision.verdict === 'review';
     return true;
   };
   const next = () => {
@@ -93,8 +193,13 @@ const Kyc = () => {
   const back = () => dispatch(setStep(Math.max(kyc.step - 1, 0)));
 
   const onSubmit = async () => {
-    if (![0, 1, 2].every((step) => isStepValid(step))) {
+    const finalDecision = buildKycDecision(kyc);
+    if (![0, 1, 2, 3].every((step) => isStepValid(step))) {
       toast.error('Completer toutes les etapes KYC avant de soumettre.');
+      return;
+    }
+    if (finalDecision.verdict === 'retry' || finalDecision.verdict === 'blocked') {
+      toast.error(finalDecision.reasons[0] || 'Le dossier doit etre corrige avant soumission.');
       return;
     }
     try {
@@ -250,6 +355,9 @@ const Kyc = () => {
           {kyc.step === 2 && (
             <SelfieLivenessStep onCapture={setSelfieCapture} />
           )}
+          {kyc.step === 3 && (
+            <RiskReviewStep decision={decision} />
+          )}
 
           <div className="flex justify-between pt-4">
             <Button variant="outline" onClick={back} disabled={kyc.step === 0}>
@@ -262,7 +370,7 @@ const Kyc = () => {
                 <ChevronRight className="h-4 w-4 ml-1" />
               </Button>
             ) : (
-              <Button onClick={onSubmit} disabled={isLoading} className="bg-gradient-brand shadow-brand">
+              <Button onClick={onSubmit} disabled={isLoading || !isStepValid(kyc.step)} className="bg-gradient-brand shadow-brand">
                 {isLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                 {t('kyc.submit')}
               </Button>
@@ -342,6 +450,20 @@ const IdentityStep = ({
           )}
         </div>
       </div>
+      <label className="flex items-start gap-3 rounded-2xl border border-border bg-muted/30 p-4 text-sm">
+        <input
+          type="checkbox"
+          checked={personal.consentAccepted}
+          onChange={(e) => dispatch(updatePersonal({ consentAccepted: e.target.checked }))}
+          className="mt-1 h-4 w-4 accent-primary"
+        />
+        <span>
+          <span className="font-medium">J'autorise Lipaxe a verifier mon identite.</span>
+          <span className="mt-1 block text-xs text-muted-foreground">
+            Les controles peuvent inclure OTP, document, MRZ/OCR, selfie/liveness, scoring risque et revue manuelle.
+          </span>
+        </span>
+      </label>
       <div className="grid gap-3 md:grid-cols-2">
         <CountryPicker
           label={t('kyc.nationality')}
@@ -403,7 +525,19 @@ const DocumentsStep = ({
         <Label>{t('kyc.idType')}</Label>
         <Select
           value={document.type || undefined}
-          onValueChange={(v) => dispatch(updateDocument({ type: v as 'passport' | 'nationalId' | 'drivingLicense' }))}
+          onValueChange={(v) => {
+            dispatch(updateDocument({
+              type: v as 'passport' | 'nationalId' | 'drivingLicense',
+              frontName: '',
+              backName: '',
+              frontQualityScore: 0,
+              backQualityScore: 0,
+              frontMrzConfidence: 0,
+              backMrzConfidence: 0,
+            }));
+            onFrontCapture({ name: '', file: null, qualityScore: 0, mrzConfidence: 0, signals: [] });
+            onBackCapture({ name: '', file: null, qualityScore: 0, mrzConfidence: 0, signals: [] });
+          }}
         >
           <SelectTrigger className="h-11 rounded-xl"><SelectValue placeholder="Choisir" /></SelectTrigger>
           <SelectContent>
@@ -429,7 +563,11 @@ const DocumentsStep = ({
           value={document.frontName}
           documentType={(document.type as DocumentKind) || 'unknown'}
           onCapture={(capture) => {
-            dispatch(updateDocument({ frontName: capture.name }));
+            dispatch(updateDocument({
+              frontName: capture.name,
+              frontQualityScore: capture.qualityScore || 0,
+              frontMrzConfidence: capture.mrzConfidence || 0,
+            }));
             onFrontCapture(capture);
           }}
         />
@@ -439,7 +577,11 @@ const DocumentsStep = ({
             value={document.backName}
             documentType={(document.type as DocumentKind) || 'unknown'}
             onCapture={(capture) => {
-              dispatch(updateDocument({ backName: capture.name }));
+              dispatch(updateDocument({
+                backName: capture.name,
+                backQualityScore: capture.qualityScore || 0,
+                backMrzConfidence: capture.mrzConfidence || 0,
+              }));
               onBackCapture(capture);
             }}
           />
@@ -586,7 +728,18 @@ const DocumentCapture = ({
       const file = new File([blob], fileName, { type: 'image/jpeg' });
       const dataUrl = URL.createObjectURL(file);
       setPreview(dataUrl);
-      onCapture({ name: fileName, file });
+      onCapture({
+        name: fileName,
+        file,
+        qualityScore: autoScore,
+        mrzConfidence: analysis.mrzConfidence,
+        signals: [
+          analysis.withinFrame ? 'frame_pass' : 'frame_retry',
+          analysis.centered ? 'centered' : 'off_center',
+          analysis.sharpness >= 20 ? 'sharp' : 'blurred',
+          analysis.brightness >= 55 ? 'light_ok' : 'low_light',
+        ],
+      });
       stop();
     }, 'image/jpeg', 0.88);
   };
@@ -728,7 +881,7 @@ const DocumentCapture = ({
     setIsReadyToCapture(false);
     setAnalysis(defaultAnalysis);
     setVideoAttached(false);
-    onCapture({ name: '', file: null });
+    onCapture({ name: '', file: null, qualityScore: 0, mrzConfidence: 0, signals: [] });
   };
 
   useEffect(() => {
@@ -808,6 +961,13 @@ const DocumentCapture = ({
       {preview ? (
         <div className="space-y-2">
           <img src={preview} alt={label} className="w-full rounded-xl aspect-[4/3] object-cover" />
+          <div className="flex items-center justify-between rounded-xl bg-background/70 px-3 py-2 text-xs">
+            <span className="flex items-center gap-1.5 font-medium">
+              <FileCheck2 className="h-3.5 w-3.5 text-success" />
+              Capture exploitable
+            </span>
+            <span className="font-semibold text-primary">{autoScore}/100</span>
+          </div>
           <div className="flex gap-2">
             <Button type="button" variant="outline" size="sm" onClick={reset} className="flex-1">
               <RotateCcw className="h-3.5 w-3.5 mr-1.5" /> Reprendre
@@ -862,7 +1022,7 @@ const DocumentCapture = ({
             <Button
               type="button"
               onClick={snap}
-              disabled={!analysis.hasDocument}
+              disabled={!analysis.hasDocument || autoScore < DOCUMENT_MIN_SCORE}
               className="w-full bg-gradient-brand shadow-brand"
             >
               <CheckCircle2 className="h-4 w-4 mr-2" />
@@ -939,8 +1099,14 @@ const SelfieLivenessStep = ({
         onOpenChange={setOpen}
         onSuccess={(result) => {
           const selfieName = result.snapshotFile?.name || `liveness-${Date.now()}.jpg`;
-          dispatch(updateSelfie({ selfieName, livenessOk: true }));
-          onCapture({ name: selfieName, file: result.snapshotFile || null });
+          const livenessSignals = [
+            result.is_live ? 'live' : 'not_live',
+            result.blink_valid ? 'blink_pass' : 'blink_missing',
+            result.head_movement ? 'movement_pass' : 'movement_missing',
+            result.smile_detected ? 'smile_pass' : 'smile_missing',
+          ];
+          dispatch(updateSelfie({ selfieName, livenessOk: true, livenessSignals }));
+          onCapture({ name: selfieName, file: result.snapshotFile || null, signals: livenessSignals });
           toast.success('Vérification de présence réussie');
         }}
       />
@@ -970,6 +1136,75 @@ const ReviewStep = () => {
         <div key={r.k} className="flex justify-between text-sm border-b border-border py-2">
           <span className="text-muted-foreground">{r.k}</span>
           <span className="font-medium text-right">{r.v || '—'}</span>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+const RiskReviewStep = ({ decision }: { decision: KycDecision }) => {
+  const { t } = useTranslation();
+  const kyc = useAppSelector((s) => s.kyc);
+  const verdictLabel: Record<KycVerdict, string> = {
+    ready: 'Pret pour soumission',
+    review: 'Revue manuelle probable',
+    retry: 'Correction requise',
+    blocked: 'Bloque',
+  };
+  const verdictTone: Record<KycVerdict, string> = {
+    ready: 'border-success/30 bg-success/10 text-success',
+    review: 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300',
+    retry: 'border-destructive/30 bg-destructive/10 text-destructive',
+    blocked: 'border-destructive/30 bg-destructive/10 text-destructive',
+  };
+  const rows = [
+    { k: t('kyc.dob'), v: kyc.personal.dob },
+    { k: t('kyc.nationality'), v: kyc.personal.nationality },
+    { k: t('kyc.phone'), v: `${kyc.personal.phone} (${kyc.personal.phoneVerified ? 'OTP OK' : 'OTP manquant'})` },
+    {
+      k: t('kyc.street'),
+      v: `${kyc.address.street}, ${kyc.address.city} ${kyc.address.postalCode}, ${kyc.address.country}`,
+    },
+    { k: t('kyc.idType'), v: kyc.document.type },
+    { k: 'Qualite document', v: `${kyc.document.frontQualityScore || 0}/100` },
+    { k: 'MRZ', v: kyc.document.type === 'passport' ? `${Math.round((kyc.document.frontMrzConfidence || 0) * 100)}%` : 'Non requis' },
+    { k: 'Vivacite', v: kyc.selfie.livenessOk ? 'Verifiee' : 'Manquante' },
+  ];
+
+  return (
+    <div className="space-y-5">
+      <div className={cn('rounded-2xl border p-4', verdictTone[decision.verdict])}>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2 font-display text-lg font-semibold">
+            {decision.verdict === 'ready' ? <ClipboardCheck className="h-5 w-5" /> : <AlertTriangle className="h-5 w-5" />}
+            {verdictLabel[decision.verdict]}
+          </div>
+          <Badge variant="outline">Risque {decision.riskLevel} - {decision.riskScore}/100</Badge>
+        </div>
+        <p className="mt-2 text-sm opacity-90">
+          {decision.verdict === 'ready'
+            ? 'Le dossier peut etre soumis. La decision finale reste cote backend/compliance.'
+            : 'Le dossier peut partir en revue manuelle, retry ou rejet selon les controles finaux du backend.'}
+        </p>
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-2">
+        {decision.gates.map((gate) => (
+          <div key={gate.label} className="rounded-2xl border border-border bg-card/60 p-4">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-sm font-semibold">{gate.label}</span>
+              <Badge variant={gate.status === 'pass' ? 'default' : 'outline'}>{gate.status}</Badge>
+            </div>
+            <p className="mt-2 text-xs text-muted-foreground">{gate.detail}</p>
+          </div>
+        ))}
+      </div>
+
+      <h3 className="font-display font-semibold text-lg">{t('kyc.reviewTitle')}</h3>
+      {rows.map((row) => (
+        <div key={row.k} className="flex justify-between gap-4 border-b border-border py-2 text-sm">
+          <span className="text-muted-foreground">{row.k}</span>
+          <span className="text-right font-medium">{row.v || '-'}</span>
         </div>
       ))}
     </div>

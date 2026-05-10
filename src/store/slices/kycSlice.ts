@@ -2,18 +2,36 @@ import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
 export interface KYCData {
   step: number;
-  personal: { dob: string; nationality: string; phone: string; phoneVerified: boolean };
+  personal: { dob: string; nationality: string; phone: string; phoneVerified: boolean; consentAccepted: boolean };
   address: { street: string; city: string; postalCode: string; country: string };
-  document: { type: 'passport' | 'nationalId' | 'drivingLicense' | ''; idNumber: string; frontName: string; backName: string };
-  selfie: { selfieName: string; livenessOk: boolean };
+  document: {
+    type: 'passport' | 'nationalId' | 'drivingLicense' | '';
+    idNumber: string;
+    frontName: string;
+    backName: string;
+    frontQualityScore: number;
+    backQualityScore: number;
+    frontMrzConfidence: number;
+    backMrzConfidence: number;
+  };
+  selfie: { selfieName: string; livenessOk: boolean; livenessSignals: string[] };
 }
 
 const initial: KYCData = {
   step: 0,
-  personal: { dob: '', nationality: '', phone: '', phoneVerified: false },
+  personal: { dob: '', nationality: '', phone: '', phoneVerified: false, consentAccepted: false },
   address: { street: '', city: '', postalCode: '', country: '' },
-  document: { type: '', idNumber: '', frontName: '', backName: '' },
-  selfie: { selfieName: '', livenessOk: false },
+  document: {
+    type: '',
+    idNumber: '',
+    frontName: '',
+    backName: '',
+    frontQualityScore: 0,
+    backQualityScore: 0,
+    frontMrzConfidence: 0,
+    backMrzConfidence: 0,
+  },
+  selfie: { selfieName: '', livenessOk: false, livenessSignals: [] },
 };
 
 const load = (): KYCData => {

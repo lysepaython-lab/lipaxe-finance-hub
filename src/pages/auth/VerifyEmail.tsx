@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
@@ -35,7 +35,6 @@ const VerifyEmail = () => {
   const [verifyEmail, { isLoading: verifying }] = useVerifyEmailMutation();
   const [resendOtp, { isLoading: resending }] = useResendOtpMutation();
   const [updatePending] = useUpdatePendingEmailMutation();
-  const sentOnce = useRef(false);
 
   useEffect(() => {
     if (!userId || !email) return;
@@ -53,16 +52,6 @@ const VerifyEmail = () => {
     toast.error('Session de verification introuvable. Veuillez recommencer l\'inscription.');
     navigate('/register', { replace: true });
   }, [initialUserId, navigate, pending]);
-
-  useEffect(() => {
-    if (sentOnce.current || !userId) return;
-    sentOnce.current = true;
-    resendOtp({ userId, email })
-      .unwrap()
-      .then((r) => { if (r.otp) toast.info(`${t('auth.demoCode')}: ${r.otp}`); })
-      .catch(() => {});
-    setCooldown(RESEND_COOLDOWN);
-  }, [email, resendOtp, t, userId]);
 
   useEffect(() => {
     if (!cooldown) return;
@@ -104,7 +93,6 @@ const VerifyEmail = () => {
       setError(null);
       setEditOpen(false);
       toast.success('Email mis a jour, code renvoye');
-      sentOnce.current = false;
       const r = userId ? await resendOtp({ userId, email: newEmail }).unwrap().catch(() => null) : null;
       if (r?.otp) toast.info(`${t('auth.demoCode')}: ${r.otp}`);
       setCooldown(RESEND_COOLDOWN);

@@ -559,7 +559,7 @@ export async function mockHandler(url: string, method: string, body: any): Promi
     }
     return ok({ user, access: 'mock-access-token', refresh: 'mock-refresh-token' });
   }
-  if (url === '/auth/forgot-password/' && method === 'POST') return ok({ detail: 'Reset link sent' });
+  if (url === '/auth/forgot-password/' && method === 'POST') return ok({ detail: 'Reset OTP sent' });
   if (url === '/auth/reset-password/' && method === 'POST') return ok({ detail: 'Password updated' });
   if (url === '/api/users/reset_password/' && method === 'POST') return ok({ detail: 'Reset link sent' });
   if (url === '/api/users/reset_password_confirm/' && method === 'POST') return ok({ detail: 'Password updated' });

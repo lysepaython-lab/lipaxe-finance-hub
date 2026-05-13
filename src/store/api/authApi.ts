@@ -62,7 +62,7 @@ export const authApi = api.injectEndpoints({
         body,
       }),
     }),
-    resetPassword: b.mutation<{ detail: string }, { token: string; password: string }>({
+    resetPassword: b.mutation<{ detail: string }, { email: string; otp: string; password: string; re_password?: string }>({
       query: (body) => ({
         url: '/auth/reset-password/',
         method: 'POST',

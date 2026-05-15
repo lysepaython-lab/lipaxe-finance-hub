@@ -1,5 +1,5 @@
 {
-  "name": "Lipaxe — Borderless Banking",
+  "name": "Lipaxe — L’avenir des paiements en Afrique",
   "short_name": "Lipaxe",
   "description": "Multi-currency wallet, instant transfers and virtual cards.",
   "start_url": "/app",
@@ -10,7 +10,7 @@
   "theme_color": "#01594B",
   "categories": ["finance", "business"],
   "icons": [
-    { "src": "/lipaxe-icon.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" },
-    { "src": "/lipaxe-icon.png", "sizes": "192x192", "type": "image/png", "purpose": "any" }
+    { "src": "/icones green2.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/icones green2.png", "sizes": "192x192", "type": "image/png", "purpose": "any" }
   ]
 }

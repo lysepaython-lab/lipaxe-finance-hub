@@ -146,13 +146,9 @@ const VerifyEmail = () => {
               if (v.length === 5) submit(v);
             }}
           >
-            <InputOTPGroup>
+            <InputOTPGroup className="gap-2">
               {[0, 1, 2, 3, 4].map((i) => (
-                <InputOTPSlot
-                  key={i}
-                  index={i}
-                  className="h-12 w-11 rounded-xl border border-border bg-card text-foreground shadow-sm text-lg font-semibold transition-all data-[active=true]:border-primary data-[active=true]:ring-2 data-[active=true]:ring-primary/25 dark:bg-card/80 dark:border-border/80"
-                />
+                <InputOTPSlot key={i} index={i} />
               ))}
             </InputOTPGroup>
           </InputOTP>

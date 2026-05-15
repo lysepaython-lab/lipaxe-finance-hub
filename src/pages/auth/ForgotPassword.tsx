@@ -193,7 +193,7 @@ const ForgotPassword = () => {
               >
                 <InputOTPGroup className="w-full justify-between gap-2">
                   {Array.from({ length: OTP_LENGTH }).map((_, index) => (
-                    <InputOTPSlot key={index} index={index} className="h-12 w-12 rounded-xl text-lg" />
+                    <InputOTPSlot key={index} index={index} />
                   ))}
                 </InputOTPGroup>
               </InputOTP>

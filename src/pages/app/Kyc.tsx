@@ -15,9 +15,10 @@ import {
 } from '@/store/slices/kycSlice';
 import type { KYCData } from '@/store/slices/kycSlice';
 import {
-  useSubmitPersonalMutation, useSubmitAddressMutation, useVerifyPhoneMutation, useRequestPhoneOtpMutation,
+  useSubmitPersonalMutation, useSubmitAddressMutation,
 } from '@/store/api/kycApi';
 import { useCountriesQuery } from '@/store/api/platformApi';
+import type { IncountryEntry } from '@/store/api/platformApi';
 import { updateUser } from '@/store/slices/authSlice';
 import {
   AlertTriangle,
@@ -74,6 +75,78 @@ type KycDecision = {
 const DOCUMENT_MIN_SCORE = 78;
 const PASSPORT_MRZ_MIN = 0.2;
 
+const PHONE_LOCAL_LENGTHS: Record<string, number | [number, number]> = {
+  BI: 8,
+  CD: 9,
+  RW: 9,
+  KE: 9,
+  TZ: 9,
+  UG: 9,
+  SN: 9,
+  GH: 9,
+  NG: 10,
+  FR: 9,
+  GB: 10,
+  US: 10,
+  CA: 10,
+};
+
+const cleanDialCode = (value?: string) => {
+  const digits = String(value || '').replace(/\D/g, '');
+  return digits ? `+${digits}` : '';
+};
+
+const findCountry = (countries: IncountryEntry[] | undefined, alpha2?: string) =>
+  (countries || []).find((entry) => entry.country.alpha_2?.toUpperCase() === alpha2?.toUpperCase())?.country;
+
+const normalizePhoneForCountry = (phone: string, dialCode: string) => {
+  const raw = phone.trim();
+  if (!raw) return '';
+  let digits = raw.replace(/[^\d+]/g, '');
+  if (digits.startsWith('00')) digits = `+${digits.slice(2)}`;
+  if (digits.startsWith('+')) return `+${digits.slice(1).replace(/\D/g, '')}`;
+
+  const dialDigits = dialCode.replace(/\D/g, '');
+  const local = digits.replace(/\D/g, '').replace(/^0+/, '');
+  if (!dialDigits) return local ? `+${local}` : '';
+  return local.startsWith(dialDigits) ? `+${local}` : `+${dialDigits}${local}`;
+};
+
+const validatePhoneForCountry = (
+  phone: string,
+  alpha2: string | undefined,
+  countries: IncountryEntry[] | undefined,
+) => {
+  if (!alpha2) return { valid: false, normalized: phone.trim(), message: 'Selectionnez le pays de residence.' };
+  const country = findCountry(countries, alpha2);
+  const dialCode = cleanDialCode(country?.phone_code || country?.dialling_code);
+  if (!dialCode) return { valid: false, normalized: phone.trim(), message: 'Indicatif pays indisponible.' };
+
+  const normalized = normalizePhoneForCountry(phone, dialCode);
+  if (!normalized.startsWith(dialCode)) {
+    return {
+      valid: false,
+      normalized,
+      message: `Le numero doit commencer par ${dialCode} pour ${country?.name || alpha2}.`,
+    };
+  }
+
+  const local = normalized.slice(dialCode.length);
+  const expected = PHONE_LOCAL_LENGTHS[alpha2.toUpperCase()];
+  const min = Array.isArray(expected) ? expected[0] : expected || 6;
+  const max = Array.isArray(expected) ? expected[1] : expected || 12;
+  if (!/^\d+$/.test(local) || local.length < min || local.length > max) {
+    const lengthHint = min === max ? `${min} chiffres` : `${min} a ${max} chiffres`;
+    return {
+      valid: false,
+      normalized,
+      message: `Apres ${dialCode}, le numero doit contenir ${lengthHint}.`,
+    };
+  }
+
+  return { valid: true, normalized, message: `Numero coherent avec ${country?.name || alpha2}.` };
+};
+
 const getAge = (dob: string) => {
   if (!dob) return 0;
   const birth = new Date(dob);
@@ -103,8 +176,8 @@ const buildKycDecision = (kyc: KYCData): KycDecision => {
   if (age < 18) addGate('Age', 'blocked', 'Utilisateur mineur ou date de naissance invalide.', 100);
   else addGate('Age', 'pass', `${age} ans.`);
 
-  if (!kyc.personal.phoneVerified) addGate('Telephone', 'retry', 'Numero telephone non verifie par OTP.', 40);
-  else addGate('Telephone', 'pass', 'Possession du numero confirmee.');
+  if (!kyc.personal.phone?.trim()) addGate('Telephone', 'retry', 'Numero telephone manquant.', 25);
+  else addGate('Telephone', 'pass', 'Numero telephone enregistre sans OTP.');
 
   const frontScore = kyc.document.frontQualityScore || 0;
   const backScore = kyc.document.backQualityScore || 0;
@@ -147,15 +220,15 @@ const Kyc = () => {
   const { data: countries } = useCountriesQuery();
   const [submitPersonal, { isLoading: l1 }] = useSubmitPersonalMutation();
   const [submitAddress, { isLoading: l2 }] = useSubmitAddressMutation();
-  const [verifyPhone, { isLoading: l3 }] = useVerifyPhoneMutation();
-  const [requestPhoneOtp, { isLoading: l4 }] = useRequestPhoneOtpMutation();
-  const isLoading = l1 || l2 || l3 || l4;
-  const [phoneOtp, setPhoneOtp] = useState('');
-  const [otpRequested, setOtpRequested] = useState(false);
+  const isLoading = l1 || l2;
   const [frontCapture, setFrontCapture] = useState<CapturedFile>({ name: '', file: null });
   const [backCapture, setBackCapture] = useState<CapturedFile>({ name: '', file: null });
   const [selfieCapture, setSelfieCapture] = useState<CapturedFile>({ name: '', file: null });
   const decision = useMemo(() => buildKycDecision(kyc), [kyc]);
+  const phoneValidation = useMemo(
+    () => validatePhoneForCountry(kyc.personal.phone, kyc.address.country, countries),
+    [countries, kyc.address.country, kyc.personal.phone],
+  );
 
   const steps = ['Identite', "Piece d'identite", 'Vivacite', 'Decision'];
   const isStepValid = (step: number) => {
@@ -164,7 +237,7 @@ const Kyc = () => {
         kyc.personal.dob?.trim() &&
         kyc.personal.nationality?.trim() &&
         kyc.personal.phone?.trim() &&
-        kyc.personal.phoneVerified &&
+        phoneValidation.valid &&
         kyc.personal.consentAccepted &&
         kyc.address.street?.trim() &&
         kyc.address.city?.trim() &&
@@ -259,40 +332,10 @@ const Kyc = () => {
       setFrontCapture({ name: '', file: null });
       setBackCapture({ name: '', file: null });
       setSelfieCapture({ name: '', file: null });
-      setPhoneOtp('');
-      setOtpRequested(false);
       toast.success(t('kyc.submitted'));
       navigate('/app');
     } catch {
       toast.error(t('common.error'));
-    }
-  };
-
-  const requestOtp = async () => {
-    if (!kyc.personal.phone?.trim()) {
-      toast.error('Entrez d’abord votre numéro.');
-      return;
-    }
-    try {
-      const result = await requestPhoneOtp({ phone: kyc.personal.phone.trim() }).unwrap();
-      setOtpRequested(true);
-      toast.success(result.detail || result.message || 'Code OTP envoyé.');
-    } catch {
-      toast.error('Impossible d’envoyer le code OTP pour le moment.');
-    }
-  };
-
-  const confirmPhoneOtp = async () => {
-    if (!kyc.personal.phone?.trim() || !phoneOtp.trim()) {
-      toast.error('Entrez le numéro et le code OTP.');
-      return;
-    }
-    try {
-      await verifyPhone({ phone: kyc.personal.phone.trim(), otp: phoneOtp.trim() }).unwrap();
-      dispatch(updatePersonal({ phoneVerified: true }));
-      toast.success('Numéro vérifié.');
-    } catch {
-      toast.error('Code OTP invalide.');
     }
   };
 
@@ -337,14 +380,7 @@ const Kyc = () => {
       <Card className="shadow-elegant border-border/60">
         <CardContent className="p-6 space-y-5">
           {kyc.step === 0 && (
-            <IdentityStep
-              phoneOtp={phoneOtp}
-              otpRequested={otpRequested}
-              otpLoading={l3 || l4}
-              onPhoneOtpChange={setPhoneOtp}
-              onRequestOtp={requestOtp}
-              onConfirmOtp={confirmPhoneOtp}
-            />
+            <IdentityStep countries={countries} />
           )}
           {kyc.step === 1 && (
             <DocumentsStep
@@ -384,25 +420,15 @@ const Kyc = () => {
 
 /* ----------------------------- Step components ---------------------------- */
 
-const IdentityStep = ({
-  phoneOtp,
-  otpRequested,
-  otpLoading,
-  onPhoneOtpChange,
-  onRequestOtp,
-  onConfirmOtp,
-}: {
-  phoneOtp: string;
-  otpRequested: boolean;
-  otpLoading: boolean;
-  onPhoneOtpChange: (value: string) => void;
-  onRequestOtp: () => Promise<void>;
-  onConfirmOtp: () => Promise<void>;
-}) => {
+const IdentityStep = ({ countries }: { countries?: IncountryEntry[] }) => {
   const { t } = useTranslation();
   const dispatch = useAppDispatch();
   const personal = useAppSelector((s) => s.kyc.personal);
   const address = useAppSelector((s) => s.kyc.address);
+  const selectedCountry = findCountry(countries, address.country);
+  const selectedDialCode = cleanDialCode(selectedCountry?.phone_code || selectedCountry?.dialling_code);
+  const phoneValidation = validatePhoneForCountry(personal.phone, address.country, countries);
+  const hasPhoneInput = Boolean(personal.phone.trim());
   return (
     <div className="space-y-5">
       <div className="grid gap-3 md:grid-cols-2">
@@ -421,33 +447,20 @@ const IdentityStep = ({
           <Input
             value={personal.phone}
             onChange={(e) => dispatch(updatePersonal({ phone: e.target.value, phoneVerified: false }))}
-            placeholder="+33 6 12 34 56 78"
+            onBlur={() => {
+              if (phoneValidation.valid && phoneValidation.normalized !== personal.phone) {
+                dispatch(updatePersonal({ phone: phoneValidation.normalized, phoneVerified: false }));
+              }
+            }}
+            placeholder={selectedDialCode ? `${selectedDialCode} ...` : '+257 ...'}
             className="h-11 rounded-xl"
             maxLength={20}
           />
-          <div className="flex items-center justify-between gap-3 text-xs">
-            <span className={personal.phoneVerified ? 'text-success font-medium' : 'text-muted-foreground'}>
-              {personal.phoneVerified ? 'Numéro vérifié' : 'Numéro non vérifié'}
+          <div className="rounded-xl border border-border/70 bg-muted/25 px-3 py-2 text-xs">
+            <span className={hasPhoneInput && phoneValidation.valid ? 'text-success font-medium' : 'text-muted-foreground'}>
+              {hasPhoneInput ? phoneValidation.message : `Entrez un numero lie au pays selectionne${selectedDialCode ? ` (${selectedDialCode})` : ''}.`}
             </span>
-            <Button type="button" variant="ghost" size="sm" className="h-8 px-2" onClick={onRequestOtp} disabled={otpLoading}>
-              Envoyer OTP
-            </Button>
           </div>
-          {otpRequested && !personal.phoneVerified && (
-            <div className="flex gap-2">
-              <Input
-                value={phoneOtp}
-                onChange={(e) => onPhoneOtpChange(e.target.value.replace(/\D/g, '').slice(0, 8))}
-                placeholder="Code OTP"
-                inputMode="numeric"
-                className="h-10 rounded-xl"
-                maxLength={8}
-              />
-              <Button type="button" variant="outline" className="shrink-0" onClick={onConfirmOtp} disabled={otpLoading}>
-                Vérifier
-              </Button>
-            </div>
-          )}
         </div>
       </div>
       <label className="flex items-start gap-3 rounded-2xl border border-border bg-muted/30 p-4 text-sm">
@@ -460,7 +473,7 @@ const IdentityStep = ({
         <span>
           <span className="font-medium">J'autorise Lipaxe a verifier mon identite.</span>
           <span className="mt-1 block text-xs text-muted-foreground">
-            Les controles peuvent inclure OTP, document, MRZ/OCR, selfie/liveness, scoring risque et revue manuelle.
+            Pour le moment, le numero est enregistre sans OTP SMS. Les controles portent sur le document, la vivacite, le scoring risque et la revue manuelle.
           </span>
         </span>
       </label>
@@ -1160,7 +1173,7 @@ const RiskReviewStep = ({ decision }: { decision: KycDecision }) => {
   const rows = [
     { k: t('kyc.dob'), v: kyc.personal.dob },
     { k: t('kyc.nationality'), v: kyc.personal.nationality },
-    { k: t('kyc.phone'), v: `${kyc.personal.phone} (${kyc.personal.phoneVerified ? 'OTP OK' : 'OTP manquant'})` },
+    { k: t('kyc.phone'), v: `${kyc.personal.phone} (enregistre sans OTP SMS)` },
     {
       k: t('kyc.street'),
       v: `${kyc.address.street}, ${kyc.address.city} ${kyc.address.postalCode}, ${kyc.address.country}`,

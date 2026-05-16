@@ -38,6 +38,7 @@ import { cn } from '@/lib/utils';
 import { CountryPicker } from '@/components/security/CountryPicker';
 import { LivenessCapture } from '@/components/security/LivenessCapture';
 import AnalyzerWorker from '@/workers/kycDocumentAnalyzer.worker.ts?worker';
+import { t } from 'i18next';
 
 type DocumentKind = 'passport' | 'nationalId' | 'drivingLicense' | 'unknown';
 
@@ -64,13 +65,14 @@ type CapturedFile = {
 
 type KycVerdict = 'ready' | 'review' | 'retry' | 'blocked';
 type Translator = (key: string, options?: Record<string, unknown>) => string;
+type KycGateStatus = 'pass' | 'review' | 'retry' | 'blocked';
 
 type KycDecision = {
   verdict: KycVerdict;
   riskLevel: 'low' | 'medium' | 'high';
   riskScore: number;
   reasons: string[];
-  gates: { label: string; status: 'pass' | 'review' | 'retry' | 'blocked'; detail: string }[];
+  gates: { label: string; status: KycGateStatus; detail: string }[];
 };
 
 const DOCUMENT_MIN_SCORE = 78;
@@ -232,7 +234,10 @@ const Kyc = () => {
   const [frontCapture, setFrontCapture] = useState<CapturedFile>({ name: '', file: null });
   const [backCapture, setBackCapture] = useState<CapturedFile>({ name: '', file: null });
   const [selfieCapture, setSelfieCapture] = useState<CapturedFile>({ name: '', file: null });
-  const decision = useMemo(() => buildKycDecision(kyc, t), [kyc, t]);
+  const decision = useMemo(
+    () => buildKycDecision(kyc, (key, options) => String(t(key, options))),
+    [kyc, t],
+  );
   const phoneValidation = useMemo(
     () => validatePhoneForCountry(kyc.personal.phone, kyc.address.country, countries),
     [countries, kyc.address.country, kyc.personal.phone],
@@ -274,7 +279,7 @@ const Kyc = () => {
   const back = () => dispatch(setStep(Math.max(kyc.step - 1, 0)));
 
   const onSubmit = async () => {
-    const finalDecision = buildKycDecision(kyc, t);
+    const finalDecision = buildKycDecision(kyc, (key, options) => String(t(key, options)));
     if (![0, 1, 2, 3].every((step) => isStepValid(step))) {
       toast.error('Completer toutes les etapes KYC avant de soumettre.');
       return;
@@ -1172,6 +1177,17 @@ const RiskReviewStep = ({ decision }: { decision: KycDecision }) => {
     retry: t('kyc.verdictRetry'),
     blocked: t('kyc.verdictBlocked'),
   };
+  const riskLabel: Record<KycDecision['riskLevel'], string> = {
+    low: t('kyc.risk_low'),
+    medium: t('kyc.risk_medium'),
+    high: t('kyc.risk_high'),
+  };
+  const gateStatusLabel: Record<KycGateStatus, string> = {
+    pass: t('kyc.gateStatus_pass'),
+    review: t('kyc.gateStatus_review'),
+    retry: t('kyc.gateStatus_retry'),
+    blocked: t('kyc.gateStatus_blocked'),
+  };
   const verdictTone: Record<KycVerdict, string> = {
     ready: 'border-success/30 bg-success/10 text-success',
     review: 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300',
@@ -1201,7 +1217,7 @@ const RiskReviewStep = ({ decision }: { decision: KycDecision }) => {
             {verdictLabel[decision.verdict]}
           </div>
           <Badge variant="outline">
-            {t('kyc.riskBadge', { level: t(`kyc.risk_${decision.riskLevel}`), score: decision.riskScore })}
+            {t('kyc.riskBadge', { level: riskLabel[decision.riskLevel], score: decision.riskScore })}
           </Badge>
         </div>
         <p className="mt-2 text-sm opacity-90">
@@ -1217,7 +1233,7 @@ const RiskReviewStep = ({ decision }: { decision: KycDecision }) => {
             <div className="flex items-center justify-between gap-2">
               <span className="text-sm font-semibold">{gate.label}</span>
               <Badge variant={gate.status === 'pass' ? 'default' : 'outline'}>
-                {t(`kyc.gateStatus_${gate.status}`)}
+                {gateStatusLabel[gate.status]}
               </Badge>
             </div>
             <p className="mt-2 text-xs text-muted-foreground">{gate.detail}</p>

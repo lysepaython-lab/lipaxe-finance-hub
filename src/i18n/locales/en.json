@@ -409,6 +409,7 @@
     "livenessActionFallback": "Follow the displayed instruction",
     "livenessPrepareAction": "Get ready: {{action}}",
     "livenessNowAction": "Now: {{action}}",
+    "livenessKeepTrying": "Keep going: {{action}}. Keep your face clearly visible.",
     "livenessPrepareBody": "Take a second to position yourself, then perform the requested action.",
     "livenessFollowServerChallenge": "Follow the server challenge exactly.",
     "livenessCameraInitializing": "Initializing camera...",

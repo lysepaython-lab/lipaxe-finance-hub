@@ -336,7 +336,6 @@ export const LivenessCapture = ({ open, onOpenChange, onSuccess }: LivenessCaptu
         const quality = await analyzeFaceMeshFrame();
         if (!quality.ok) {
           setChallengeText(t(quality.messageKey));
-          return;
         }
         const frame = await captureFrameBlob(quality);
         if (frame && ws.readyState === WebSocket.OPEN) {
@@ -365,11 +364,7 @@ export const LivenessCapture = ({ open, onOpenChange, onSuccess }: LivenessCaptu
       startFrameSending();
       executionTimeoutRef.current = window.setTimeout(() => {
         if (activeChallengeRef.current !== challengeId) return;
-        stopFrameSending();
-        closeSocket();
-        setErrors([t('kyc.livenessActionTimeout')]);
-        setStep('failed');
-        setAttempts((value) => value + 1);
+        setChallengeText(t('kyc.livenessKeepTrying', { action }));
       }, ACTION_EXECUTION_MS);
     }, ACTION_PREPARE_MS);
   }, [clearExecutionTimeout, clearPrepareTimeout, closeSocket, setPreparingAction, startFrameSending, stopFrameSending, t]);

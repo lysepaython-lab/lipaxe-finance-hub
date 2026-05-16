@@ -31,7 +31,7 @@ interface LivenessCaptureProps {
 const MAX_ATTEMPTS = 5;
 const ACTION_PREPARE_MS = 1500; // se preparer
 const ACTION_EXECUTION_MS = 7000; // faire l'action pour le liveness
-const FRAME_INTERVAL_MS = 300;
+const FRAME_INTERVAL_MS = 180;
 const FRAME_WIDTH = 640;
 const FRAME_HEIGHT = 480;
 

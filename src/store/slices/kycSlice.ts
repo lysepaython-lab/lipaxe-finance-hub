@@ -2,8 +2,18 @@ import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
 export interface KYCData {
   step: number;
-  personal: { dob: string; nationality: string; phone: string; phoneVerified: boolean; consentAccepted: boolean };
-  address: { street: string; city: string; postalCode: string; country: string };
+  personal: {
+    dob: string;
+    nationality: string;
+    phone: string;
+    phoneVerified: boolean;
+    consentAccepted: boolean;
+    gender: string;
+    employmentStatus: string;
+    purposeOfAccount: string;
+    sourceOfFunds: string;
+  };
+  address: { street: string; city: string; province: string; postalCode: string; country: string };
   document: {
     type: 'passport' | 'nationalId' | 'drivingLicense' | '';
     idNumber: string;
@@ -19,8 +29,18 @@ export interface KYCData {
 
 const initial: KYCData = {
   step: 0,
-  personal: { dob: '', nationality: '', phone: '', phoneVerified: false, consentAccepted: false },
-  address: { street: '', city: '', postalCode: '', country: '' },
+  personal: {
+    dob: '',
+    nationality: '',
+    phone: '',
+    phoneVerified: false,
+    consentAccepted: false,
+    gender: '',
+    employmentStatus: '',
+    purposeOfAccount: '',
+    sourceOfFunds: '',
+  },
+  address: { street: '', city: '', province: '', postalCode: '', country: '' },
   document: {
     type: '',
     idNumber: '',
@@ -44,6 +64,7 @@ const load = (): KYCData => {
         ...initial,
         ...parsed,
         personal: { ...initial.personal, ...(parsed.personal || {}) },
+        address: { ...initial.address, ...(parsed.address || {}) },
         document: { ...initial.document, ...(parsed.document || {}) },
         selfie: { ...initial.selfie, ...(parsed.selfie || {}) },
       };

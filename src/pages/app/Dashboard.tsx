@@ -64,12 +64,12 @@ const Dashboard = () => {
               <div className="space-y-1">
                 <p className="font-display text-lg font-semibold">
                   {user?.kycStatus === 'pending'
-                    ? 'Votre verification KYC est en attente de finalisation'
+                    ? 'Votre verification KYC est en revue'
                     : t('dashboard.verifyPrompt')}
                 </p>
                 <p className="max-w-2xl text-sm text-muted-foreground">
                   {user?.kycStatus === 'pending'
-                    ? "Terminez maintenant votre verification pour eviter les blocages et debloquer l'ensemble des limites du compte."
+                    ? "Votre dossier est deja envoye. L'equipe compliance doit prendre la decision finale avant que vous puissiez modifier ou renvoyer vos donnees."
                     : "Votre compte n'est pas encore verifie. Completez votre KYC maintenant pour acceder a toutes les fonctionnalites et relever vos plafonds."}
                 </p>
               </div>
@@ -77,7 +77,7 @@ const Dashboard = () => {
 
             <Link to="/app/kyc" className="shrink-0">
               <Button className="min-w-40 bg-gradient-brand shadow-brand">
-                {user?.kycStatus === 'pending' ? 'Finaliser le KYC' : t('dashboard.verifyNow')}
+                {user?.kycStatus === 'pending' ? 'Voir le statut' : t('dashboard.verifyNow')}
               </Button>
             </Link>
           </div>

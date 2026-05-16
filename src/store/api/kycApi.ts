@@ -1,8 +1,34 @@
 import { api } from './baseApi';
 
 export interface KycCountry { name: string; alpha_2: string }
-export interface KycPersonal { dob: string; nationality: string; phone: string; gender?: 'M' | 'F' }
-export interface KycAddress { street: string; city: string; postalCode: string; country: string }
+export interface KycPersonal {
+  dob: string;
+  nationality: string;
+  phone: string;
+  gender?: string;
+  employmentStatus?: string;
+  purposeOfAccount?: string;
+  sourceOfFunds?: string;
+}
+export interface KycAddress { street: string; city: string; province?: string; postalCode: string; country: string }
+
+export interface KycServerRecord {
+  id?: string | number;
+  kyc_complete?: boolean;
+  kyc_status?: string;
+  kyc_verified?: boolean;
+  [key: string]: unknown;
+}
+
+export interface KycSubmissionResponse {
+  status?: string | number;
+  message?: string;
+  detail?: string;
+  kyc_complete?: boolean;
+  kyc_status?: string;
+  kyc_verified?: boolean;
+  data?: KycServerRecord;
+}
 
 export interface LivenessResult {
   is_live: boolean;
@@ -15,7 +41,7 @@ export interface LivenessResult {
 
 export const kycApi = api.injectEndpoints({
   endpoints: (b) => ({
-    getKycData: b.query<{ status: string; personal?: KycPersonal; address?: KycAddress }, void>({
+    getKycData: b.query<KycSubmissionResponse, void>({
       query: () => '/kyc/useraddress/',
       providesTags: ['KYC'],
     }),
@@ -23,7 +49,7 @@ export const kycApi = api.injectEndpoints({
       query: (body) => ({ url: '/kyc/useraddress/infospersons/', method: 'POST', body }),
       invalidatesTags: ['KYC'],
     }),
-    submitAddress: b.mutation<{ detail: string }, FormData>({
+    submitAddress: b.mutation<KycSubmissionResponse, FormData>({
       query: (body) => ({ url: '/kyc/useraddress/', method: 'POST', body }),
       invalidatesTags: ['KYC'],
     }),

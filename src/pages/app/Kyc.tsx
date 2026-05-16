@@ -15,7 +15,7 @@ import {
 } from '@/store/slices/kycSlice';
 import type { KYCData } from '@/store/slices/kycSlice';
 import {
-  useSubmitPersonalMutation, useSubmitAddressMutation,
+  useGetKycDataQuery, useSubmitPersonalMutation, useSubmitAddressMutation,
 } from '@/store/api/kycApi';
 import { useCountriesQuery } from '@/store/api/platformApi';
 import type { IncountryEntry } from '@/store/api/platformApi';
@@ -38,7 +38,6 @@ import { cn } from '@/lib/utils';
 import { CountryPicker } from '@/components/security/CountryPicker';
 import { LivenessCapture } from '@/components/security/LivenessCapture';
 import AnalyzerWorker from '@/workers/kycDocumentAnalyzer.worker.ts?worker';
-import { t } from 'i18next';
 
 type DocumentKind = 'passport' | 'nationalId' | 'drivingLicense' | 'unknown';
 
@@ -75,8 +74,20 @@ type KycDecision = {
   gates: { label: string; status: KycGateStatus; detail: string }[];
 };
 
+const normalizeKycStatus = (value?: string | null) => {
+  const raw = String(value || '').toLowerCase();
+  if (raw === 'verified' || raw === 'approved') return 'verified' as const;
+  if (raw === 'pending') return 'pending' as const;
+  return 'unverified' as const;
+};
+
 const DOCUMENT_MIN_SCORE = 78;
 const PASSPORT_MRZ_MIN = 0.2;
+
+const GENDER_OPTIONS = ['male', 'female', 'other'] as const;
+const EMPLOYMENT_STATUS_OPTIONS = ['employed', 'self_employed', 'student', 'unemployed', 'retired'] as const;
+const PURPOSE_OF_ACCOUNT_OPTIONS = ['personal', 'transfers', 'business', 'savings', 'crypto'] as const;
+const SOURCE_OF_FUNDS_OPTIONS = ['salary', 'business', 'savings', 'family_support', 'investment', 'crypto'] as const;
 
 const PHONE_LOCAL_LENGTHS: Record<string, number | [number, number]> = {
   BI: 8,
@@ -182,6 +193,12 @@ const buildKycDecision = (kyc: KYCData, t: Translator): KycDecision => {
   if (!kyc.personal.phone?.trim()) addGate(t('kyc.gatePhone'), 'retry', t('kyc.gatePhoneMissing'), 25);
   else addGate(t('kyc.gatePhone'), 'pass', t('kyc.gatePhoneSaved'));
 
+  if (!kyc.personal.gender || !kyc.personal.employmentStatus || !kyc.personal.purposeOfAccount || !kyc.personal.sourceOfFunds) {
+    addGate(t('kyc.gateProfile'), 'retry', t('kyc.gateProfileMissing'), 20);
+  } else {
+    addGate(t('kyc.gateProfile'), 'pass', t('kyc.gateProfileSaved'));
+  }
+
   const frontScore = kyc.document.frontQualityScore || 0;
   const backScore = kyc.document.backQualityScore || 0;
   const needsBack = kyc.document.type !== 'passport';
@@ -228,6 +245,7 @@ const Kyc = () => {
   const kyc = useAppSelector((s) => s.kyc);
   const user = useAppSelector((s) => s.auth.user);
   const { data: countries } = useCountriesQuery();
+  const { data: serverKyc, isLoading: serverKycLoading } = useGetKycDataQuery();
   const [submitPersonal, { isLoading: l1 }] = useSubmitPersonalMutation();
   const [submitAddress, { isLoading: l2 }] = useSubmitAddressMutation();
   const isLoading = l1 || l2;
@@ -242,6 +260,10 @@ const Kyc = () => {
     () => validatePhoneForCountry(kyc.personal.phone, kyc.address.country, countries),
     [countries, kyc.address.country, kyc.personal.phone],
   );
+  const serverRecord = serverKyc?.data;
+  const serverStatus = normalizeKycStatus(serverRecord?.kyc_status ?? serverKyc?.kyc_status ?? user?.kycStatus);
+  const serverComplete = Boolean(serverRecord?.kyc_complete ?? serverKyc?.kyc_complete ?? user?.kycComplete);
+  const kycLocked = serverComplete && (serverStatus === 'pending' || serverStatus === 'verified');
 
   const steps = [t('kyc.step1'), t('kyc.step3'), t('kyc.step4'), t('kyc.stepDecision')];
   const isStepValid = (step: number) => {
@@ -252,8 +274,13 @@ const Kyc = () => {
         kyc.personal.phone?.trim() &&
         phoneValidation.valid &&
         kyc.personal.consentAccepted &&
+        kyc.personal.gender &&
+        kyc.personal.employmentStatus &&
+        kyc.personal.purposeOfAccount &&
+        kyc.personal.sourceOfFunds &&
         kyc.address.street?.trim() &&
         kyc.address.city?.trim() &&
+        kyc.address.province?.trim() &&
         kyc.address.postalCode?.trim() &&
         kyc.address.country?.trim(),
       );
@@ -304,7 +331,12 @@ const Kyc = () => {
       personal.append('country', selectedCountry.id);
       personal.append('address', kyc.address.street || '');
       personal.append('city', kyc.address.city || '');
+      personal.append('province', kyc.address.province || '');
       personal.append('postalCode', kyc.address.postalCode || '');
+      personal.append('gender', kyc.personal.gender || '');
+      personal.append('employmentStatus', kyc.personal.employmentStatus || '');
+      personal.append('purposeOfAccount', kyc.personal.purposeOfAccount || '');
+      personal.append('sourceOfFunds', kyc.personal.sourceOfFunds || '');
       if (user?.firstName) personal.append('first_name', user.firstName);
       if (user?.lastName) personal.append('last_name', user.lastName);
 
@@ -315,7 +347,12 @@ const Kyc = () => {
       finalPayload.append('country', selectedCountry.id);
       finalPayload.append('address', kyc.address.street || '');
       finalPayload.append('city', kyc.address.city || '');
+      finalPayload.append('province', kyc.address.province || '');
       finalPayload.append('postalCode', kyc.address.postalCode || '');
+      finalPayload.append('gender', kyc.personal.gender || '');
+      finalPayload.append('employmentStatus', kyc.personal.employmentStatus || '');
+      finalPayload.append('purposeOfAccount', kyc.personal.purposeOfAccount || '');
+      finalPayload.append('sourceOfFunds', kyc.personal.sourceOfFunds || '');
       finalPayload.append('identity_type', kyc.document.type || '');
       finalPayload.append('id_number', kyc.document.idNumber || '');
       finalPayload.append('is_terms_conditions', 'true');
@@ -339,8 +376,10 @@ const Kyc = () => {
       }
 
       await submitPersonal(personal).unwrap();
-      await submitAddress(finalPayload).unwrap();
-      dispatch(updateUser({ kycStatus: 'pending' }));
+      const addressResponse = await submitAddress(finalPayload).unwrap();
+      const responseStatus = normalizeKycStatus(addressResponse.data?.kyc_status ?? addressResponse.kyc_status ?? 'pending');
+      const responseComplete = Boolean(addressResponse.data?.kyc_complete ?? addressResponse.kyc_complete ?? true);
+      dispatch(updateUser({ kycStatus: responseStatus, kycComplete: responseComplete }));
       dispatch(resetKyc());
       setFrontCapture({ name: '', file: null });
       setBackCapture({ name: '', file: null });
@@ -351,6 +390,46 @@ const Kyc = () => {
       toast.error(t('common.error'));
     }
   };
+
+  if (serverKycLoading) {
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (kycLocked) {
+    const isVerified = serverStatus === 'verified';
+    return (
+      <div className="mx-auto max-w-2xl">
+        <Card className="overflow-hidden border-primary/20 bg-card/95 shadow-soft">
+          <div className={cn('h-1.5', isVerified ? 'bg-success' : 'bg-amber-400')} />
+          <CardContent className="space-y-6 p-8 text-center">
+            <div
+              className={cn(
+                'mx-auto flex h-16 w-16 items-center justify-center rounded-3xl',
+                isVerified ? 'bg-success/12 text-success' : 'bg-amber-500/12 text-amber-300',
+              )}
+            >
+              {isVerified ? <CheckCircle2 className="h-8 w-8" /> : <ClipboardCheck className="h-8 w-8" />}
+            </div>
+            <div className="space-y-2">
+              <h1 className="font-display text-2xl font-bold">
+                {isVerified ? t('kyc.lockedVerifiedTitle') : t('kyc.lockedPendingTitle')}
+              </h1>
+              <p className="text-muted-foreground">
+                {isVerified ? t('kyc.lockedVerifiedBody') : t('kyc.lockedPendingBody')}
+              </p>
+            </div>
+            <Button className="bg-gradient-brand shadow-brand" onClick={() => navigate('/app')}>
+              {t('kyc.backToDashboard')}
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
@@ -476,6 +555,71 @@ const IdentityStep = ({ countries }: { countries?: IncountryEntry[] }) => {
           </div>
         </div>
       </div>
+      <div className="grid gap-3 md:grid-cols-2">
+        <div className="space-y-2">
+          <Label>{t('kyc.gender')}</Label>
+          <Select value={personal.gender || undefined} onValueChange={(value) => dispatch(updatePersonal({ gender: value }))}>
+            <SelectTrigger className="h-11 rounded-xl">
+              <SelectValue placeholder={t('kyc.selectPlaceholder')} />
+            </SelectTrigger>
+            <SelectContent>
+              {GENDER_OPTIONS.map((value) => (
+                <SelectItem key={value} value={value}>{t(`kyc.gender_${value}`)}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label>{t('kyc.employmentStatus')}</Label>
+          <Select
+            value={personal.employmentStatus || undefined}
+            onValueChange={(value) => dispatch(updatePersonal({ employmentStatus: value }))}
+          >
+            <SelectTrigger className="h-11 rounded-xl">
+              <SelectValue placeholder={t('kyc.selectPlaceholder')} />
+            </SelectTrigger>
+            <SelectContent>
+              {EMPLOYMENT_STATUS_OPTIONS.map((value) => (
+                <SelectItem key={value} value={value}>{t(`kyc.employment_${value}`)}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+      <div className="grid gap-3 md:grid-cols-2">
+        <div className="space-y-2">
+          <Label>{t('kyc.purposeOfAccount')}</Label>
+          <Select
+            value={personal.purposeOfAccount || undefined}
+            onValueChange={(value) => dispatch(updatePersonal({ purposeOfAccount: value }))}
+          >
+            <SelectTrigger className="h-11 rounded-xl">
+              <SelectValue placeholder={t('kyc.selectPlaceholder')} />
+            </SelectTrigger>
+            <SelectContent>
+              {PURPOSE_OF_ACCOUNT_OPTIONS.map((value) => (
+                <SelectItem key={value} value={value}>{t(`kyc.purpose_${value}`)}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label>{t('kyc.sourceOfFunds')}</Label>
+          <Select
+            value={personal.sourceOfFunds || undefined}
+            onValueChange={(value) => dispatch(updatePersonal({ sourceOfFunds: value }))}
+          >
+            <SelectTrigger className="h-11 rounded-xl">
+              <SelectValue placeholder={t('kyc.selectPlaceholder')} />
+            </SelectTrigger>
+            <SelectContent>
+              {SOURCE_OF_FUNDS_OPTIONS.map((value) => (
+                <SelectItem key={value} value={value}>{t(`kyc.source_${value}`)}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
       <label className="flex items-start gap-3 rounded-2xl border border-border bg-muted/30 p-4 text-sm">
         <input
           type="checkbox"
@@ -484,10 +628,7 @@ const IdentityStep = ({ countries }: { countries?: IncountryEntry[] }) => {
           className="mt-1 h-4 w-4 accent-primary"
         />
         <span>
-          <span className="font-medium">J'autorise Lipaxe a verifier mon identite.</span>
-          <span className="mt-1 block text-xs text-muted-foreground">
-            Pour le moment, le numero est enregistre sans OTP SMS. Les controles portent sur le document, la vivacite, le scoring risque et la revue manuelle.
-          </span>
+          <span className="font-medium">{t('kyc.consent')}</span>
         </span>
       </label>
       <div className="grid gap-3 md:grid-cols-2">
@@ -521,6 +662,17 @@ const IdentityStep = ({ countries }: { countries?: IncountryEntry[] }) => {
             maxLength={80}
           />
         </div>
+        <div className="space-y-2">
+          <Label>{t('kyc.province')}</Label>
+          <Input
+            value={address.province}
+            onChange={(e) => dispatch(updateAddress({ province: e.target.value }))}
+            className="h-11 rounded-xl"
+            maxLength={100}
+          />
+        </div>
+      </div>
+      <div className="grid gap-3 md:grid-cols-2">
         <div className="space-y-2">
           <Label>{t('kyc.postalCode')}</Label>
           <Input
@@ -613,9 +765,6 @@ const DocumentsStep = ({
           />
         )}
       </div>
-      <p className="text-xs text-muted-foreground">
-        Capture camera uniquement - l'upload de fichiers existants est desactive pour votre securite.
-      </p>
     </>
   );
 };
@@ -1142,11 +1291,15 @@ const ReviewStep = () => {
   const kyc = useAppSelector((s) => s.kyc);
   const rows = [
     { k: t('kyc.dob'), v: kyc.personal.dob },
+    { k: t('kyc.gender'), v: kyc.personal.gender ? t(`kyc.gender_${kyc.personal.gender}`) : '' },
     { k: t('kyc.nationality'), v: kyc.personal.nationality },
     { k: t('kyc.phone'), v: kyc.personal.phone },
+    { k: t('kyc.employmentStatus'), v: kyc.personal.employmentStatus ? t(`kyc.employment_${kyc.personal.employmentStatus}`) : '' },
+    { k: t('kyc.purposeOfAccount'), v: kyc.personal.purposeOfAccount ? t(`kyc.purpose_${kyc.personal.purposeOfAccount}`) : '' },
+    { k: t('kyc.sourceOfFunds'), v: kyc.personal.sourceOfFunds ? t(`kyc.source_${kyc.personal.sourceOfFunds}`) : '' },
     {
       k: t('kyc.street'),
-      v: `${kyc.address.street}, ${kyc.address.city} ${kyc.address.postalCode}, ${kyc.address.country}`,
+      v: `${kyc.address.street}, ${kyc.address.city}, ${kyc.address.province} ${kyc.address.postalCode}, ${kyc.address.country}`,
     },
     { k: t('kyc.idType'), v: kyc.document.type },
     { k: t('kyc.documentFile'), v: kyc.document.frontName },
@@ -1193,11 +1346,15 @@ const RiskReviewStep = ({ decision }: { decision: KycDecision }) => {
   };
   const rows = [
     { k: t('kyc.dob'), v: kyc.personal.dob },
+    { k: t('kyc.gender'), v: kyc.personal.gender ? t(`kyc.gender_${kyc.personal.gender}`) : '' },
     { k: t('kyc.nationality'), v: kyc.personal.nationality },
     { k: t('kyc.phone'), v: `${kyc.personal.phone} (${t('kyc.phoneSavedWithoutOtp')})` },
+    { k: t('kyc.employmentStatus'), v: kyc.personal.employmentStatus ? t(`kyc.employment_${kyc.personal.employmentStatus}`) : '' },
+    { k: t('kyc.purposeOfAccount'), v: kyc.personal.purposeOfAccount ? t(`kyc.purpose_${kyc.personal.purposeOfAccount}`) : '' },
+    { k: t('kyc.sourceOfFunds'), v: kyc.personal.sourceOfFunds ? t(`kyc.source_${kyc.personal.sourceOfFunds}`) : '' },
     {
       k: t('kyc.street'),
-      v: `${kyc.address.street}, ${kyc.address.city} ${kyc.address.postalCode}, ${kyc.address.country}`,
+      v: `${kyc.address.street}, ${kyc.address.city}, ${kyc.address.province} ${kyc.address.postalCode}, ${kyc.address.country}`,
     },
     { k: t('kyc.idType'), v: kyc.document.type },
     { k: t('kyc.documentQuality'), v: `${kyc.document.frontQualityScore || 0}/100` },

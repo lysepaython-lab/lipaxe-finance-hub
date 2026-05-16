@@ -26,18 +26,22 @@ const asNumber = (value: unknown, fallback = 0): number => {
 
 export const normalizeUser = (payload: unknown): User => {
   const raw = (payload ?? {}) as UnknownRecord;
+  const kycStatusValue = asString(raw.kyc_status ?? raw.kycStatus).toLowerCase();
+  const kycStatus = (
+    kycStatusValue === 'verified' || kycStatusValue === 'approved'
+      ? 'verified'
+      : kycStatusValue === 'pending'
+        ? 'pending'
+        : 'unverified'
+  ) as User['kycStatus'];
   return {
     id: asString(raw.id),
     email: asString(raw.email),
     firstName: asString(raw.first_name ?? raw.firstName),
     lastName: asString(raw.last_name ?? raw.lastName),
     username: asString(raw.account_no ?? raw.username),
-    kycStatus:
-      raw.kyc_status === 'verified'
-        ? 'verified'
-        : raw.kyc_status === 'pending'
-          ? 'pending'
-          : 'unverified',
+    kycStatus,
+    kycComplete: Boolean(raw.kyc_complete ?? raw.kycComplete ?? kycStatus !== 'unverified'),
     avatar: asString(raw.profile_image_url ?? raw.avatar, ''),
     isStaff: Boolean(raw.is_staff ?? raw.isStaff),
     isSuperuser: Boolean(raw.is_superuser ?? raw.isSuperuser),

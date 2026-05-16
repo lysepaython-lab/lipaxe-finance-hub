@@ -1086,9 +1086,6 @@ const SelfieLivenessStep = ({
 
   return (
     <>
-      <p className="text-sm text-muted-foreground">
-        Pour finaliser, nous devons confirmer que c'est bien vous via la caméra (anti-fraude).
-      </p>
       <motion.div
         whileHover={{ y: -1 }}
         className={cn(
@@ -1102,9 +1099,9 @@ const SelfieLivenessStep = ({
             <div className="mx-auto mb-3 h-14 w-14 rounded-full bg-success/15 text-success flex items-center justify-center">
               <ShieldCheck className="h-7 w-7" />
             </div>
-            <p className="font-display font-semibold text-success">Présence vérifiée</p>
+            <p className="font-display font-semibold text-success">{t('kyc.livenessVerified')}</p>
             <Button variant="ghost" size="sm" className="mt-2" onClick={(e) => { e.stopPropagation(); setOpen(true); }}>
-              Refaire la vérification
+              {t('kyc.viewDetails')}
             </Button>
           </>
         ) : (
@@ -1112,9 +1109,9 @@ const SelfieLivenessStep = ({
             <div className="mx-auto mb-3 h-14 w-14 rounded-full bg-primary/10 text-primary flex items-center justify-center">
               <Camera className="h-7 w-7" />
             </div>
-            <p className="font-display font-semibold">Démarrer la vérification</p>
+            <p className="font-display font-semibold">{t('kyc.startLivenessVerification')}</p>
             <p className="text-xs text-muted-foreground mt-1">
-              Suivez les instructions guidées (clignement, tête, sourire)
+              {t('kyc.livenessDescription')}
             </p>
           </>
         )}

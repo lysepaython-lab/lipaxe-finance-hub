@@ -371,6 +371,7 @@
     "step5": "Revision",
     "dob": "Date de naissance",
     "nationality": "Nationalite",
+
     "phone": "Telephone",
     "street": "Adresse",
     "city": "Ville",
@@ -443,6 +444,10 @@
     "reviewTitle": "Verifiez vos informations",
     "submit": "Soumettre",
     "submitted": "Verification soumise",
+    "viewDetails": "Voir les détails",
+    "livenessVerified": "Presence verifiee",
+    "livenessDescription": "Suivez les instructions guidées",
+    "livenessDescriptionFallback": "Suivez les instructions.",
     "next": "Continuer",
     "back": "Retour",
     "saveDraft": "Enregistrer et quitter",

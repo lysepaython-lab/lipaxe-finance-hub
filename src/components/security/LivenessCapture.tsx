@@ -26,8 +26,8 @@ interface LivenessCaptureProps {
   onSuccess: (result: LivenessResult) => void;
 }
 
-const MAX_ATTEMPTS = 3;
-const ACTION_PREPARE_MS = 1400;
+const MAX_ATTEMPTS = 5;
+const ACTION_PREPARE_MS = 8400;
 
 const buildWsUrl = () => {
   const base = API_URL.replace(/^http/, 'ws').replace(/\/+$/, '');

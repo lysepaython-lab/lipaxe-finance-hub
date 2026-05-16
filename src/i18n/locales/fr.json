@@ -420,6 +420,7 @@
     "livenessConnectionUnavailable": "Connexion liveness indisponible",
     "livenessCameraDenied": "Acces camera refuse",
     "livenessCameraHelp": "Autorisez la camera dans le navigateur pour continuer.",
+    "livenessActionTimeout": "Le temps pour cette action est ecoule. Reessayez en suivant le guide.",
     "livenessMaxAttemptsReached": "Nombre maximum de tentatives atteint.",
     "livenessRetryRemaining": "Reessayer ({{count}} restantes)",
     "livenessAttemptsExhausted": "Tentatives epuisees. Reessayez plus tard."

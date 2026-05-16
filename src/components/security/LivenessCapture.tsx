@@ -7,6 +7,7 @@ import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 import { API_URL } from '@/store/api/baseApi';
+import { useAppSelector } from '@/store/hooks';
 
 type Step = 'idle' | 'connecting' | 'ready' | 'processing' | 'success' | 'failed';
 
@@ -27,11 +28,16 @@ interface LivenessCaptureProps {
 }
 
 const MAX_ATTEMPTS = 5;
-const ACTION_PREPARE_MS = 8400;
+const ACTION_PREPARE_MS = 1500; // se preparer
+const ACTION_EXECUTION_MS = 7000; // faire l'action pour le liveness
+const FRAME_INTERVAL_MS = 250;
+const FRAME_WIDTH = 320;
+const FRAME_HEIGHT = 240;
 
-const buildWsUrl = () => {
+const buildWsUrl = (token?: string | null) => {
   const base = API_URL.replace(/^http/, 'ws').replace(/\/+$/, '');
-  return `${base}/ws/liveness/`;
+  const query = token ? `?token=${encodeURIComponent(token)}` : '';
+  return `${base}/ws/liveness/${query}`;
 };
 
 const mapInstruction = (instruction: string | undefined, t: (key: string, options?: Record<string, unknown>) => string) => {
@@ -46,11 +52,17 @@ const mapInstruction = (instruction: string | undefined, t: (key: string, option
 
 export const LivenessCapture = ({ open, onOpenChange, onSuccess }: LivenessCaptureProps) => {
   const { t } = useTranslation();
+  const accessToken = useAppSelector((state) => state.auth.accessToken);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const sendIntervalRef = useRef<number | null>(null);
   const prepareTimeoutRef = useRef<number | null>(null);
+  const executionTimeoutRef = useRef<number | null>(null);
+  const isPreparingActionRef = useRef(false);
+  const isSendingFrameRef = useRef(false);
+  const activeChallengeRef = useRef(0);
+  const handleServerMessageRef = useRef<(data: any) => void>(() => {});
 
   const [step, setStep] = useState<Step>('idle');
   const [attempts, setAttempts] = useState(0);
@@ -61,11 +73,17 @@ export const LivenessCapture = ({ open, onOpenChange, onSuccess }: LivenessCaptu
   const [cameraReady, setCameraReady] = useState(false);
   const [isPreparingAction, setIsPreparingAction] = useState(false);
 
+  const setPreparingAction = useCallback((value: boolean) => {
+    isPreparingActionRef.current = value;
+    setIsPreparingAction(value);
+  }, []);
+
   const stopFrameSending = useCallback(() => {
     if (sendIntervalRef.current) {
       window.clearInterval(sendIntervalRef.current);
       sendIntervalRef.current = null;
     }
+    isSendingFrameRef.current = false;
   }, []);
 
   const clearPrepareTimeout = useCallback(() => {
@@ -73,7 +91,14 @@ export const LivenessCapture = ({ open, onOpenChange, onSuccess }: LivenessCaptu
       window.clearTimeout(prepareTimeoutRef.current);
       prepareTimeoutRef.current = null;
     }
-    setIsPreparingAction(false);
+    setPreparingAction(false);
+  }, [setPreparingAction]);
+
+  const clearExecutionTimeout = useCallback(() => {
+    if (executionTimeoutRef.current) {
+      window.clearTimeout(executionTimeoutRef.current);
+      executionTimeoutRef.current = null;
+    }
   }, []);
 
   const stopCamera = useCallback(() => {
@@ -91,24 +116,26 @@ export const LivenessCapture = ({ open, onOpenChange, onSuccess }: LivenessCaptu
   }, []);
 
   const resetState = useCallback(() => {
+    activeChallengeRef.current += 1;
     setStep('idle');
     setErrors([]);
     setChallengeText(t('kyc.livenessCenterFace'));
     setProgress(0);
     setConnected(false);
     setCameraReady(false);
-    setIsPreparingAction(false);
-  }, [t]);
+    setPreparingAction(false);
+  }, [setPreparingAction, t]);
 
   useEffect(() => {
     if (!open) {
       clearPrepareTimeout();
+      clearExecutionTimeout();
       stopFrameSending();
       stopCamera();
       closeSocket();
       resetState();
     }
-  }, [open, clearPrepareTimeout, stopFrameSending, stopCamera, closeSocket, resetState]);
+  }, [open, clearExecutionTimeout, clearPrepareTimeout, stopFrameSending, stopCamera, closeSocket, resetState]);
 
   const captureFrame = useCallback(() => {
     const video = videoRef.current;
@@ -121,6 +148,26 @@ export const LivenessCapture = ({ open, onOpenChange, onSuccess }: LivenessCaptu
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
     return canvas.toDataURL('image/jpeg', 0.75);
   }, []);
+
+  const captureFrameBlob = useCallback(() => (
+    new Promise<Blob | null>((resolve) => {
+      const video = videoRef.current;
+      if (!video || video.readyState < 2 || !video.videoWidth || !video.videoHeight) {
+        resolve(null);
+        return;
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = FRAME_WIDTH;
+      canvas.height = FRAME_HEIGHT;
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      if (!ctx) {
+        resolve(null);
+        return;
+      }
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob((blob) => resolve(blob), 'image/jpeg', 0.62);
+    })
+  ), []);
 
   const captureSnapshotFile = useCallback(() => {
     const frame = captureFrame();
@@ -138,28 +185,47 @@ export const LivenessCapture = ({ open, onOpenChange, onSuccess }: LivenessCaptu
 
   const startFrameSending = useCallback(() => {
     stopFrameSending();
-    sendIntervalRef.current = window.setInterval(() => {
+    sendIntervalRef.current = window.setInterval(async () => {
       const ws = wsRef.current;
       if (!ws || ws.readyState !== WebSocket.OPEN) return;
-      const frame = captureFrame();
-      if (!frame) return;
-      ws.send(JSON.stringify({ type: 'liveness_frame', frame }));
-    }, 150);
-  }, [captureFrame, stopFrameSending]);
+      if (isSendingFrameRef.current) return;
+      isSendingFrameRef.current = true;
+      try {
+        const frame = await captureFrameBlob();
+        if (frame && ws.readyState === WebSocket.OPEN) {
+          ws.send(frame);
+        }
+      } finally {
+        isSendingFrameRef.current = false;
+      }
+    }, FRAME_INTERVAL_MS);
+  }, [captureFrameBlob, stopFrameSending]);
 
   const prepareChallenge = useCallback((instruction?: string) => {
     clearPrepareTimeout();
+    clearExecutionTimeout();
     stopFrameSending();
+    activeChallengeRef.current += 1;
+    const challengeId = activeChallengeRef.current;
     const action = mapInstruction(instruction, t);
     setStep('ready');
-    setIsPreparingAction(true);
+    setPreparingAction(true);
     setChallengeText(t('kyc.livenessPrepareAction', { action }));
     prepareTimeoutRef.current = window.setTimeout(() => {
-      setIsPreparingAction(false);
+      if (activeChallengeRef.current !== challengeId) return;
+      setPreparingAction(false);
       setChallengeText(t('kyc.livenessNowAction', { action }));
       startFrameSending();
+      executionTimeoutRef.current = window.setTimeout(() => {
+        if (activeChallengeRef.current !== challengeId) return;
+        stopFrameSending();
+        closeSocket();
+        setErrors([t('kyc.livenessActionTimeout')]);
+        setStep('failed');
+        setAttempts((value) => value + 1);
+      }, ACTION_EXECUTION_MS);
     }, ACTION_PREPARE_MS);
-  }, [clearPrepareTimeout, startFrameSending, stopFrameSending, t]);
+  }, [clearExecutionTimeout, clearPrepareTimeout, closeSocket, setPreparingAction, startFrameSending, stopFrameSending, t]);
 
   const handleServerMessage = useCallback((data: any) => {
     if (data.type === 'liveness_started') {
@@ -171,7 +237,7 @@ export const LivenessCapture = ({ open, onOpenChange, onSuccess }: LivenessCaptu
 
     if (data.type === 'challenge_feedback') {
       setStep('ready');
-      if (!isPreparingAction) {
+      if (!isPreparingActionRef.current) {
         setChallengeText(mapInstruction(data.message, t));
       }
       return;
@@ -187,6 +253,7 @@ export const LivenessCapture = ({ open, onOpenChange, onSuccess }: LivenessCaptu
 
     if (data.type === 'liveness_completed') {
       clearPrepareTimeout();
+      clearExecutionTimeout();
       setProgress(100);
       setStep('success');
       const snapshotFile = captureSnapshotFile();
@@ -194,11 +261,11 @@ export const LivenessCapture = ({ open, onOpenChange, onSuccess }: LivenessCaptu
       stopCamera();
       closeSocket();
       const result: LivenessResult = {
-        is_live: true,
-        blink_valid: true,
-        blinks_detected: true,
-        head_movement: true,
-        smile_detected: true,
+        is_live: Boolean(data.is_live ?? data.result?.is_live ?? true),
+        blink_valid: Boolean(data.blink_valid ?? data.result?.blink_valid ?? true),
+        blinks_detected: Boolean(data.blinks_detected ?? data.result?.blinks_detected ?? true),
+        head_movement: Boolean(data.head_movement ?? data.result?.head_movement ?? true),
+        smile_detected: Boolean(data.smile_detected ?? data.result?.smile_detected ?? true),
         error: null,
         snapshotFile,
       };
@@ -211,6 +278,7 @@ export const LivenessCapture = ({ open, onOpenChange, onSuccess }: LivenessCaptu
 
     if (data.type === 'challenge_failed' || data.type === 'liveness_failed' || data.type === 'liveness_error' || data.status === 'error') {
       clearPrepareTimeout();
+      clearExecutionTimeout();
       setErrors([data.message || t('kyc.livenessFailed')]);
       setStep('failed');
       stopFrameSending();
@@ -218,7 +286,11 @@ export const LivenessCapture = ({ open, onOpenChange, onSuccess }: LivenessCaptu
       closeSocket();
       setAttempts((value) => value + 1);
     }
-  }, [captureSnapshotFile, clearPrepareTimeout, closeSocket, isPreparingAction, onOpenChange, onSuccess, prepareChallenge, stopCamera, stopFrameSending, t]);
+  }, [captureSnapshotFile, clearExecutionTimeout, clearPrepareTimeout, closeSocket, onOpenChange, onSuccess, prepareChallenge, stopCamera, stopFrameSending, t]);
+
+  useEffect(() => {
+    handleServerMessageRef.current = handleServerMessage;
+  }, [handleServerMessage]);
 
   const startCamera = useCallback(async () => {
     try {
@@ -241,7 +313,7 @@ export const LivenessCapture = ({ open, onOpenChange, onSuccess }: LivenessCaptu
       setStep('connecting');
       setErrors([]);
 
-      const ws = new WebSocket(buildWsUrl());
+      const ws = new WebSocket(buildWsUrl(accessToken));
       wsRef.current = ws;
 
       ws.onopen = () => {
@@ -251,9 +323,10 @@ export const LivenessCapture = ({ open, onOpenChange, onSuccess }: LivenessCaptu
 
       ws.onmessage = (event) => {
         try {
-          handleServerMessage(JSON.parse(event.data));
+          handleServerMessageRef.current(JSON.parse(event.data));
         } catch {
           clearPrepareTimeout();
+          clearExecutionTimeout();
           setErrors([t('kyc.livenessInvalidServerResponse')]);
           setStep('failed');
         }
@@ -261,6 +334,7 @@ export const LivenessCapture = ({ open, onOpenChange, onSuccess }: LivenessCaptu
 
       ws.onerror = () => {
         clearPrepareTimeout();
+        clearExecutionTimeout();
         setErrors([t('kyc.livenessConnectionUnavailable')]);
         setStep('failed');
         stopFrameSending();
@@ -277,7 +351,7 @@ export const LivenessCapture = ({ open, onOpenChange, onSuccess }: LivenessCaptu
       setErrors([t('kyc.livenessCameraHelp')]);
       setStep('failed');
     }
-  }, [clearPrepareTimeout, closeSocket, handleServerMessage, stopCamera, stopFrameSending, t]);
+  }, [accessToken, clearExecutionTimeout, clearPrepareTimeout, closeSocket, stopCamera, stopFrameSending, t]);
 
   const retry = () => {
     if (attempts >= MAX_ATTEMPTS) {
@@ -286,6 +360,7 @@ export const LivenessCapture = ({ open, onOpenChange, onSuccess }: LivenessCaptu
       return;
     }
     clearPrepareTimeout();
+    clearExecutionTimeout();
     stopFrameSending();
     stopCamera();
     closeSocket();

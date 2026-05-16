@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
-import { cn } from '@/lib/utils';
+import { useTranslation } from 'react-i18next';
 import { API_URL } from '@/store/api/baseApi';
 
 type Step = 'idle' | 'connecting' | 'ready' | 'processing' | 'success' | 'failed';
@@ -27,41 +27,53 @@ interface LivenessCaptureProps {
 }
 
 const MAX_ATTEMPTS = 3;
+const ACTION_PREPARE_MS = 1400;
 
 const buildWsUrl = () => {
   const base = API_URL.replace(/^http/, 'ws').replace(/\/+$/, '');
   return `${base}/ws/liveness/`;
 };
 
-const mapInstruction = (instruction?: string) => {
+const mapInstruction = (instruction: string | undefined, t: (key: string, options?: Record<string, unknown>) => string) => {
   const raw = (instruction || '').toLowerCase();
-  if (raw.includes('blink')) return 'Clignez des yeux';
-  if (raw.includes('smile')) return 'Souriez';
-  if (raw.includes('mouth')) return 'Ouvrez la bouche';
-  if (raw.includes('left')) return 'Tournez la tete a gauche';
-  if (raw.includes('right')) return 'Tournez la tete a droite';
-  return instruction || 'Suivez l’instruction affichée';
+  if (raw.includes('blink')) return t('kyc.livenessActionBlink');
+  if (raw.includes('smile')) return t('kyc.livenessActionSmile');
+  if (raw.includes('mouth')) return t('kyc.livenessActionMouth');
+  if (raw.includes('left')) return t('kyc.livenessActionLeft');
+  if (raw.includes('right')) return t('kyc.livenessActionRight');
+  return instruction || t('kyc.livenessActionFallback');
 };
 
 export const LivenessCapture = ({ open, onOpenChange, onSuccess }: LivenessCaptureProps) => {
+  const { t } = useTranslation();
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const sendIntervalRef = useRef<number | null>(null);
+  const prepareTimeoutRef = useRef<number | null>(null);
 
   const [step, setStep] = useState<Step>('idle');
   const [attempts, setAttempts] = useState(0);
   const [errors, setErrors] = useState<string[]>([]);
-  const [challengeText, setChallengeText] = useState('Cadrez votre visage au centre');
+  const [challengeText, setChallengeText] = useState('');
   const [progress, setProgress] = useState(0);
   const [connected, setConnected] = useState(false);
   const [cameraReady, setCameraReady] = useState(false);
+  const [isPreparingAction, setIsPreparingAction] = useState(false);
 
   const stopFrameSending = useCallback(() => {
     if (sendIntervalRef.current) {
       window.clearInterval(sendIntervalRef.current);
       sendIntervalRef.current = null;
     }
+  }, []);
+
+  const clearPrepareTimeout = useCallback(() => {
+    if (prepareTimeoutRef.current) {
+      window.clearTimeout(prepareTimeoutRef.current);
+      prepareTimeoutRef.current = null;
+    }
+    setIsPreparingAction(false);
   }, []);
 
   const stopCamera = useCallback(() => {
@@ -81,20 +93,22 @@ export const LivenessCapture = ({ open, onOpenChange, onSuccess }: LivenessCaptu
   const resetState = useCallback(() => {
     setStep('idle');
     setErrors([]);
-    setChallengeText('Cadrez votre visage au centre');
+    setChallengeText(t('kyc.livenessCenterFace'));
     setProgress(0);
     setConnected(false);
     setCameraReady(false);
-  }, []);
+    setIsPreparingAction(false);
+  }, [t]);
 
   useEffect(() => {
     if (!open) {
+      clearPrepareTimeout();
       stopFrameSending();
       stopCamera();
       closeSocket();
       resetState();
     }
-  }, [open, stopFrameSending, stopCamera, closeSocket, resetState]);
+  }, [open, clearPrepareTimeout, stopFrameSending, stopCamera, closeSocket, resetState]);
 
   const captureFrame = useCallback(() => {
     const video = videoRef.current;
@@ -130,21 +144,36 @@ export const LivenessCapture = ({ open, onOpenChange, onSuccess }: LivenessCaptu
       const frame = captureFrame();
       if (!frame) return;
       ws.send(JSON.stringify({ type: 'liveness_frame', frame }));
-    }, 120);
+    }, 150);
   }, [captureFrame, stopFrameSending]);
+
+  const prepareChallenge = useCallback((instruction?: string) => {
+    clearPrepareTimeout();
+    stopFrameSending();
+    const action = mapInstruction(instruction, t);
+    setStep('ready');
+    setIsPreparingAction(true);
+    setChallengeText(t('kyc.livenessPrepareAction', { action }));
+    prepareTimeoutRef.current = window.setTimeout(() => {
+      setIsPreparingAction(false);
+      setChallengeText(t('kyc.livenessNowAction', { action }));
+      startFrameSending();
+    }, ACTION_PREPARE_MS);
+  }, [clearPrepareTimeout, startFrameSending, stopFrameSending, t]);
 
   const handleServerMessage = useCallback((data: any) => {
     if (data.type === 'liveness_started') {
       setStep('ready');
       setProgress(10);
-      setChallengeText(mapInstruction(data.current_challenge?.instruction));
-      startFrameSending();
+      prepareChallenge(data.current_challenge?.instruction);
       return;
     }
 
     if (data.type === 'challenge_feedback') {
       setStep('ready');
-      setChallengeText(mapInstruction(data.message));
+      if (!isPreparingAction) {
+        setChallengeText(mapInstruction(data.message, t));
+      }
       return;
     }
 
@@ -152,11 +181,12 @@ export const LivenessCapture = ({ open, onOpenChange, onSuccess }: LivenessCaptu
       const completed = Number(data.progress?.completed_challenges || 0);
       const total = Number(data.progress?.total_challenges || 1);
       setProgress(Math.max(15, Math.min(95, Math.round((completed / total) * 100))));
-      setChallengeText(mapInstruction(data.next_challenge?.instruction || data.message));
+      prepareChallenge(data.next_challenge?.instruction || data.message);
       return;
     }
 
     if (data.type === 'liveness_completed') {
+      clearPrepareTimeout();
       setProgress(100);
       setStep('success');
       const snapshotFile = captureSnapshotFile();
@@ -180,14 +210,15 @@ export const LivenessCapture = ({ open, onOpenChange, onSuccess }: LivenessCaptu
     }
 
     if (data.type === 'challenge_failed' || data.type === 'liveness_failed' || data.type === 'liveness_error' || data.status === 'error') {
-      setErrors([data.message || 'Verification echouee']);
+      clearPrepareTimeout();
+      setErrors([data.message || t('kyc.livenessFailed')]);
       setStep('failed');
       stopFrameSending();
       stopCamera();
       closeSocket();
       setAttempts((value) => value + 1);
     }
-  }, [closeSocket, onOpenChange, onSuccess, startFrameSending, stopCamera, stopFrameSending]);
+  }, [captureSnapshotFile, clearPrepareTimeout, closeSocket, isPreparingAction, onOpenChange, onSuccess, prepareChallenge, stopCamera, stopFrameSending, t]);
 
   const startCamera = useCallback(async () => {
     try {
@@ -222,13 +253,15 @@ export const LivenessCapture = ({ open, onOpenChange, onSuccess }: LivenessCaptu
         try {
           handleServerMessage(JSON.parse(event.data));
         } catch {
-          setErrors(['Reponse serveur invalide']);
+          clearPrepareTimeout();
+          setErrors([t('kyc.livenessInvalidServerResponse')]);
           setStep('failed');
         }
       };
 
       ws.onerror = () => {
-        setErrors(['Connexion liveness indisponible']);
+        clearPrepareTimeout();
+        setErrors([t('kyc.livenessConnectionUnavailable')]);
         setStep('failed');
         stopFrameSending();
         stopCamera();
@@ -239,19 +272,20 @@ export const LivenessCapture = ({ open, onOpenChange, onSuccess }: LivenessCaptu
         setConnected(false);
       };
     } catch (error) {
-      const message = (error as Error)?.message || 'Camera access denied';
+      const message = (error as Error)?.message || t('kyc.livenessCameraDenied');
       toast.error(`Camera: ${message}`);
-      setErrors(['Acces camera refuse. Autorisez la camera dans le navigateur.']);
+      setErrors([t('kyc.livenessCameraHelp')]);
       setStep('failed');
     }
-  }, [closeSocket, handleServerMessage, stopCamera, stopFrameSending]);
+  }, [clearPrepareTimeout, closeSocket, handleServerMessage, stopCamera, stopFrameSending, t]);
 
   const retry = () => {
     if (attempts >= MAX_ATTEMPTS) {
-      toast.error('Nombre maximum de tentatives atteint.');
+      toast.error(t('kyc.livenessMaxAttemptsReached'));
       onOpenChange(false);
       return;
     }
+    clearPrepareTimeout();
     stopFrameSending();
     stopCamera();
     closeSocket();
@@ -262,9 +296,9 @@ export const LivenessCapture = ({ open, onOpenChange, onSuccess }: LivenessCaptu
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl overflow-hidden p-0">
         <DialogHeader className="p-6 pb-2">
-          <DialogTitle className="font-display text-xl">Verification de presence</DialogTitle>
+          <DialogTitle className="font-display text-xl">{t('kyc.liveness')}</DialogTitle>
           <DialogDescription>
-            Le controle se fait en direct avec le serveur pour verifier les mouvements attendus.
+            {t('kyc.livenessDialogDescription')}
           </DialogDescription>
         </DialogHeader>
 
@@ -287,12 +321,12 @@ export const LivenessCapture = ({ open, onOpenChange, onSuccess }: LivenessCaptu
                   className="absolute inset-0 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm"
                 >
                   <Camera className="mb-3 h-12 w-12 text-primary" />
-                  <p className="font-display font-semibold">Pret a commencer ?</p>
+                  <p className="font-display font-semibold">{t('kyc.livenessReadyTitle')}</p>
                   <p className="mb-4 max-w-xs px-4 text-center text-sm text-muted-foreground">
-                    Placez votre visage dans le cadre. Les challenges seront envoyes par le serveur en temps reel.
+                    {t('kyc.livenessReadyBody')}
                   </p>
                   <Button onClick={startCamera} className="bg-gradient-brand shadow-brand">
-                    <Camera className="mr-2 h-4 w-4" /> Demarrer
+                    <Camera className="mr-2 h-4 w-4" /> {t('kyc.livenessStart')}
                   </Button>
                 </motion.div>
               )}
@@ -304,7 +338,9 @@ export const LivenessCapture = ({ open, onOpenChange, onSuccess }: LivenessCaptu
                   className="absolute inset-0 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm"
                 >
                   <Loader2 className="mb-3 h-10 w-10 animate-spin text-primary" />
-                  <p className="font-medium">{connected ? 'Preparation des challenges...' : 'Connexion au serveur...'}</p>
+                  <p className="font-medium">
+                    {connected ? t('kyc.livenessPreparingChallenges') : t('kyc.livenessConnecting')}
+                  </p>
                 </motion.div>
               )}
 
@@ -315,7 +351,7 @@ export const LivenessCapture = ({ open, onOpenChange, onSuccess }: LivenessCaptu
                   className="absolute inset-0 flex flex-col items-center justify-center bg-success/15 backdrop-blur-sm"
                 >
                   <CheckCircle2 className="mb-2 h-16 w-16 text-success" />
-                  <p className="font-display text-lg font-bold text-success">Presence verifiee</p>
+                  <p className="font-display text-lg font-bold text-success">{t('kyc.livenessSuccess')}</p>
                 </motion.div>
               )}
 
@@ -326,7 +362,7 @@ export const LivenessCapture = ({ open, onOpenChange, onSuccess }: LivenessCaptu
                   className="absolute inset-0 flex flex-col items-center justify-center bg-destructive/10 p-4 backdrop-blur-sm"
                 >
                   <XCircle className="mb-2 h-12 w-12 text-destructive" />
-                  <p className="mb-2 font-semibold text-destructive">Verification echouee</p>
+                  <p className="mb-2 font-semibold text-destructive">{t('kyc.livenessFailed')}</p>
                   <ul className="mb-3 space-y-0.5 text-center text-sm">
                     {errors.map((error, index) => (
                       <li key={index} className="text-muted-foreground">- {error}</li>
@@ -334,10 +370,10 @@ export const LivenessCapture = ({ open, onOpenChange, onSuccess }: LivenessCaptu
                   </ul>
                   {attempts < MAX_ATTEMPTS ? (
                     <Button onClick={retry} variant="outline" size="sm">
-                      <RefreshCw className="mr-2 h-3.5 w-3.5" /> Reessayer ({MAX_ATTEMPTS - attempts} restantes)
+                      <RefreshCw className="mr-2 h-3.5 w-3.5" /> {t('kyc.livenessRetryRemaining', { count: MAX_ATTEMPTS - attempts })}
                     </Button>
                   ) : (
-                    <p className="text-xs text-muted-foreground">Tentatives epuisees. Reessayez plus tard.</p>
+                    <p className="text-xs text-muted-foreground">{t('kyc.livenessAttemptsExhausted')}</p>
                   )}
                 </motion.div>
               )}
@@ -351,7 +387,11 @@ export const LivenessCapture = ({ open, onOpenChange, onSuccess }: LivenessCaptu
               >
                 <p className="text-sm font-semibold">{challengeText}</p>
                 <p className="text-xs text-muted-foreground">
-                  {cameraReady ? 'Suivez exactement le challenge demande par le serveur.' : 'Initialisation de la camera...'}
+                  {cameraReady
+                    ? isPreparingAction
+                      ? t('kyc.livenessPrepareBody')
+                      : t('kyc.livenessFollowServerChallenge')
+                    : t('kyc.livenessCameraInitializing')}
                 </p>
               </motion.div>
             )}
@@ -361,9 +401,6 @@ export const LivenessCapture = ({ open, onOpenChange, onSuccess }: LivenessCaptu
             <Progress value={progress} className="h-1.5" />
           )}
 
-          <p className="text-center text-[11px] text-muted-foreground">
-            Verification temps reel synchronisee avec le backend. Aucun faux endpoint REST n'est utilise.
-          </p>
         </div>
       </DialogContent>
     </Dialog>

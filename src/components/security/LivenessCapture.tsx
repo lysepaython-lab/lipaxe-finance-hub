@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
+import { FaceMesh, VERSION as FACE_MESH_VERSION, type NormalizedLandmarkList } from '@mediapipe/face_mesh';
 import { API_URL } from '@/store/api/baseApi';
 import { useAppSelector } from '@/store/hooks';
 
@@ -34,6 +35,12 @@ const FRAME_INTERVAL_MS = 300;
 const FRAME_WIDTH = 640;
 const FRAME_HEIGHT = 480;
 
+interface FaceMeshQuality {
+  ok: boolean;
+  messageKey: string;
+  crop?: { x: number; y: number; width: number; height: number };
+}
+
 const buildWsUrl = (token?: string | null) => {
   const base = API_URL.replace(/^http/, 'ws').replace(/\/+$/, '');
   const query = token ? `?token=${encodeURIComponent(token)}` : '';
@@ -50,6 +57,53 @@ const mapInstruction = (instruction: string | undefined, t: (key: string, option
   return instruction || t('kyc.livenessActionFallback');
 };
 
+const assessFaceMesh = (landmarks?: NormalizedLandmarkList): FaceMeshQuality => {
+  if (!landmarks?.length) {
+    return { ok: false, messageKey: 'kyc.livenessFaceMeshNoFace' };
+  }
+
+  const xs = landmarks.map((point) => point.x);
+  const ys = landmarks.map((point) => point.y);
+  const minX = Math.max(0, Math.min(...xs));
+  const maxX = Math.min(1, Math.max(...xs));
+  const minY = Math.max(0, Math.min(...ys));
+  const maxY = Math.min(1, Math.max(...ys));
+  const width = maxX - minX;
+  const height = maxY - minY;
+  const centerX = minX + width / 2;
+  const centerY = minY + height / 2;
+
+  if (width < 0.16 || height < 0.2) {
+    return { ok: false, messageKey: 'kyc.livenessFaceMeshTooFar' };
+  }
+
+  if (width > 0.86 || height > 0.92) {
+    return { ok: false, messageKey: 'kyc.livenessFaceMeshTooClose' };
+  }
+
+  if (Math.abs(centerX - 0.5) > 0.24 || Math.abs(centerY - 0.5) > 0.24) {
+    return { ok: false, messageKey: 'kyc.livenessFaceMeshCenterFace' };
+  }
+
+  const paddingX = width * 0.45;
+  const paddingY = height * 0.65;
+  const cropX = Math.max(0, minX - paddingX);
+  const cropY = Math.max(0, minY - paddingY);
+  const cropRight = Math.min(1, maxX + paddingX);
+  const cropBottom = Math.min(1, maxY + paddingY);
+
+  return {
+    ok: true,
+    messageKey: 'kyc.livenessFaceMeshReady',
+    crop: {
+      x: cropX,
+      y: cropY,
+      width: cropRight - cropX,
+      height: cropBottom - cropY,
+    },
+  };
+};
+
 export const LivenessCapture = ({ open, onOpenChange, onSuccess }: LivenessCaptureProps) => {
   const { t } = useTranslation();
   const accessToken = useAppSelector((state) => state.auth.accessToken);
@@ -59,6 +113,10 @@ export const LivenessCapture = ({ open, onOpenChange, onSuccess }: LivenessCaptu
   const sendIntervalRef = useRef<number | null>(null);
   const prepareTimeoutRef = useRef<number | null>(null);
   const executionTimeoutRef = useRef<number | null>(null);
+  const faceMeshRef = useRef<FaceMesh | null>(null);
+  const faceMeshResultResolverRef = useRef<((quality: FaceMeshQuality) => void) | null>(null);
+  const faceMeshInFlightRef = useRef(false);
+  const latestFaceQualityRef = useRef<FaceMeshQuality>({ ok: false, messageKey: 'kyc.livenessFaceMeshLoading' });
   const isPreparingActionRef = useRef(false);
   const isSendingFrameRef = useRef(false);
   const activeChallengeRef = useRef(0);
@@ -72,6 +130,7 @@ export const LivenessCapture = ({ open, onOpenChange, onSuccess }: LivenessCaptu
   const [connected, setConnected] = useState(false);
   const [cameraReady, setCameraReady] = useState(false);
   const [isPreparingAction, setIsPreparingAction] = useState(false);
+  const [faceMeshMessageKey, setFaceMeshMessageKey] = useState('kyc.livenessFaceMeshLoading');
 
   const setPreparingAction = useCallback((value: boolean) => {
     isPreparingActionRef.current = value;
@@ -98,6 +157,50 @@ export const LivenessCapture = ({ open, onOpenChange, onSuccess }: LivenessCaptu
     if (executionTimeoutRef.current) {
       window.clearTimeout(executionTimeoutRef.current);
       executionTimeoutRef.current = null;
+    }
+  }, []);
+
+  const closeFaceMesh = useCallback(() => {
+    faceMeshResultResolverRef.current = null;
+    faceMeshInFlightRef.current = false;
+    latestFaceQualityRef.current = { ok: false, messageKey: 'kyc.livenessFaceMeshLoading' };
+    void faceMeshRef.current?.close();
+    faceMeshRef.current = null;
+    setFaceMeshMessageKey('kyc.livenessFaceMeshLoading');
+  }, []);
+
+  const ensureFaceMesh = useCallback(async () => {
+    if (faceMeshRef.current) return true;
+    try {
+      const faceMesh = new FaceMesh({
+        locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@${FACE_MESH_VERSION}/${file}`,
+      });
+      faceMesh.setOptions({
+        maxNumFaces: 1,
+        refineLandmarks: true,
+        selfieMode: true,
+        minDetectionConfidence: 0.55,
+        minTrackingConfidence: 0.55,
+      });
+      faceMesh.onResults((results) => {
+        const faces = results.multiFaceLandmarks || [];
+        const quality = faces.length === 1
+          ? assessFaceMesh(faces[0])
+          : { ok: false, messageKey: faces.length > 1 ? 'kyc.livenessFaceMeshMultipleFaces' : 'kyc.livenessFaceMeshNoFace' };
+        latestFaceQualityRef.current = quality;
+        setFaceMeshMessageKey(quality.messageKey);
+        faceMeshResultResolverRef.current?.(quality);
+        faceMeshResultResolverRef.current = null;
+        faceMeshInFlightRef.current = false;
+      });
+      await faceMesh.initialize();
+      faceMeshRef.current = faceMesh;
+      setFaceMeshMessageKey('kyc.livenessFaceMeshReady');
+      return true;
+    } catch {
+      latestFaceQualityRef.current = { ok: true, messageKey: 'kyc.livenessFaceMeshUnavailable' };
+      setFaceMeshMessageKey('kyc.livenessFaceMeshUnavailable');
+      return false;
     }
   }, []);
 
@@ -133,9 +236,10 @@ export const LivenessCapture = ({ open, onOpenChange, onSuccess }: LivenessCaptu
       stopFrameSending();
       stopCamera();
       closeSocket();
+      closeFaceMesh();
       resetState();
     }
-  }, [open, clearExecutionTimeout, clearPrepareTimeout, stopFrameSending, stopCamera, closeSocket, resetState]);
+  }, [open, clearExecutionTimeout, clearPrepareTimeout, stopFrameSending, stopCamera, closeSocket, closeFaceMesh, resetState]);
 
   const captureFrame = useCallback(() => {
     const video = videoRef.current;
@@ -149,7 +253,37 @@ export const LivenessCapture = ({ open, onOpenChange, onSuccess }: LivenessCaptu
     return canvas.toDataURL('image/jpeg', 0.75);
   }, []);
 
-  const captureFrameBlob = useCallback(() => (
+  const analyzeFaceMeshFrame = useCallback(async () => {
+    const video = videoRef.current;
+    const faceMesh = faceMeshRef.current;
+    if (!video || !faceMesh || video.readyState < 2 || faceMeshInFlightRef.current) {
+      return latestFaceQualityRef.current;
+    }
+
+    faceMeshInFlightRef.current = true;
+    return new Promise<FaceMeshQuality>((resolve) => {
+      faceMeshResultResolverRef.current = resolve;
+      window.setTimeout(() => {
+        if (faceMeshResultResolverRef.current === resolve) {
+          faceMeshResultResolverRef.current = null;
+          faceMeshInFlightRef.current = false;
+          const timeoutQuality = { ok: false, messageKey: 'kyc.livenessFaceMeshLoading' };
+          latestFaceQualityRef.current = timeoutQuality;
+          resolve(timeoutQuality);
+        }
+      }, 900);
+      faceMesh.send({ image: video }).catch(() => {
+        faceMeshResultResolverRef.current = null;
+        faceMeshInFlightRef.current = false;
+        const errorQuality = { ok: false, messageKey: 'kyc.livenessFaceMeshUnavailable' };
+        latestFaceQualityRef.current = errorQuality;
+        setFaceMeshMessageKey(errorQuality.messageKey);
+        resolve(errorQuality);
+      });
+    });
+  }, []);
+
+  const captureFrameBlob = useCallback((quality?: FaceMeshQuality) => (
     new Promise<Blob | null>((resolve) => {
       const video = videoRef.current;
       if (!video || video.readyState < 2 || !video.videoWidth || !video.videoHeight) {
@@ -164,8 +298,16 @@ export const LivenessCapture = ({ open, onOpenChange, onSuccess }: LivenessCaptu
         resolve(null);
         return;
       }
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      canvas.toBlob((blob) => resolve(blob), 'image/jpeg', 0.95);
+      if (quality?.crop) {
+        const sourceX = quality.crop.x * video.videoWidth;
+        const sourceY = quality.crop.y * video.videoHeight;
+        const sourceWidth = quality.crop.width * video.videoWidth;
+        const sourceHeight = quality.crop.height * video.videoHeight;
+        ctx.drawImage(video, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, canvas.width, canvas.height);
+      } else {
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      }
+      canvas.toBlob((blob) => resolve(blob), 'image/jpeg', 0.75);
     })
   ), []);
 
@@ -191,7 +333,12 @@ export const LivenessCapture = ({ open, onOpenChange, onSuccess }: LivenessCaptu
       if (isSendingFrameRef.current) return;
       isSendingFrameRef.current = true;
       try {
-        const frame = await captureFrameBlob();
+        const quality = await analyzeFaceMeshFrame();
+        if (!quality.ok) {
+          setChallengeText(t(quality.messageKey));
+          return;
+        }
+        const frame = await captureFrameBlob(quality);
         if (frame && ws.readyState === WebSocket.OPEN) {
           ws.send(frame);
         }
@@ -199,7 +346,7 @@ export const LivenessCapture = ({ open, onOpenChange, onSuccess }: LivenessCaptu
         isSendingFrameRef.current = false;
       }
     }, FRAME_INTERVAL_MS);
-  }, [captureFrameBlob, stopFrameSending]);
+  }, [analyzeFaceMeshFrame, captureFrameBlob, stopFrameSending, t]);
 
   const prepareChallenge = useCallback((instruction?: string) => {
     clearPrepareTimeout();
@@ -310,6 +457,7 @@ export const LivenessCapture = ({ open, onOpenChange, onSuccess }: LivenessCaptu
         await videoRef.current.play();
       }
       setCameraReady(true);
+      await ensureFaceMesh();
       setStep('connecting');
       setErrors([]);
 
@@ -351,7 +499,7 @@ export const LivenessCapture = ({ open, onOpenChange, onSuccess }: LivenessCaptu
       setErrors([t('kyc.livenessCameraHelp')]);
       setStep('failed');
     }
-  }, [accessToken, clearExecutionTimeout, clearPrepareTimeout, closeSocket, stopCamera, stopFrameSending, t]);
+  }, [accessToken, clearExecutionTimeout, clearPrepareTimeout, closeSocket, ensureFaceMesh, stopCamera, stopFrameSending, t]);
 
   const retry = () => {
     if (attempts >= MAX_ATTEMPTS) {
@@ -383,7 +531,7 @@ export const LivenessCapture = ({ open, onOpenChange, onSuccess }: LivenessCaptu
               ref={videoRef}
               playsInline
               muted
-              className="h-full w-full object-cover"
+              className="h-full w-full scale-x-[-1] object-cover"
               aria-label="Camera preview"
             />
 
@@ -468,6 +616,11 @@ export const LivenessCapture = ({ open, onOpenChange, onSuccess }: LivenessCaptu
                       : t('kyc.livenessFollowServerChallenge')
                     : t('kyc.livenessCameraInitializing')}
                 </p>
+                {cameraReady && (
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    {t(faceMeshMessageKey)}
+                  </p>
+                )}
               </motion.div>
             )}
           </div>

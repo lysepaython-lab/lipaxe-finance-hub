@@ -30,9 +30,9 @@ interface LivenessCaptureProps {
 const MAX_ATTEMPTS = 5;
 const ACTION_PREPARE_MS = 1500; // se preparer
 const ACTION_EXECUTION_MS = 7000; // faire l'action pour le liveness
-const FRAME_INTERVAL_MS = 250;
-const FRAME_WIDTH = 320;
-const FRAME_HEIGHT = 240;
+const FRAME_INTERVAL_MS = 300;
+const FRAME_WIDTH = 480;
+const FRAME_HEIGHT = 360;
 
 const buildWsUrl = (token?: string | null) => {
   const base = API_URL.replace(/^http/, 'ws').replace(/\/+$/, '');
@@ -165,7 +165,7 @@ export const LivenessCapture = ({ open, onOpenChange, onSuccess }: LivenessCaptu
         return;
       }
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      canvas.toBlob((blob) => resolve(blob), 'image/jpeg', 0.62);
+      canvas.toBlob((blob) => resolve(blob), 'image/jpeg', 0.7);
     })
   ), []);
 

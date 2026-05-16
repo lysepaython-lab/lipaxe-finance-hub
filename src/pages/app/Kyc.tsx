@@ -38,6 +38,7 @@ import { cn } from '@/lib/utils';
 import { CountryPicker } from '@/components/security/CountryPicker';
 import { LivenessCapture } from '@/components/security/LivenessCapture';
 import AnalyzerWorker from '@/workers/kycDocumentAnalyzer.worker.ts?worker';
+import { t } from 'i18next';
 
 type DocumentKind = 'passport' | 'nationalId' | 'drivingLicense' | 'unknown';
 

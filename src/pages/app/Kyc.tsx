@@ -313,6 +313,15 @@ const Kyc = () => {
       if (selfieCapture.file) finalPayload.append('selfie_with_id', selfieCapture.file, selfieCapture.name);
 
       if (!frontCapture.file) {
+        toast.error(kyc.document.type === 'passport' ? t('kyc.capturePassportPage') : t('kyc.captureFront'));
+        return;
+      }
+      if (kyc.document.type !== 'passport' && !backCapture.file) {
+        toast.error(t('kyc.captureBack'));
+        return;
+      }
+
+      if (!frontCapture.file) {
         toast.error('Capturez le recto de votre pièce.');
         return;
       }
@@ -572,7 +581,7 @@ const DocumentsStep = ({
       </div>
       <div className="grid md:grid-cols-2 gap-3">
         <DocumentCapture
-          label={t('kyc.uploadFront')}
+          label={document.type === 'passport' ? t('kyc.uploadPassportPage') : t('kyc.uploadFront')}
           value={document.frontName}
           documentType={(document.type as DocumentKind) || 'unknown'}
           onCapture={(capture) => {

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Camera, CheckCircle2, XCircle, Loader2, RefreshCw } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Camera, CheckCircle2, Eye, Loader2, MessageCircle, RefreshCw, Smile, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Progress } from '@/components/ui/progress';
@@ -9,8 +9,10 @@ import { useTranslation } from 'react-i18next';
 import { FaceMesh, VERSION as FACE_MESH_VERSION, type NormalizedLandmarkList } from '@mediapipe/face_mesh';
 import { API_URL } from '@/store/api/baseApi';
 import { useAppSelector } from '@/store/hooks';
+import { cn } from '@/lib/utils';
 
 type Step = 'idle' | 'connecting' | 'ready' | 'processing' | 'success' | 'failed';
+type LivenessAction = 'blink' | 'smile' | 'mouth' | 'left' | 'right' | 'fallback';
 
 export interface LivenessResult {
   is_live: boolean;
@@ -47,14 +49,50 @@ const buildWsUrl = (token?: string | null) => {
   return `${base}/ws/liveness/${query}`;
 };
 
-const mapInstruction = (instruction: string | undefined, t: (key: string, options?: Record<string, unknown>) => string) => {
+const getActionFromInstruction = (instruction: string | undefined): LivenessAction => {
   const raw = (instruction || '').toLowerCase();
-  if (raw.includes('blink')) return t('kyc.livenessActionBlink');
-  if (raw.includes('smile')) return t('kyc.livenessActionSmile');
-  if (raw.includes('mouth')) return t('kyc.livenessActionMouth');
-  if (raw.includes('left')) return t('kyc.livenessActionLeft');
-  if (raw.includes('right')) return t('kyc.livenessActionRight');
+  if (raw.includes('blink') || raw.includes('clign')) return 'blink';
+  if (raw.includes('smile') || raw.includes('souri')) return 'smile';
+  if (raw.includes('mouth') || raw.includes('bouche')) return 'mouth';
+  if (raw.includes('left') || raw.includes('gauche')) return 'left';
+  if (raw.includes('right') || raw.includes('droite')) return 'right';
+  return 'fallback';
+};
+
+const mapInstruction = (instruction: string | undefined, t: (key: string, options?: Record<string, unknown>) => string) => {
+  const action = getActionFromInstruction(instruction);
+  if (action === 'blink') return t('kyc.livenessActionBlink');
+  if (action === 'smile') return t('kyc.livenessActionSmile');
+  if (action === 'mouth') return t('kyc.livenessActionMouth');
+  if (action === 'left') return t('kyc.livenessActionLeft');
+  if (action === 'right') return t('kyc.livenessActionRight');
   return instruction || t('kyc.livenessActionFallback');
+};
+
+const LivenessActionIcon = ({ action, preparing }: { action: LivenessAction; preparing: boolean }) => {
+  const Icon = action === 'blink'
+    ? Eye
+    : action === 'smile'
+      ? Smile
+      : action === 'mouth'
+        ? MessageCircle
+        : action === 'left'
+          ? ArrowLeft
+          : action === 'right'
+            ? ArrowRight
+            : Camera;
+
+  return (
+    <motion.div
+      key={action}
+      initial={{ opacity: 0, scale: 0.86, y: -4 }}
+      animate={{ opacity: 1, scale: preparing ? 0.95 : 1, y: 0 }}
+      transition={{ type: 'spring', stiffness: 260, damping: 18 }}
+      className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-primary/25 bg-primary/12 text-primary shadow-sm"
+    >
+      <Icon className={cn('h-6 w-6', !preparing && 'animate-pulse')} />
+    </motion.div>
+  );
 };
 
 const assessFaceMesh = (landmarks?: NormalizedLandmarkList): FaceMeshQuality => {
@@ -131,6 +169,7 @@ export const LivenessCapture = ({ open, onOpenChange, onSuccess }: LivenessCaptu
   const [cameraReady, setCameraReady] = useState(false);
   const [isPreparingAction, setIsPreparingAction] = useState(false);
   const [faceMeshMessageKey, setFaceMeshMessageKey] = useState('kyc.livenessFaceMeshLoading');
+  const [currentAction, setCurrentAction] = useState<LivenessAction>('fallback');
 
   const setPreparingAction = useCallback((value: boolean) => {
     isPreparingActionRef.current = value;
@@ -223,6 +262,7 @@ export const LivenessCapture = ({ open, onOpenChange, onSuccess }: LivenessCaptu
     setStep('idle');
     setErrors([]);
     setChallengeText(t('kyc.livenessCenterFace'));
+    setCurrentAction('fallback');
     setProgress(0);
     setConnected(false);
     setCameraReady(false);
@@ -353,7 +393,9 @@ export const LivenessCapture = ({ open, onOpenChange, onSuccess }: LivenessCaptu
     stopFrameSending();
     activeChallengeRef.current += 1;
     const challengeId = activeChallengeRef.current;
+    const actionKey = getActionFromInstruction(instruction);
     const action = mapInstruction(instruction, t);
+    setCurrentAction(actionKey);
     setStep('ready');
     setPreparingAction(true);
     setChallengeText(t('kyc.livenessPrepareAction', { action }));
@@ -379,6 +421,7 @@ export const LivenessCapture = ({ open, onOpenChange, onSuccess }: LivenessCaptu
 
     if (data.type === 'challenge_feedback') {
       setStep('ready');
+      setCurrentAction(getActionFromInstruction(data.challenge?.instruction || data.message));
       if (!isPreparingActionRef.current) {
         setChallengeText(mapInstruction(data.message, t));
       }
@@ -601,21 +644,24 @@ export const LivenessCapture = ({ open, onOpenChange, onSuccess }: LivenessCaptu
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="absolute left-3 right-3 top-3 rounded-xl border border-border bg-background/85 px-4 py-2.5 shadow-lg backdrop-blur"
+                className="absolute left-3 right-3 top-3 flex items-center gap-3 rounded-xl border border-border bg-background/85 px-4 py-2.5 shadow-lg backdrop-blur"
               >
-                <p className="text-sm font-semibold">{challengeText}</p>
-                <p className="text-xs text-muted-foreground">
-                  {cameraReady
-                    ? isPreparingAction
-                      ? t('kyc.livenessPrepareBody')
-                      : t('kyc.livenessFollowServerChallenge')
-                    : t('kyc.livenessCameraInitializing')}
-                </p>
-                {cameraReady && (
-                  <p className="mt-1 text-[11px] text-muted-foreground">
-                    {t(faceMeshMessageKey)}
+                <LivenessActionIcon action={currentAction} preparing={isPreparingAction} />
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold">{challengeText}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {cameraReady
+                      ? isPreparingAction
+                        ? t('kyc.livenessPrepareBody')
+                        : t('kyc.livenessFollowServerChallenge')
+                      : t('kyc.livenessCameraInitializing')}
                   </p>
-                )}
+                  {cameraReady && (
+                    <p className="mt-1 text-[11px] text-muted-foreground">
+                      {t(faceMeshMessageKey)}
+                    </p>
+                  )}
+                </div>
               </motion.div>
             )}
           </div>

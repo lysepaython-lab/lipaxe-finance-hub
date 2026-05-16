@@ -6,7 +6,7 @@ export interface User {
   firstName: string;
   lastName: string;
   username: string;
-  kycStatus: 'unverified' | 'pending' | 'verified';
+  kycStatus: 'unverified' | 'pending' | 'verified' | 'complete';
   kycComplete?: boolean;
   avatar?: string;
   isStaff?: boolean;

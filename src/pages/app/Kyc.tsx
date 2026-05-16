@@ -188,7 +188,7 @@ const buildKycDecision = (kyc: KYCData, t: Translator): KycDecision => {
   if (!kyc.personal.consentAccepted) addGate(t('kyc.gateConsent'), 'retry', t('kyc.gateConsentMissing'), 35);
   else addGate(t('kyc.gateConsent'), 'pass', t('kyc.gateConsentSaved'));
 
-  if (age < 18) addGate(t('kyc.gateAge'), 'blocked', t('kyc.gateAgeBlocked'), 100);
+  if (age < 15) addGate(t('kyc.gateAge'), 'blocked', t('kyc.gateAgeBlocked'), 100);
   else addGate(t('kyc.gateAge'), 'pass', t('kyc.gateAgeOk', { age }));
 
   if (!kyc.personal.phone?.trim()) addGate(t('kyc.gatePhone'), 'retry', t('kyc.gatePhoneMissing'), 25);

@@ -145,6 +145,7 @@
     "available": "Available",
     "pending": "Pending",
     "thisMonth": "This month",
+    "description": "Here's a quick look at your finances today.",
     "inflow": "Inflow",
     "outflow": "Outflow",
     "quickActions": "Quick actions",
@@ -154,7 +155,11 @@
     "accounts": "Your accounts",
     "noTransactions": "No transactions yet",
     "verifyPrompt": "Verify your identity to unlock higher limits",
-    "verifyNow": "Verify now"
+    "verifyNow": "Verify now",
+    "kycPendingTitle": "KYC Pending",
+    "kycPending": "Your KYC application is under review.",
+    "kycNotVerified": "Your account is not yet verified. Complete your KYC to access all features and raise your limits.",
+    "viewStatus": "View Status"
   },
   "tx": {
     "type": "Type",

@@ -6,6 +6,8 @@ import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { setSidebar } from '@/store/slices/uiSlice';
 import { useTranslation } from 'react-i18next';
 import { Button } from './ui/button';
+import { useGetKycDataQuery } from '@/store/api/kycApi';
+import { getKycState } from '@/lib/kycStatus';
 
 const items = [
   { to: '/app', key: 'dashboard', icon: LayoutDashboard, end: true },
@@ -21,9 +23,13 @@ const items = [
 
 export const Sidebar = () => {
   const open = useAppSelector(s => s.ui.sidebarOpen);
+  const user = useAppSelector(s => s.auth.user);
   const dispatch = useAppDispatch();
   const { t } = useTranslation();
   const location = useLocation();
+  const { data: kycData } = useGetKycDataQuery();
+  const kycState = getKycState(kycData, user);
+  const visibleItems = items.filter((item) => item.key !== 'kyc' || !kycState.locked);
 
   // Close mobile drawer on nav
   const onNav = () => { if (window.innerWidth < 1024) dispatch(setSidebar(false)); };
@@ -43,7 +49,7 @@ export const Sidebar = () => {
         </div>
 
         <nav className="p-4 space-y-1">
-          {items.map(({ to, key, icon: Icon, end }) => (
+          {visibleItems.map(({ to, key, icon: Icon, end }) => (
             <NavLink
               key={to}
               to={to}
@@ -62,12 +68,20 @@ export const Sidebar = () => {
           ))}
         </nav>
 
-        <div className="absolute bottom-4 left-4 right-4 rounded-xl bg-gradient-hero p-4 text-primary-foreground">
-          <p className="font-display text-sm font-semibold">{t('dashboard.verifyPrompt')}</p>
-          <NavLink to="/app/kyc" className="mt-2 inline-flex text-xs underline underline-offset-2 hover:opacity-80">
-            {t('dashboard.verifyNow')} →
-          </NavLink>
-        </div>
+        {(kycState.needsVerification || kycState.underReview) && (
+          <div className="absolute bottom-4 left-4 right-4 rounded-xl bg-gradient-hero p-4 text-primary-foreground">
+            <p className="font-display text-sm font-semibold">
+              {kycState.underReview ? t('dashboard.kycPendingTitle') : t('dashboard.verifyPrompt')}
+            </p>
+            {kycState.needsVerification ? (
+              <NavLink to="/app/kyc" className="mt-2 inline-flex text-xs underline underline-offset-2 hover:opacity-80">
+                {t('dashboard.verifyNow')} →
+              </NavLink>
+            ) : (
+              <p className="mt-2 text-xs opacity-80">{t('dashboard.kycPending')}</p>
+            )}
+          </div>
+        )}
       </aside>
     </>
   );

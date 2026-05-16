@@ -154,7 +154,11 @@
     "accounts": "Vos comptes",
     "noTransactions": "Aucune transaction",
     "verifyPrompt": "Verifiez votre identite pour augmenter vos limites",
-    "verifyNow": "Verifier"
+    "verifyNow": "Verifier",
+    "kycPendingTitle": "KYC en revue",
+    "kycPending": "Votre demande KYC est en cours de revision.",
+    "kycNotVerified": "Votre compte n'est pas encore verifie. Completez votre KYC pour acceder a toutes les fonctionnalites et relever vos plafonds.",
+    "viewStatus": "Voir le statut"
   },
   "tx": {
     "type": "Type",

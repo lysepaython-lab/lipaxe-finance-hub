@@ -1,4 +1,5 @@
 import type { User } from '../slices/authSlice';
+import { normalizeKycStatusValue } from '@/lib/kycStatus';
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -26,14 +27,7 @@ const asNumber = (value: unknown, fallback = 0): number => {
 
 export const normalizeUser = (payload: unknown): User => {
   const raw = (payload ?? {}) as UnknownRecord;
-  const kycStatusValue = asString(raw.kyc_status ?? raw.kycStatus).toLowerCase();
-  const kycStatus = (
-    kycStatusValue === 'verified' || kycStatusValue === 'approved'
-      ? 'verified'
-      : kycStatusValue === 'pending'
-        ? 'pending'
-        : 'unverified'
-  ) as User['kycStatus'];
+  const kycStatus = normalizeKycStatusValue(asString(raw.kyc_status ?? raw.kycStatus));
   return {
     id: asString(raw.id),
     email: asString(raw.email),

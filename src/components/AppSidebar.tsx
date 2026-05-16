@@ -15,6 +15,9 @@ import {
 } from '@/components/ui/sidebar';
 import { Logo } from './Logo';
 import { cn } from '@/lib/utils';
+import { useAppSelector } from '@/store/hooks';
+import { useGetKycDataQuery } from '@/store/api/kycApi';
+import { getKycState } from '@/lib/kycStatus';
 
 type Item = { to: string; key: string; icon: React.ComponentType<{ className?: string }>; end?: boolean };
 type Group = { key: string; icon: React.ComponentType<{ className?: string }>; items: Item[] } | { single: Item };
@@ -82,6 +85,9 @@ export const AppSidebar = () => {
   const collapsed = state === 'collapsed';
   const location = useLocation();
   const path = location.pathname;
+  const user = useAppSelector((s) => s.auth.user);
+  const { data: kycData } = useGetKycDataQuery();
+  const kycState = getKycState(kycData, user);
 
   const initialOpen: Record<string, boolean> = {};
   groups.forEach((g) => {
@@ -116,8 +122,10 @@ export const AppSidebar = () => {
                 }
 
                 const { key, icon: Icon, items } = g;
+                const visibleItems = items.filter((item) => item.key !== 'kyc' || !kycState.locked);
+                if (!visibleItems.length) return null;
                 const isOpen = open[key];
-                const groupActive = items.some((i) => path === i.to || path.startsWith(`${i.to}/`));
+                const groupActive = visibleItems.some((i) => path === i.to || path.startsWith(`${i.to}/`));
 
                 return (
                   <SidebarMenuItem key={key}>
@@ -147,7 +155,7 @@ export const AppSidebar = () => {
                           className="overflow-hidden"
                         >
                           <SidebarMenuSub>
-                            {items.map((sub) => {
+                            {visibleItems.map((sub) => {
                               const subActive = path === sub.to || path.startsWith(`${sub.to}/`);
                               return (
                                 <SidebarMenuSubItem key={sub.to}>
@@ -172,16 +180,22 @@ export const AppSidebar = () => {
         </SidebarGroup>
       </SidebarContent>
 
-      {!collapsed && (
+      {!collapsed && (kycState.needsVerification || kycState.underReview) && (
         <SidebarFooter className="p-3">
           <div className="rounded-2xl border border-primary-foreground/10 bg-gradient-hero p-4 text-primary-foreground shadow-brand">
-            <p className="font-display text-sm font-semibold">{t('dashboard.verifyPrompt')}</p>
-            <NavLink
-              to="/app/kyc"
-              className="mt-2 inline-flex text-xs underline underline-offset-2 hover:opacity-80"
-            >
-              {t('dashboard.verifyNow')} →
-            </NavLink>
+            <p className="font-display text-sm font-semibold">
+              {kycState.underReview ? t('dashboard.kycPendingTitle') : t('dashboard.verifyPrompt')}
+            </p>
+            {kycState.needsVerification ? (
+              <NavLink
+                to="/app/kyc"
+                className="mt-2 inline-flex text-xs underline underline-offset-2 hover:opacity-80"
+              >
+                {t('dashboard.verifyNow')} →
+              </NavLink>
+            ) : (
+              <p className="mt-2 text-xs opacity-80">{t('dashboard.kycPending')}</p>
+            )}
           </div>
         </SidebarFooter>
       )}

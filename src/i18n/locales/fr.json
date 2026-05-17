@@ -231,6 +231,14 @@
     "rulesAndPolicies": "Regles et politiques",
     "choosePlan": "Choisir ce plan",
     "addContribution": "Ajouter une contribution",
+    "withdraw": "Retirer",
+    "confirmWithdraw": "Confirmer le retrait",
+    "destinationWallet": "Portefeuille destination",
+    "selectDestinationWallet": "Choisissez un portefeuille destination.",
+    "withdrawAvailable": "Disponible dans ce plan: {{amount}}",
+    "withdrawDone": "Retrait savings verse sur votre wallet.",
+    "withdrawDoneWithPenalty": "Retrait verse: {{amount}}. Penalite appliquee: {{penalty}}.",
+    "earlyExitWarning": "Sortie avant echeance: une penalite du plan peut etre deduite automatiquement avant credit wallet.",
     "viewPlan": "Voir le plan",
     "savedProgress": "Progression",
     "maturity": "Echeance",
@@ -260,7 +268,8 @@
     "status": {
       "active": "Actif",
       "paused": "Suspendu",
-      "matured": "Echu"
+      "matured": "Echu",
+      "closed": "Ferme"
     }
   },
   "yieldVaults": {

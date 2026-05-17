@@ -185,7 +185,16 @@ export const normalizeUserCard = (payload: unknown) => {
   const brand = (asString(raw.card_type, 'visa').toLowerCase().includes('master')
     ? 'Mastercard'
     : 'Visa') as 'Visa' | 'Mastercard';
-  const status = (asString(raw.status, 'inactive') === 'frozen' ? 'frozen' : 'active') as 'active' | 'frozen';
+  const rawStatus = asString(raw.status, 'inactive').toLowerCase();
+  const status = (
+    rawStatus === 'frozen'
+      ? 'frozen'
+      : rawStatus === 'pending'
+        ? 'pending'
+        : rawStatus === 'active'
+          ? 'active'
+          : 'inactive'
+  ) as 'active' | 'frozen' | 'pending' | 'inactive';
 
   return {
     id: asString(raw.card_id ?? raw.id),
@@ -201,7 +210,14 @@ export const normalizeUserCard = (payload: unknown) => {
 
 export const normalizeCardTransaction = (payload: unknown) => {
   const raw = (payload ?? {}) as UnknownRecord;
-  const status = (asString(raw.status, 'pending') === 'success' ? 'completed' : 'pending') as 'completed' | 'pending';
+  const rawStatus = asString(raw.status, 'pending').toLowerCase();
+  const status = (
+    ['success', 'completed', 'approved'].includes(rawStatus)
+      ? 'completed'
+      : ['failed', 'declined', 'reversed', 'rejected'].includes(rawStatus)
+        ? 'failed'
+        : 'pending'
+  ) as 'completed' | 'pending' | 'failed';
   return {
     id: asString(raw.id),
     amount: asNumber(raw.amount),

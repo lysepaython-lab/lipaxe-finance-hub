@@ -23,15 +23,23 @@ export interface UserCard {
   exp: string;
   balance: number;
   currency: string;
-  status: 'active' | 'frozen' | 'inactive';
+  status: 'active' | 'frozen' | 'inactive' | 'pending';
 }
 export interface CardTx {
   id: string;
   amount: number;
   currency: string;
   description: string;
-  status: 'completed' | 'pending' | 'declined';
+  status: 'completed' | 'pending' | 'declined' | 'failed';
   createdAt: string;
+}
+
+export interface CardOperationResult {
+  success?: boolean;
+  status?: 'success' | 'pending' | 'failed';
+  detail?: string;
+  message?: string;
+  reference?: string;
 }
 
 export const cardApi = api.injectEndpoints({
@@ -53,37 +61,31 @@ export const cardApi = api.injectEndpoints({
         unwrapData<unknown[]>(response, []).map((item) => normalizeCardTransaction(item)),
       providesTags: (_r, _e, id) => [{ type: 'CardTx', id }],
     }),
-    orderCard: b.mutation<
-      UserCard,
-      { id: string; amount: number; name_on_card: string; funding_amount: number; wallet_id: string }
-    >({
+    orderCard: b.mutation<UserCard | CardOperationResult, { id: string; amount: number; name_on_card: string; funding_amount: number; wallet_id: string }>({
       query: (body) => ({ url: '/cards/order-cards/', method: 'POST', body }),
-      transformResponse: (response: unknown) => normalizeUserCard(response),
+      transformResponse: (response: unknown) => {
+        const raw = (response ?? {}) as { status?: string; message?: string; reference?: string };
+        return raw.status === 'pending' ? (raw as CardOperationResult) : normalizeUserCard(response);
+      },
       invalidatesTags: ['Cards', 'Wallet'],
     }),
-    rechargeCard: b.mutation<
-      { detail: string },
-      { card_id: string; amount: number; payment_method: string; wallet_id: string }
-    >({
+    rechargeCard: b.mutation<CardOperationResult, { card_id: string; amount: number; payment_method: string; wallet_id: string }>({
       query: (body) => ({ url: '/cards/recharge-cards/', method: 'POST', body }),
-      transformResponse: () => ({ detail: 'Carte rechargee' }),
+      transformResponse: (response: unknown) => response as CardOperationResult,
       invalidatesTags: ['Cards', 'Wallet'],
     }),
-    withdrawCard: b.mutation<
-      { detail: string },
-      { card_id: string; amount: number; wallet_id: string }
-    >({
+    withdrawCard: b.mutation<CardOperationResult, { card_id: string; amount: number; wallet_id: string }>({
       query: (body) => ({
         url: '/cards/withdrawal-card/',
         method: 'POST',
         body: { ...body, payment_method: 'wallet' },
       }),
-      transformResponse: () => ({ detail: 'Retrait carte effectue' }),
+      transformResponse: (response: unknown) => response as CardOperationResult,
       invalidatesTags: ['Cards', 'Wallet'],
     }),
-    freezeCard: b.mutation<{ detail: string }, { card_id: string; action: 'freeze' | 'unfreeze' }>({
+    freezeCard: b.mutation<CardOperationResult, { card_id: string; action: 'freeze' | 'unfreeze' }>({
       query: (body) => ({ url: '/cards/freeze-card/', method: 'POST', body }),
-      transformResponse: () => ({ detail: 'Statut carte mis a jour' }),
+      transformResponse: (response: unknown) => response as CardOperationResult,
       invalidatesTags: ['Cards'],
     }),
   }),

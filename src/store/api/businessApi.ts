@@ -114,13 +114,67 @@ export interface CryptoAsset {
 export interface CryptoNetwork {
   id: string;
   name: string;
-  symbol: string;
+  symbol?: string;
+  family?: string;
+  provider?: string;
+  native_symbol?: string;
+  confirmations_required?: number;
+  withdrawal_enabled?: boolean;
+  deposit_enabled?: boolean;
 }
 export interface CryptoDepositAddress {
+  id?: string;
   address: string;
   network: string;
   symbol: string;
   qr_payload: string;
+  tag?: string;
+  status?: string;
+}
+export interface CryptoQuote {
+  id: string;
+  symbol: string;
+  network?: string | null;
+  side: 'buy' | 'sell';
+  fiat_currency: string;
+  crypto_currency: string;
+  fiat_amount: string;
+  crypto_amount: string;
+  market_rate: string;
+  executed_rate: string;
+  spread_amount: string;
+  lipaxe_fee_amount?: string;
+  expires_at: string;
+  status: string;
+}
+export interface CryptoTrade {
+  id: string;
+  reference: string;
+  symbol: string;
+  network?: string | null;
+  side: 'buy' | 'sell';
+  fiat_currency: string;
+  crypto_currency: string;
+  fiat_amount: string;
+  crypto_amount: string;
+  market_rate: string;
+  executed_rate: string;
+  spread_amount: string;
+  status: string;
+  created_at: string;
+}
+export interface CryptoOnchainTransaction {
+  id: string;
+  symbol: string;
+  network: string;
+  direction: 'deposit' | 'withdrawal';
+  amount: string;
+  status: string;
+  tx_hash?: string;
+  to_address?: string;
+  confirmations?: number;
+  required_confirmations?: number;
+  created_at: string;
 }
 
 export interface EbilletOffer {
@@ -271,14 +325,29 @@ export const businessApi = api.injectEndpoints({
     cryptoNetworks: b.query<CryptoNetwork[], string>({
       query: (symbol) => `/crypto-market/rates/${encodeURIComponent(symbol)}/networks/`,
     }),
-    cryptoDepositAddress: b.mutation<CryptoDepositAddress, { symbol: string; network: string; amount: number; wallet_id: string }>({
+    cryptoQuote: b.mutation<CryptoQuote, { symbol: string; side: 'buy' | 'sell'; fiat_wallet_id: string; crypto_wallet_id: string; network?: string; fiat_amount?: number; crypto_amount?: number }>({
+      query: (body) => ({
+        url: '/crypto-market/trades/quote/',
+        method: 'POST',
+        body,
+      }),
+    }),
+    cryptoTradeExecute: b.mutation<CryptoTrade, { quote_id: string }>({
+      query: (body) => ({
+        url: '/crypto-market/trades/execute/',
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: ['Wallet', 'Transactions', 'Crypto'],
+    }),
+    cryptoDepositAddress: b.mutation<CryptoDepositAddress, { symbol: string; network: string; wallet_id: string; amount?: number }>({
       query: (body) => ({
         url: '/cryptos/deposit-address/',
         method: 'POST',
         body,
       }),
     }),
-    cryptoWithdraw: b.mutation<{ detail: string; reference: string }, { symbol: string; network: string; address: string; amount: number; wallet_id: string }>({
+    cryptoWithdraw: b.mutation<CryptoOnchainTransaction, { symbol: string; network: string; address: string; amount: number; wallet_id: string }>({
       query: (body) => ({
         url: '/cryptos/withdraw/',
         method: 'POST',
@@ -305,6 +374,8 @@ export const {
   usePayBillMutation,
   useCryptoAssetsQuery,
   useCryptoNetworksQuery,
+  useCryptoQuoteMutation,
+  useCryptoTradeExecuteMutation,
   useCryptoDepositAddressMutation,
   useCryptoWithdrawMutation,
 } = businessApi;

@@ -232,6 +232,14 @@
     "rulesAndPolicies": "Rules and policies",
     "choosePlan": "Choose this plan",
     "addContribution": "Add contribution",
+    "withdraw": "Withdraw",
+    "confirmWithdraw": "Confirm withdrawal",
+    "destinationWallet": "Destination wallet",
+    "selectDestinationWallet": "Choose a destination wallet.",
+    "withdrawAvailable": "Available in this plan: {{amount}}",
+    "withdrawDone": "Savings withdrawal paid to your wallet.",
+    "withdrawDoneWithPenalty": "Withdrawal paid: {{amount}}. Penalty applied: {{penalty}}.",
+    "earlyExitWarning": "Early exit before maturity: the plan penalty may be deducted automatically before wallet credit.",
     "viewPlan": "View plan",
     "savedProgress": "Progress",
     "maturity": "Maturity",
@@ -261,7 +269,8 @@
     "status": {
       "active": "Active",
       "paused": "Paused",
-      "matured": "Matured"
+      "matured": "Matured",
+      "closed": "Closed"
     }
   },
   "yieldVaults": {

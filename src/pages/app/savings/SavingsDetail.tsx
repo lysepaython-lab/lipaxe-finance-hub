@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, PiggyBank, Loader2, ShieldCheck, CalendarClock, WalletCards } from 'lucide-react';
+import { ArrowLeft, PiggyBank, Loader2, ShieldCheck, CalendarClock, WalletCards, ArrowDownToLine } from 'lucide-react';
 import { toast } from 'sonner';
 import { PageHeader } from '@/components/PageHeader';
 import { Card, CardContent } from '@/components/ui/card';
@@ -13,7 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { WalletSelector } from '@/components/security/WalletSelector';
 import { PinModal, usePinGate } from '@/components/security/PinModal';
-import { useContributeSavingsMutation, useSavingsAccountQuery } from '@/store/api/savingsApi';
+import { useContributeSavingsMutation, useSavingsAccountQuery, useWithdrawSavingsMutation } from '@/store/api/savingsApi';
 import { formatMoney } from '@/lib/format';
 
 const kindLabel: Record<string, string> = {
@@ -26,6 +26,7 @@ const statusLabel: Record<string, string> = {
   active: 'Actif',
   paused: 'Suspendu',
   matured: 'Echu',
+  closed: 'Ferme',
 };
 
 const frequencyLabel: Record<string, string> = {
@@ -34,16 +35,23 @@ const frequencyLabel: Record<string, string> = {
   monthly: 'Mensuel',
 };
 
+const isEarlySavingsExit = (account: { liquidity: string; maturity_date?: string }) =>
+  account.liquidity === 'maturity' && (!account.maturity_date || new Date(account.maturity_date).getTime() > Date.now());
+
 const SavingsDetail = () => {
   const { id } = useParams<{ id: string }>();
   const { t } = useTranslation();
   const { data: account, isLoading } = useSavingsAccountQuery(id || '', { skip: !id });
   const [contributeSavings, { isLoading: contributing }] = useContributeSavingsMutation();
+  const [withdrawSavings, { isLoading: withdrawing }] = useWithdrawSavingsMutation();
   const pin = usePinGate();
 
   const [openContribute, setOpenContribute] = useState(false);
+  const [openWithdraw, setOpenWithdraw] = useState(false);
   const [walletId, setWalletId] = useState<string>();
   const [amount, setAmount] = useState('');
+  const [withdrawWalletId, setWithdrawWalletId] = useState<string>();
+  const [withdrawAmount, setWithdrawAmount] = useState('');
 
   const submitContribution = () => {
     if (!account || !walletId) {
@@ -59,6 +67,31 @@ const SavingsDetail = () => {
         }).unwrap();
         toast.success('Contribution ajoutee.');
         setOpenContribute(false);
+      } catch (e) {
+        toast.error((e as { data?: { detail?: string } })?.data?.detail || t('common.error'));
+      }
+    });
+  };
+
+  const submitWithdraw = () => {
+    if (!account || !withdrawWalletId) {
+      toast.error(t('savings.selectDestinationWallet'));
+      return;
+    }
+    pin.guard(async () => {
+      try {
+        const result = await withdrawSavings({
+          savings_id: account.id,
+          wallet_id: withdrawWalletId,
+          amount: Number(withdrawAmount || account.current_amount),
+        }).unwrap();
+        const penalty = Number(result.penalty_amount || 0);
+        toast.success(
+          penalty > 0
+            ? t('savings.withdrawDoneWithPenalty', { amount: result.net_amount, penalty: result.penalty_amount })
+            : t('savings.withdrawDone'),
+        );
+        setOpenWithdraw(false);
       } catch (e) {
         toast.error((e as { data?: { detail?: string } })?.data?.detail || t('common.error'));
       }
@@ -102,6 +135,19 @@ const SavingsDetail = () => {
               </Link>
             </Button>
             <Button
+              variant="outline"
+              disabled={account.current_amount <= 0 || account.status === 'closed'}
+              onClick={() => {
+                setWithdrawWalletId(account.source_wallet_id);
+                setWithdrawAmount(String(account.current_amount));
+                setOpenWithdraw(true);
+              }}
+            >
+              <ArrowDownToLine className="mr-2 h-4 w-4" />
+              {t('savings.withdraw')}
+            </Button>
+            <Button
+              disabled={account.status === 'closed'}
               onClick={() => {
                 setWalletId(account.source_wallet_id);
                 setAmount(String(account.contribution_amount));
@@ -233,6 +279,41 @@ const SavingsDetail = () => {
             <Button onClick={submitContribution} disabled={contributing} className="bg-gradient-brand shadow-brand">
               {contributing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               {t('savings.addContribution')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={openWithdraw} onOpenChange={setOpenWithdraw}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t('savings.withdraw')}</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-2">
+            <WalletSelector
+              label={t('savings.destinationWallet')}
+              value={withdrawWalletId}
+              onChange={(nextId) => setWithdrawWalletId(nextId)}
+              filterCurrency={account.currency}
+            />
+            <div className="space-y-2">
+              <Label>{t('common.amount')}</Label>
+              <Input type="number" value={withdrawAmount} onChange={(e) => setWithdrawAmount(e.target.value)} />
+              <p className="text-xs text-muted-foreground">
+                {t('savings.withdrawAvailable', { amount: formatMoney(account.current_amount, account.currency) })}
+              </p>
+            </div>
+            {isEarlySavingsExit(account) ? (
+              <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-700 dark:text-amber-200">
+                {t('savings.earlyExitWarning')}
+              </div>
+            ) : null}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpenWithdraw(false)}>{t('common.cancel')}</Button>
+            <Button onClick={submitWithdraw} disabled={withdrawing} className="bg-gradient-brand shadow-brand">
+              {withdrawing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              {t('savings.confirmWithdraw')}
             </Button>
           </DialogFooter>
         </DialogContent>

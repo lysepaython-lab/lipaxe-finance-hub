@@ -1,74 +1,157 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Bitcoin, TrendingUp, TrendingDown, ArrowDownToLine, ArrowUpFromLine, Copy, Check, Loader2 } from 'lucide-react';
+import {
+  ArrowDownToLine,
+  ArrowUpFromLine,
+  Bitcoin,
+  Check,
+  Copy,
+  Loader2,
+  TrendingDown,
+  TrendingUp,
+} from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
+
 import { PageHeader } from '@/components/PageHeader';
-import { Card, CardContent } from '@/components/ui/card';
+import { PinModal, usePinGate } from '@/components/security/PinModal';
+import { WalletSelector } from '@/components/security/WalletSelector';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { formatMoney } from '@/lib/format';
-import { toast } from 'sonner';
-import {
-  useCryptoAssetsQuery, useCryptoNetworksQuery,
-  useCryptoDepositAddressMutation, useCryptoWithdrawMutation,
-} from '@/store/api/businessApi';
-import { WalletSelector } from '@/components/security/WalletSelector';
-import { PinModal, usePinGate } from '@/components/security/PinModal';
 import { cn } from '@/lib/utils';
+import {
+  useCryptoAssetsQuery,
+  useCryptoDepositAddressMutation,
+  useCryptoNetworksQuery,
+  useCryptoQuoteMutation,
+  useCryptoTradeExecuteMutation,
+  useCryptoWithdrawMutation,
+  type CryptoQuote,
+} from '@/store/api/businessApi';
+
+type CryptoMode = 'buy' | 'sell' | 'deposit' | 'withdraw';
+
+const CRYPTO_CURRENCIES = ['USDT', 'USDC', 'BTC'];
+
+const modeTitle = (mode: CryptoMode, symbol: string) => {
+  if (mode === 'buy') return `Acheter ${symbol}`;
+  if (mode === 'sell') return `Vendre ${symbol}`;
+  if (mode === 'deposit') return `Recevoir ${symbol}`;
+  return `Envoyer ${symbol}`;
+};
 
 const Cryptos = () => {
   const { t } = useTranslation();
   const { data: assets, isLoading } = useCryptoAssetsQuery();
+  const { data: networks } = useCryptoNetworksQuery('USDT');
   const [depositAddr, { isLoading: addrLoading }] = useCryptoDepositAddressMutation();
   const [withdraw, { isLoading: wdLoading }] = useCryptoWithdrawMutation();
+  const [quoteCrypto, { isLoading: quoteLoading }] = useCryptoQuoteMutation();
+  const [executeTrade, { isLoading: executeLoading }] = useCryptoTradeExecuteMutation();
   const pin = usePinGate();
 
   const [open, setOpen] = useState(false);
-  const [mode, setMode] = useState<'buy' | 'sell'>('buy');
-  const [symbol, setSymbol] = useState<string>('USDT');
-  const [network, setNetwork] = useState<string>('TRC20');
+  const [mode, setMode] = useState<CryptoMode>('buy');
+  const [symbol, setSymbol] = useState('USDT');
+  const [network, setNetwork] = useState('trc20');
   const [walletId, setWalletId] = useState<string>();
+  const [fiatWalletId, setFiatWalletId] = useState<string>();
+  const [cryptoWalletId, setCryptoWalletId] = useState<string>();
   const [amount, setAmount] = useState('100');
   const [address, setAddress] = useState('');
   const [generated, setGenerated] = useState<{ address: string; qr_payload: string } | null>(null);
+  const [quote, setQuote] = useState<CryptoQuote | null>(null);
   const [copied, setCopied] = useState(false);
 
-  const { data: networks } = useCryptoNetworksQuery(symbol, { skip: !symbol });
+  const { data: symbolNetworks } = useCryptoNetworksQuery(symbol, { skip: !symbol });
+  const activeNetworks = symbolNetworks || networks || [];
 
-  const openMode = (m: 'buy' | 'sell', sym: string) => {
-    setMode(m);
-    setSymbol(sym);
+  const openMode = (nextMode: CryptoMode, nextSymbol: string) => {
+    setMode(nextMode);
+    setSymbol(nextSymbol);
     setNetwork('');
+    setWalletId(undefined);
+    setFiatWalletId(undefined);
+    setCryptoWalletId(undefined);
     setGenerated(null);
+    setQuote(null);
     setAddress('');
-    setAmount('100');
+    setAmount(nextMode === 'sell' ? '10' : '100');
     setOpen(true);
   };
 
-  const handleGenerate = async () => {
-    if (!network || !walletId) { toast.error('Sélectionnez réseau et portefeuille'); return; }
+  const handleQuote = async () => {
+    if (!fiatWalletId || !cryptoWalletId) {
+      toast.error('Selectionnez les portefeuilles.');
+      return;
+    }
+
     try {
-      const r = await depositAddr({ symbol, network, amount: Number(amount), wallet_id: walletId }).unwrap();
-      setGenerated({ address: r.address, qr_payload: r.qr_payload });
-    } catch (e) {
-      toast.error((e as { data?: { detail?: string } })?.data?.detail || t('common.error'));
+      const response = await quoteCrypto({
+        symbol,
+        side: mode === 'sell' ? 'sell' : 'buy',
+        network: network || undefined,
+        fiat_wallet_id: fiatWalletId,
+        crypto_wallet_id: cryptoWalletId,
+        ...(mode === 'sell' ? { crypto_amount: Number(amount) } : { fiat_amount: Number(amount) }),
+      }).unwrap();
+      setQuote(response);
+    } catch (error) {
+      toast.error((error as { data?: { detail?: string } })?.data?.detail || t('common.error'));
+    }
+  };
+
+  const handleExecuteTrade = () => {
+    if (!quote?.id) {
+      toast.error('Demandez un prix avant de confirmer.');
+      return;
+    }
+
+    pin.guard(async () => {
+      try {
+        await executeTrade({ quote_id: quote.id }).unwrap();
+        toast.success(mode === 'sell' ? 'Vente crypto executee.' : 'Achat crypto execute.');
+        setOpen(false);
+      } catch (error) {
+        toast.error((error as { data?: { detail?: string } })?.data?.detail || t('common.error'));
+      }
+    });
+  };
+
+  const handleGenerate = async () => {
+    if (!network || !walletId) {
+      toast.error('Selectionnez le reseau et le portefeuille.');
+      return;
+    }
+
+    try {
+      const response = await depositAddr({ symbol, network, wallet_id: walletId }).unwrap();
+      setGenerated({ address: response.address, qr_payload: response.qr_payload });
+    } catch (error) {
+      toast.error((error as { data?: { detail?: string } })?.data?.detail || t('common.error'));
     }
   };
 
   const handleWithdraw = () => {
-    if (!network || !walletId || !address) { toast.error('Tous les champs sont requis'); return; }
+    if (!network || !walletId || !address) {
+      toast.error('Tous les champs sont requis.');
+      return;
+    }
+
     pin.guard(async () => {
       try {
         await withdraw({ symbol, network, address, amount: Number(amount), wallet_id: walletId }).unwrap();
-        toast.success('Retrait crypto envoyé');
+        toast.success('Retrait crypto envoye pour revue.');
         setOpen(false);
-      } catch (e) {
-        toast.error((e as { data?: { detail?: string } })?.data?.detail || t('common.error'));
+      } catch (error) {
+        toast.error((error as { data?: { detail?: string } })?.data?.detail || t('common.error'));
       }
     });
   };
@@ -77,7 +160,7 @@ const Cryptos = () => {
     navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
-    toast.success('Adresse copiée');
+    toast.success('Adresse copiee.');
   };
 
   return (
@@ -86,40 +169,45 @@ const Cryptos = () => {
 
       {isLoading ? (
         <div className="grid gap-4 md:grid-cols-2">
-          <Skeleton className="h-24" /><Skeleton className="h-24" />
+          <Skeleton className="h-24" />
+          <Skeleton className="h-24" />
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
-          {(assets || []).map((c, i) => (
-            <motion.div key={c.symbol} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+          {(assets || []).map((asset, index) => (
+            <motion.div key={asset.symbol} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }}>
               <Card>
-                <CardContent className="p-5 flex items-center justify-between gap-4 flex-wrap">
+                <CardContent className="flex flex-wrap items-center justify-between gap-4 p-5">
                   <div className="flex items-center gap-3">
-                    <div className="h-11 w-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-display font-bold">
-                      {c.symbol.slice(0, 1)}
+                    <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 font-display font-bold text-primary">
+                      {asset.symbol.slice(0, 1)}
                     </div>
                     <div>
-                      <div className="font-semibold">{c.name}</div>
-                      <div className="text-xs text-muted-foreground">{c.symbol}</div>
+                      <div className="font-semibold">{asset.name}</div>
+                      <div className="text-xs text-muted-foreground">{asset.symbol}</div>
                     </div>
                   </div>
+
                   <div className="text-right">
-                    <div className="font-display font-bold tabular">{formatMoney(c.price_usd, 'USD')}</div>
-                    <div className={`text-xs flex items-center justify-end gap-1 ${c.change_24h >= 0 ? 'text-success' : 'text-destructive'}`}>
-                      {c.change_24h >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                      {c.change_24h >= 0 ? '+' : ''}{c.change_24h}%
+                    <div className="font-display font-bold tabular-nums">{formatMoney(asset.price_usd, 'USD')}</div>
+                    <div className={`flex items-center justify-end gap-1 text-xs ${asset.change_24h >= 0 ? 'text-success' : 'text-destructive'}`}>
+                      {asset.change_24h >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                      {asset.change_24h >= 0 ? '+' : ''}{asset.change_24h}%
                     </div>
                     <div className="mt-2 space-y-1 text-[11px] text-muted-foreground">
-                      <div>Marché: {c.market_rate || String(c.price_usd)}</div>
-                      <div>Achat: {c.buy_rate || '—'} {typeof c.buy_margin_percent === 'number' ? `(${c.buy_margin_percent >= 0 ? '+' : ''}${c.buy_margin_percent.toFixed(2)}%)` : ''}</div>
-                      <div>Vente: {c.sell_rate || '—'} {typeof c.sell_margin_percent === 'number' ? `(${c.sell_margin_percent >= 0 ? '+' : ''}${c.sell_margin_percent.toFixed(2)}%)` : ''}</div>
+                      <div>Marche: {asset.market_rate || String(asset.price_usd)}</div>
+                      <div>Achat: {asset.buy_rate || '-'}</div>
+                      <div>Vente: {asset.sell_rate || '-'}</div>
                     </div>
                   </div>
-                  <div className="flex gap-2">
-                    <Button size="sm" className="bg-gradient-brand shadow-brand" onClick={() => openMode('buy', c.symbol)}>
-                      <ArrowDownToLine className="mr-1 h-4 w-4" /> Dépôt
+
+                  <div className="flex flex-wrap gap-2">
+                    <Button size="sm" className="bg-gradient-brand shadow-brand" onClick={() => openMode('buy', asset.symbol)}>Acheter</Button>
+                    <Button size="sm" variant="outline" onClick={() => openMode('sell', asset.symbol)}>Vendre</Button>
+                    <Button size="sm" variant="secondary" onClick={() => openMode('deposit', asset.symbol)}>
+                      <ArrowDownToLine className="mr-1 h-4 w-4" /> Depot
                     </Button>
-                    <Button size="sm" variant="outline" onClick={() => openMode('sell', c.symbol)}>
+                    <Button size="sm" variant="secondary" onClick={() => openMode('withdraw', asset.symbol)}>
                       <ArrowUpFromLine className="mr-1 h-4 w-4" /> Retrait
                     </Button>
                   </div>
@@ -133,84 +221,127 @@ const Cryptos = () => {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>{mode === 'buy' ? `Recevoir ${symbol}` : `Envoyer ${symbol}`}</DialogTitle>
+            <DialogTitle>{modeTitle(mode, symbol)}</DialogTitle>
           </DialogHeader>
-          <Tabs value={mode} onValueChange={(v) => setMode(v as 'buy' | 'sell')}>
-            <TabsList className="grid grid-cols-2 w-full">
-              <TabsTrigger value="buy">Dépôt</TabsTrigger>
-              <TabsTrigger value="sell">Retrait</TabsTrigger>
+
+          <Tabs value={mode} onValueChange={(value) => { setMode(value as CryptoMode); setQuote(null); setGenerated(null); }}>
+            <TabsList className="grid w-full grid-cols-4">
+              <TabsTrigger value="buy">Achat</TabsTrigger>
+              <TabsTrigger value="sell">Vente</TabsTrigger>
+              <TabsTrigger value="deposit">Depot</TabsTrigger>
+              <TabsTrigger value="withdraw">Retrait</TabsTrigger>
             </TabsList>
 
-            <div className="py-4 space-y-4">
-              <WalletSelector label="Portefeuille" value={walletId} onChange={(id) => setWalletId(id)} />
+            <div className="space-y-4 py-4">
+              {(mode === 'buy' || mode === 'sell') ? (
+                <>
+                  <WalletSelector
+                    label={mode === 'buy' ? 'Wallet a debiter' : 'Wallet a crediter'}
+                    value={fiatWalletId}
+                    onChange={(id) => setFiatWalletId(id)}
+                    excludeCurrencies={CRYPTO_CURRENCIES}
+                  />
+                  <WalletSelector
+                    label={`Wallet ${symbol}`}
+                    value={cryptoWalletId}
+                    onChange={(id) => setCryptoWalletId(id)}
+                    filterCurrency={symbol}
+                  />
+                </>
+              ) : (
+                <WalletSelector
+                  label={`Wallet ${symbol}`}
+                  value={walletId}
+                  onChange={(id) => setWalletId(id)}
+                  filterCurrency={symbol}
+                />
+              )}
 
               <div className="space-y-2">
-                <Label>Réseau</Label>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {(networks || []).map((n) => (
+                <Label>Reseau</Label>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                  {activeNetworks.map((item) => (
                     <button
-                      key={n.id}
+                      key={item.id}
                       type="button"
-                      onClick={() => setNetwork(n.id)}
+                      onClick={() => setNetwork(item.id)}
                       className={cn(
                         'rounded-lg border-2 p-2 text-xs font-semibold transition-colors',
-                        network === n.id ? 'border-primary bg-primary/5' : 'border-input hover:border-primary/40',
+                        network === item.id ? 'border-primary bg-primary/5' : 'border-input hover:border-primary/40',
                       )}
                     >
-                      {n.name}
+                      {item.name}
                     </button>
                   ))}
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label>Montant ({symbol})</Label>
-                <Input type="number" min={0} value={amount} onChange={(e) => setAmount(e.target.value)} className="tabular" />
+                <Label>{mode === 'buy' ? 'Montant fiat' : `Montant ${symbol}`}</Label>
+                <Input type="number" min={0} value={amount} onChange={(event) => { setAmount(event.target.value); setQuote(null); }} className="tabular-nums" />
               </div>
 
-              {(() => {
-                const asset = (assets || []).find((item) => item.symbol === symbol);
-                if (!asset) return null;
-                return (
-                  <div className="rounded-xl bg-muted/40 p-3 text-xs space-y-1">
-                    <div>Taux marché: {asset.market_rate || asset.price_usd}</div>
-                    <div>Taux achat client: {asset.buy_rate || '—'}</div>
-                    <div>Taux vente client: {asset.sell_rate || '—'}</div>
-                  </div>
-                );
-              })()}
+              {(mode === 'buy' || mode === 'sell') && (
+                <div className="space-y-2 rounded-xl border bg-muted/30 p-3 text-sm">
+                  {quote ? (
+                    <>
+                      <div className="flex justify-between"><span>Fiat</span><strong>{quote.fiat_amount} {quote.fiat_currency}</strong></div>
+                      <div className="flex justify-between"><span>Crypto</span><strong>{quote.crypto_amount} {symbol}</strong></div>
+                      <div className="flex justify-between"><span>Taux</span><strong>{quote.executed_rate}</strong></div>
+                      <div className="flex justify-between"><span>Marge Lipaxe</span><strong>{quote.spread_amount}</strong></div>
+                    </>
+                  ) : (
+                    <p className="text-muted-foreground">Demandez un prix ferme, puis confirmez avec votre PIN.</p>
+                  )}
+                </div>
+              )}
 
-              <TabsContent value="sell" className="m-0 space-y-2">
-                <Label>Adresse de destination</Label>
-                <Input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="TR... ou 0x..." className="font-mono text-sm" />
-                <p className="text-xs text-warning">⚠ Vérifiez l'adresse — irréversible.</p>
-              </TabsContent>
-
-              <TabsContent value="buy" className="m-0">
+              <TabsContent value="deposit" className="m-0">
                 {!generated ? (
                   <Button onClick={handleGenerate} disabled={addrLoading} className="w-full bg-gradient-brand shadow-brand">
                     {addrLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Générer l'adresse de dépôt
+                    Generer l'adresse de depot
                   </Button>
                 ) : (
-                  <div className="rounded-xl bg-muted/40 p-4 space-y-3 text-center">
-                    <div className="bg-white p-3 rounded-xl inline-block">
+                  <div className="space-y-3 rounded-xl bg-muted/40 p-4 text-center">
+                    <div className="inline-block rounded-xl bg-white p-3">
                       <QRCodeSVG value={generated.qr_payload} size={160} level="H" />
                     </div>
-                    <div className="font-mono text-xs break-all">{generated.address}</div>
+                    <div className="break-all font-mono text-xs">{generated.address}</div>
                     <Button variant="outline" size="sm" onClick={() => copy(generated.address)}>
-                      {copied ? <Check className="mr-1 h-3 w-3" /> : <Copy className="mr-1 h-3 w-3" />} Copier l'adresse
+                      {copied ? <Check className="mr-1 h-3 w-3" /> : <Copy className="mr-1 h-3 w-3" />}
+                      Copier
                     </Button>
                   </div>
                 )}
               </TabsContent>
+
+              <TabsContent value="withdraw" className="m-0 space-y-2">
+                <Label>Adresse de destination</Label>
+                <Input value={address} onChange={(event) => setAddress(event.target.value)} placeholder="TR... ou 0x..." className="font-mono text-sm" />
+                <p className="text-xs text-warning">Verifiez deux fois: les transactions crypto sont irreversibles.</p>
+              </TabsContent>
             </div>
           </Tabs>
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>Fermer</Button>
-            {mode === 'sell' && (
+            {(mode === 'buy' || mode === 'sell') && (
+              <>
+                <Button variant="outline" onClick={handleQuote} disabled={quoteLoading}>
+                  {quoteLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Obtenir le prix
+                </Button>
+                <Button onClick={handleExecuteTrade} disabled={executeLoading || !quote} className="bg-gradient-brand shadow-brand">
+                  {executeLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Confirmer
+                </Button>
+              </>
+            )}
+            {mode === 'withdraw' && (
               <Button onClick={handleWithdraw} disabled={wdLoading} className="bg-gradient-brand shadow-brand">
-                {wdLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Envoyer
+                {wdLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Envoyer
               </Button>
             )}
           </DialogFooter>

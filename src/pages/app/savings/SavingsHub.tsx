@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { PiggyBank, Plus, ShieldCheck, TimerReset, WalletCards, ArrowRight, Loader2 } from 'lucide-react';
+import { PiggyBank, Plus, ShieldCheck, TimerReset, WalletCards, ArrowRight, Loader2, ArrowDownToLine } from 'lucide-react';
 import { toast } from 'sonner';
 import { PageHeader } from '@/components/PageHeader';
 import { Card, CardContent } from '@/components/ui/card';
@@ -21,6 +21,7 @@ import {
   useCreateSavingsMutation,
   useSavingsAccountsQuery,
   useSavingsPlansQuery,
+  useWithdrawSavingsMutation,
   type SavingsAccount,
   type SavingsFrequency,
 } from '@/store/api/savingsApi';
@@ -38,12 +39,16 @@ const kindTone: Record<string, string> = {
   locked: 'bg-violet-500/10 text-violet-700 dark:text-violet-300',
 };
 
+const isEarlySavingsExit = (account?: SavingsAccount | null) =>
+  Boolean(account?.liquidity === 'maturity' && (!account.maturity_date || new Date(account.maturity_date).getTime() > Date.now()));
+
 const SavingsHub = () => {
   const { t } = useTranslation();
   const { data: plans, isLoading: plansLoading } = useSavingsPlansQuery();
   const { data: accounts, isLoading: accountsLoading } = useSavingsAccountsQuery();
   const [createSavings, { isLoading: creating }] = useCreateSavingsMutation();
   const [contributeSavings, { isLoading: contributing }] = useContributeSavingsMutation();
+  const [withdrawSavings, { isLoading: withdrawing }] = useWithdrawSavingsMutation();
   const pin = usePinGate();
 
   const [openCreate, setOpenCreate] = useState(false);
@@ -61,6 +66,9 @@ const SavingsHub = () => {
   const [contributeTarget, setContributeTarget] = useState<SavingsAccount | null>(null);
   const [contributeWalletId, setContributeWalletId] = useState<string>();
   const [contributeAmount, setContributeAmount] = useState('25');
+  const [withdrawTarget, setWithdrawTarget] = useState<SavingsAccount | null>(null);
+  const [withdrawWalletId, setWithdrawWalletId] = useState<string>();
+  const [withdrawAmount, setWithdrawAmount] = useState('');
 
   const selectedPlan = (plans || []).find((plan) => plan.id === selectedPlanId);
 
@@ -142,6 +150,31 @@ const SavingsHub = () => {
         }).unwrap();
         toast.success('Contribution enregistree.');
         setOpenContribute(false);
+      } catch (e) {
+        toast.error((e as { data?: { detail?: string } })?.data?.detail || t('common.error'));
+      }
+    });
+  };
+
+  const submitWithdraw = () => {
+    if (!withdrawTarget || !withdrawWalletId) {
+      toast.error(t('savings.selectDestinationWallet'));
+      return;
+    }
+    pin.guard(async () => {
+      try {
+        const result = await withdrawSavings({
+          savings_id: withdrawTarget.id,
+          wallet_id: withdrawWalletId,
+          amount: Number(withdrawAmount || withdrawTarget.current_amount),
+        }).unwrap();
+        const penalty = Number(result.penalty_amount || 0);
+        toast.success(
+          penalty > 0
+            ? t('savings.withdrawDoneWithPenalty', { amount: result.net_amount, penalty: result.penalty_amount })
+            : t('savings.withdrawDone'),
+        );
+        setWithdrawTarget(null);
       } catch (e) {
         toast.error((e as { data?: { detail?: string } })?.data?.detail || t('common.error'));
       }
@@ -319,10 +352,11 @@ const SavingsHub = () => {
                           ))}
                         </div>
 
-                        <div className="flex gap-2">
+                        <div className="flex flex-col gap-2 sm:flex-row">
                           <Button
                             variant="outline"
                             className="flex-1"
+                            disabled={account.status === 'closed'}
                             onClick={() => {
                               setContributeTarget(account);
                               setContributeWalletId(account.source_wallet_id);
@@ -331,6 +365,19 @@ const SavingsHub = () => {
                             }}
                           >
                             {t('savings.addContribution')}
+                          </Button>
+                          <Button
+                            variant="outline"
+                            className="flex-1"
+                            disabled={account.current_amount <= 0 || account.status === 'closed'}
+                            onClick={() => {
+                              setWithdrawTarget(account);
+                              setWithdrawWalletId(account.source_wallet_id);
+                              setWithdrawAmount(String(account.current_amount));
+                            }}
+                          >
+                            <ArrowDownToLine className="mr-2 h-4 w-4" />
+                            {t('savings.withdraw')}
                           </Button>
                           <Button asChild className="flex-1 bg-gradient-brand shadow-brand">
                             <Link to={`/app/savings/${account.id}`}>
@@ -506,6 +553,45 @@ const SavingsHub = () => {
             <Button onClick={submitContribute} disabled={contributing} className="bg-gradient-brand shadow-brand">
               {contributing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               {t('savings.addContribution')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={Boolean(withdrawTarget)} onOpenChange={(open) => !open && setWithdrawTarget(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t('savings.withdraw')}</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-2">
+            <WalletSelector
+              label={t('savings.destinationWallet')}
+              value={withdrawWalletId}
+              onChange={(id) => setWithdrawWalletId(id)}
+              filterCurrency={withdrawTarget?.currency}
+            />
+            <div className="space-y-2">
+              <Label>{t('common.amount')}</Label>
+              <Input type="number" value={withdrawAmount} onChange={(e) => setWithdrawAmount(e.target.value)} />
+              {withdrawTarget ? (
+                <p className="text-xs text-muted-foreground">
+                  {t('savings.withdrawAvailable', {
+                    amount: formatMoney(withdrawTarget.current_amount, withdrawTarget.currency),
+                  })}
+                </p>
+              ) : null}
+            </div>
+            {isEarlySavingsExit(withdrawTarget) ? (
+              <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-700 dark:text-amber-200">
+                {t('savings.earlyExitWarning')}
+              </div>
+            ) : null}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setWithdrawTarget(null)}>{t('common.cancel')}</Button>
+            <Button onClick={submitWithdraw} disabled={withdrawing} className="bg-gradient-brand shadow-brand">
+              {withdrawing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              {t('savings.confirmWithdraw')}
             </Button>
           </DialogFooter>
         </DialogContent>

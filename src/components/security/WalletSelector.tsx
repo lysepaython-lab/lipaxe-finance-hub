@@ -9,12 +9,17 @@ interface WalletSelectorProps {
   value?: string;
   onChange: (walletId: string, wallet: WalletV2) => void;
   filterCurrency?: string;
+  excludeCurrencies?: string[];
   label?: string;
 }
 
-export const WalletSelector = ({ value, onChange, filterCurrency, label }: WalletSelectorProps) => {
+export const WalletSelector = ({ value, onChange, filterCurrency, excludeCurrencies = [], label }: WalletSelectorProps) => {
   const { data: wallets, isLoading } = useWalletsV2Query();
-  const list = (wallets || []).filter((w) => !filterCurrency || w.currency === filterCurrency);
+  const excluded = excludeCurrencies.map((currency) => currency.toUpperCase());
+  const list = (wallets || []).filter((w) => {
+    const currency = w.currency.toUpperCase();
+    return (!filterCurrency || currency === filterCurrency.toUpperCase()) && !excluded.includes(currency);
+  });
 
   if (isLoading) {
     return (

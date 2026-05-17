@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { CreditCard, Eye, EyeOff, Snowflake, Plus, Loader2, Sparkles } from 'lucide-react';
+import { AlertTriangle, CreditCard, Eye, EyeOff, Snowflake, Plus, Loader2, Sparkles } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { PageHeader } from '@/components/PageHeader';
 import { Button } from '@/components/ui/button';
@@ -26,6 +26,19 @@ import { WalletSelector } from '@/components/security/WalletSelector';
 import { PinModal, usePinGate } from '@/components/security/PinModal';
 import { useAppSelector } from '@/store/hooks';
 import { cn } from '@/lib/utils';
+
+const apiMessage = (error: unknown, fallback: string) => {
+  const data = (error as { data?: { detail?: string; message?: string; error?: string } })?.data;
+  return data?.message || data?.detail || data?.error || fallback;
+};
+
+const notifyOperation = (result: { status?: string; message?: string; detail?: string; reference?: string }, successMessage: string) => {
+  if (result?.status === 'pending') {
+    toast.warning(result.message || `Operation en verification fournisseur. Reference: ${result.reference || '-'}`);
+    return;
+  }
+  toast.success(result?.message || result?.detail || successMessage);
+};
 
 const VirtualCardVisual = ({
   brand, number, holder, exp, cvv, reveal, frozen,
@@ -106,11 +119,11 @@ const VirtualCard = () => {
     if (!offerId || !walletId) { toast.error('Sélectionnez une offre et un portefeuille'); return; }
     pin.guard(async () => {
       try {
-        await orderCard({ id: offerId, amount: selectedOffer?.price || 0, name_on_card: nameOnCard, funding_amount: Number(funding), wallet_id: walletId }).unwrap();
-        toast.success(t('cards.virtualCreated'));
+        const result = await orderCard({ id: offerId, amount: selectedOffer?.price || 0, name_on_card: nameOnCard, funding_amount: Number(funding), wallet_id: walletId }).unwrap();
+        notifyOperation(result as { status?: string; message?: string; detail?: string; reference?: string }, t('cards.virtualCreated'));
         setOrderOpen(false);
       } catch (e) {
-        toast.error((e as { data?: { detail?: string } })?.data?.detail || t('common.error'));
+        toast.error(apiMessage(e, t('common.error')));
       }
     });
   };
@@ -120,15 +133,15 @@ const VirtualCard = () => {
     pin.guard(async () => {
       try {
         if (fundMode === 'recharge') {
-          await rechargeCard({ card_id: fundCardId, amount: Number(fundAmount), payment_method: 'wallet', wallet_id: fundWallet }).unwrap();
-          toast.success('Carte rechargée');
+          const result = await rechargeCard({ card_id: fundCardId, amount: Number(fundAmount), payment_method: 'wallet', wallet_id: fundWallet }).unwrap();
+          notifyOperation(result, 'Carte rechargee');
         } else {
-          await withdrawCard({ card_id: fundCardId, amount: Number(fundAmount), wallet_id: fundWallet }).unwrap();
-          toast.success('Retrait effectué');
+          const result = await withdrawCard({ card_id: fundCardId, amount: Number(fundAmount), wallet_id: fundWallet }).unwrap();
+          notifyOperation(result, 'Retrait effectue');
         }
         setFundOpen(false);
       } catch (e) {
-        toast.error((e as { data?: { detail?: string } })?.data?.detail || t('common.error'));
+        toast.error(apiMessage(e, t('common.error')));
       }
     });
   };
@@ -136,10 +149,10 @@ const VirtualCard = () => {
   const toggleFreeze = (id: string, frozen: boolean) => {
     pin.guard(async () => {
       try {
-        await freezeCard({ card_id: id, action: frozen ? 'unfreeze' : 'freeze' }).unwrap();
-        toast.success(frozen ? 'Carte activée' : 'Carte gelée');
+        const result = await freezeCard({ card_id: id, action: frozen ? 'unfreeze' : 'freeze' }).unwrap();
+        notifyOperation(result, frozen ? 'Carte activee' : 'Carte gelee');
       } catch (e) {
-        toast.error((e as { data?: { detail?: string } })?.data?.detail || t('common.error'));
+        toast.error(apiMessage(e, t('common.error')));
       }
     });
   };
@@ -173,6 +186,9 @@ const VirtualCard = () => {
                     frozen={c.status === 'frozen'}
                   />
                   <div className="flex items-center justify-between flex-wrap gap-3">
+                    <Badge variant={c.status === 'active' ? 'default' : 'secondary'} className="capitalize">
+                      {c.status === 'pending' ? 'verification fournisseur' : c.status}
+                    </Badge>
                     <Button variant="outline" size="sm" onClick={() => setReveal((r) => ({ ...r, [c.id]: !r[c.id] }))}>
                       {reveal[c.id] ? <EyeOff className="mr-2 h-4 w-4" /> : <Eye className="mr-2 h-4 w-4" />}
                       {reveal[c.id] ? t('cards.hide') : t('cards.reveal')}
@@ -180,7 +196,11 @@ const VirtualCard = () => {
                     <div className="flex items-center gap-2 text-sm">
                       <Snowflake className="h-4 w-4 text-muted-foreground" />
                       <span className="text-muted-foreground">{t('cards.freeze')}</span>
-                      <Switch checked={c.status === 'frozen'} onCheckedChange={() => toggleFreeze(c.id, c.status === 'frozen')} />
+                      <Switch
+                        checked={c.status === 'frozen'}
+                        disabled={c.status === 'pending' || c.status === 'inactive'}
+                        onCheckedChange={() => toggleFreeze(c.id, c.status === 'frozen')}
+                      />
                     </div>
                   </div>
                   <div className="rounded-xl bg-muted/40 p-4 flex items-center justify-between">
@@ -199,9 +219,17 @@ const VirtualCard = () => {
                   {activeCardId === c.id && (
                     <div className="space-y-2 pt-2 border-t border-border">
                       {(cardTx || []).map((tx) => (
-                        <div key={tx.id} className="flex justify-between text-sm">
-                          <span>{tx.description}</span>
-                          <span className="tabular font-medium">{formatMoney(tx.amount, tx.currency)}</span>
+                        <div key={tx.id} className="flex items-center justify-between gap-3 text-sm">
+                          <div className="min-w-0">
+                            <div className="truncate">{tx.description}</div>
+                            <Badge
+                              variant={tx.status === 'completed' ? 'default' : 'secondary'}
+                              className="mt-1 text-[10px] capitalize"
+                            >
+                              {tx.status}
+                            </Badge>
+                          </div>
+                          <span className="shrink-0 tabular font-medium">{formatMoney(tx.amount, tx.currency)}</span>
                         </div>
                       ))}
                       {(cardTx || []).length === 0 && <p className="text-xs text-muted-foreground text-center py-2">Aucune transaction</p>}
@@ -278,6 +306,14 @@ const VirtualCard = () => {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
+            <div className="flex gap-3 rounded-2xl border border-amber-400/30 bg-amber-500/10 p-3 text-sm text-muted-foreground">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
+              <p>
+                {fundMode === 'withdraw'
+                  ? 'Le wallet est credite uniquement apres confirmation Payscribe. Si le fournisseur retourne pending, on garde la transaction en verification.'
+                  : 'Les fonds sont reserves avant la recharge. Si Payscribe refuse definitivement, le wallet est rembourse automatiquement.'}
+              </p>
+            </div>
             <WalletSelector label="Portefeuille" value={fundWallet} onChange={(id) => setFundWallet(id)} />
             <div className="space-y-2">
               <Label>Montant</Label>

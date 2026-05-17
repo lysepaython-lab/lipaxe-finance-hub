@@ -126,6 +126,8 @@ interface SavingsAccount {
   plan_id: string;
   plan_name: string;
   kind: 'flexible' | 'goal' | 'locked';
+  liquidity: 'on_demand' | 'maturity';
+  early_exit_penalty_percent: number;
   currency: string;
   goal_amount: number;
   current_amount: number;
@@ -133,7 +135,7 @@ interface SavingsAccount {
   frequency: 'daily' | 'weekly' | 'monthly';
   duration_months: number;
   auto_debit: boolean;
-  status: 'active' | 'paused' | 'matured';
+  status: 'active' | 'paused' | 'matured' | 'closed';
   source_wallet_id: string;
   next_contribution_at?: string;
   maturity_date?: string;
@@ -233,6 +235,8 @@ let savingsAccounts: SavingsAccount[] = [
     plan_id: 'sv_goal',
     plan_name: 'Goal Builder',
     kind: 'goal',
+    liquidity: 'maturity',
+    early_exit_penalty_percent: 1.5,
     currency: 'USD',
     goal_amount: 900,
     current_amount: 315,
@@ -254,6 +258,8 @@ let savingsAccounts: SavingsAccount[] = [
     plan_id: 'sv_flex',
     plan_name: 'Flexible Starter',
     kind: 'flexible',
+    liquidity: 'on_demand',
+    early_exit_penalty_percent: 0,
     currency: 'BIF',
     goal_amount: 800000,
     current_amount: 225000,
@@ -686,6 +692,8 @@ export async function mockHandler(url: string, method: string, body: any): Promi
       plan_id: plan.id,
       plan_name: plan.name,
       kind: plan.kind,
+      liquidity: plan.liquidity,
+      early_exit_penalty_percent: plan.early_exit_penalty_percent,
       currency: body.currency,
       goal_amount: Number(body.goal_amount || contribution),
       current_amount: contribution,
@@ -748,6 +756,41 @@ export async function mockHandler(url: string, method: string, body: any): Promi
     });
     pushNotif({ title: 'Contribution savings', body: `${amount} ${account.currency} ajoutes a ${account.name}.`, level: 'success', priority: 'normal', read: false, link: `/app/savings/${account.id}` });
     return ok({ detail: 'Contribution enregistree', account });
+  }
+  if (url === '/savings/withdraw/' && method === 'POST') {
+    const account = savingsAccounts.find((item) => item.id === body.savings_id);
+    const wallet = wallets.find((item) => item.id === body.wallet_id);
+    const amount = Number(body.amount || 0);
+    if (!account || !wallet) throw new Error('Savings ou portefeuille introuvable');
+    if (wallet.currency !== account.currency) throw new Error('Le portefeuille doit etre dans la meme devise');
+    if (amount <= 0 || amount > account.current_amount) throw new Error('Montant invalide');
+
+    const maturityTime = account.maturity_date ? new Date(account.maturity_date).getTime() : 0;
+    const earlyExit = account.liquidity === 'maturity' && (!maturityTime || maturityTime > Date.now());
+    const penalty = earlyExit ? Number(((amount * account.early_exit_penalty_percent) / 100).toFixed(2)) : 0;
+    const netAmount = Number((amount - penalty).toFixed(2));
+
+    wallet.available += netAmount;
+    wallet.balance += netAmount;
+    account.current_amount = Number((account.current_amount - amount).toFixed(2));
+    account.progress_percent = Math.min(100, Math.round((account.current_amount / Math.max(account.goal_amount, 1)) * 100));
+    account.status = account.current_amount <= 0 ? 'closed' : account.progress_percent >= 100 ? 'matured' : 'active';
+
+    transactions.unshift({
+      id: 'savw' + Date.now(),
+      type: 'receive',
+      direction: 'in',
+      amount: netAmount,
+      currency: account.currency,
+      status: 'completed',
+      description: `Savings withdrawal ${account.name}`,
+      counterparty: account.plan_name,
+      reference: 'SAV-' + Math.floor(Math.random() * 9000 + 1000),
+      createdAt: new Date().toISOString(),
+      wallet_id: wallet.id,
+    });
+    pushNotif({ title: 'Retrait savings', body: `${netAmount} ${account.currency} verses sur votre wallet.`, level: 'success', priority: 'normal', read: false, link: `/app/savings/${account.id}` });
+    return ok({ detail: 'Retrait savings enregistre', penalty_amount: penalty.toFixed(2), net_amount: netAmount.toFixed(2), account });
   }
 
   // ---------- YIELD VAULTS ------------------------------------------------

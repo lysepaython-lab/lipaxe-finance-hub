@@ -35,6 +35,8 @@ export interface SavingsAccount {
   plan_id: string;
   plan_name: string;
   kind: SavingsPlanKind;
+  liquidity: 'on_demand' | 'maturity';
+  early_exit_penalty_percent: number;
   currency: string;
   goal_amount: number;
   current_amount: number;
@@ -42,7 +44,7 @@ export interface SavingsAccount {
   frequency: SavingsFrequency;
   duration_months: number;
   auto_debit: boolean;
-  status: 'active' | 'paused' | 'matured';
+  status: 'active' | 'paused' | 'matured' | 'closed';
   source_wallet_id: string;
   next_contribution_at?: string;
   maturity_date?: string;
@@ -63,16 +65,34 @@ export interface CreateSavingsBody {
   source_wallet_id: string;
 }
 
+const money = (value: unknown) => Number(value || 0);
+
+const normalizePlan = (plan: SavingsPlan): SavingsPlan => ({
+  ...plan,
+  min_contribution: money(plan.min_contribution),
+  suggested_contribution: money(plan.suggested_contribution),
+  early_exit_penalty_percent: money(plan.early_exit_penalty_percent),
+});
+
+const normalizeAccount = (account: SavingsAccount): SavingsAccount => ({
+  ...account,
+  goal_amount: money(account.goal_amount),
+  current_amount: money(account.current_amount),
+  contribution_amount: money(account.contribution_amount),
+  early_exit_penalty_percent: money(account.early_exit_penalty_percent),
+  progress_percent: money(account.progress_percent),
+});
+
 export const savingsApi = api.injectEndpoints({
   endpoints: (b) => ({
     savingsPlans: b.query<SavingsPlan[], void>({
       query: () => '/savings/plans/',
-      transformResponse: (response: unknown) => unwrapData<SavingsPlan[]>(response, []),
+      transformResponse: (response: unknown) => unwrapData<SavingsPlan[]>(response, []).map(normalizePlan),
       providesTags: [{ type: 'Savings', id: 'plans' }],
     }),
     savingsAccounts: b.query<SavingsAccount[], void>({
       query: () => '/savings/',
-      transformResponse: (response: unknown) => unwrapData<SavingsAccount[]>(response, []),
+      transformResponse: (response: unknown) => unwrapData<SavingsAccount[]>(response, []).map(normalizeAccount),
       providesTags: (result) => [
         { type: 'Savings', id: 'LIST' },
         ...(result || []).map((item) => ({ type: 'Savings' as const, id: item.id })),
@@ -80,6 +100,7 @@ export const savingsApi = api.injectEndpoints({
     }),
     savingsAccount: b.query<SavingsAccount, string>({
       query: (id) => `/savings/${id}/`,
+      transformResponse: (response: SavingsAccount) => normalizeAccount(response),
       providesTags: (_r, _e, id) => [{ type: 'Savings', id }],
     }),
     createSavings: b.mutation<SavingsAccount, CreateSavingsBody>({
@@ -88,6 +109,7 @@ export const savingsApi = api.injectEndpoints({
         method: 'POST',
         body,
       }),
+      transformResponse: (response: SavingsAccount) => normalizeAccount(response),
       invalidatesTags: ['Savings', 'Wallet', 'Transactions'],
     }),
     contributeSavings: b.mutation<
@@ -98,6 +120,30 @@ export const savingsApi = api.injectEndpoints({
         url: '/savings/contribute/',
         method: 'POST',
         body,
+      }),
+      transformResponse: (response: { detail: string; account: SavingsAccount }) => ({
+        ...response,
+        account: normalizeAccount(response.account),
+      }),
+      invalidatesTags: (_r, _e, body) => [
+        'Savings',
+        'Wallet',
+        'Transactions',
+        { type: 'Savings', id: body.savings_id },
+      ],
+    }),
+    withdrawSavings: b.mutation<
+      { detail: string; penalty_amount: string; net_amount: string; account: SavingsAccount },
+      { savings_id: string; wallet_id: string; amount: number }
+    >({
+      query: (body) => ({
+        url: '/savings/withdraw/',
+        method: 'POST',
+        body,
+      }),
+      transformResponse: (response: { detail: string; penalty_amount: string; net_amount: string; account: SavingsAccount }) => ({
+        ...response,
+        account: normalizeAccount(response.account),
       }),
       invalidatesTags: (_r, _e, body) => [
         'Savings',
@@ -115,4 +161,5 @@ export const {
   useSavingsAccountQuery,
   useCreateSavingsMutation,
   useContributeSavingsMutation,
+  useWithdrawSavingsMutation,
 } = savingsApi;

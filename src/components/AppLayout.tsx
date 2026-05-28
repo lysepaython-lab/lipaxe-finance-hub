@@ -13,22 +13,20 @@ export const AppLayout = () => {
   useDeviceRegistration();
   return (
     <SidebarProvider>
-      <div className="flex min-h-screen w-full bg-[radial-gradient(circle_at_top,hsl(var(--primary)/0.08),transparent_32%),linear-gradient(180deg,hsl(var(--background)),hsl(var(--muted)/0.62))]">
+      <div className="flex min-h-screen w-full flex-col bg-[radial-gradient(circle_at_top,hsl(var(--primary)/0.08),transparent_32%),linear-gradient(180deg,hsl(var(--background)),hsl(var(--muted)/0.62))]">
+        <Topbar />
         <AppSidebar />
-        <div className="flex flex-1 flex-col min-w-0">
-          <Topbar />
-          <main className="flex-1 p-3 sm:p-4 lg:p-8 max-w-[1500px] w-full mx-auto pb-8">
-            <motion.div
-              key={location.pathname}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.25, ease: 'easeOut' }}
-              className="rounded-[28px] border border-border/50 bg-card/65 p-3 shadow-sm backdrop-blur-[2px] sm:p-4 lg:p-5"
-            >
-              <Outlet />
-            </motion.div>
-          </main>
-        </div>
+        <main className="mx-auto w-full max-w-[1500px] flex-1 p-3 pb-8 sm:p-4 lg:p-8">
+          <motion.div
+            key={location.pathname}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.25, ease: 'easeOut' }}
+            className="rounded-[28px] border border-border/50 bg-card/65 p-3 shadow-sm backdrop-blur-[2px] sm:p-4 lg:p-5"
+          >
+            <Outlet />
+          </motion.div>
+        </main>
         <SessionTimeoutGuard />
       </div>
     </SidebarProvider>

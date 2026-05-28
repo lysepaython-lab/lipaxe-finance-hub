@@ -9,7 +9,6 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
 } from './ui/dropdown-menu';
-import { SidebarTrigger } from './ui/sidebar';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Logo } from './Logo';
@@ -23,9 +22,8 @@ export const Topbar = () => {
   const initials = user ? `${user.firstName[0]}${user.lastName[0]}` : 'LX';
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center gap-2 border-b border-border/80 bg-background/72 px-4 backdrop-blur-xl lg:px-6">
-      <SidebarTrigger className="hidden text-foreground md:inline-flex" />
-      <Logo className="md:hidden" size={34} />
+    <header className="sticky top-0 z-30 flex h-[76px] items-center gap-2 bg-primary px-4 text-primary-foreground shadow-sm lg:px-10">
+      <Logo size={42} textClassName="text-primary-foreground text-2xl" />
 
       <div className="ml-auto flex items-center gap-1">
         <LanguageSwitcher />

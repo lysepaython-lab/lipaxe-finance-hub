@@ -1,19 +1,17 @@
-import { useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { AnimatePresence, motion } from 'framer-motion';
 import {
   ArrowDownToLine,
   ArrowUpFromLine,
   Bitcoin,
   Briefcase,
-  ChevronDown,
   CreditCard,
   Gift,
   Globe2,
   History,
   Landmark,
   LayoutDashboard,
+  Menu,
   Network,
   Nfc,
   PartyPopper,
@@ -24,26 +22,12 @@ import {
   Send,
   Settings,
   ShieldCheck,
-  User,
   UserCircle2,
   Users2,
   Wallet,
 } from 'lucide-react';
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarHeader,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarMenuSub,
-  SidebarMenuSubButton,
-  SidebarMenuSubItem,
-  useSidebar,
-} from '@/components/ui/sidebar';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { Button } from '@/components/ui/button';
 import { Logo } from './Logo';
 import { cn } from '@/lib/utils';
 import { useAppSelector } from '@/store/hooks';
@@ -51,24 +35,40 @@ import { useGetKycDataQuery } from '@/store/api/kycApi';
 import { getKycState } from '@/lib/kycStatus';
 
 type Item = { to: string; key: string; icon: React.ComponentType<{ className?: string }>; end?: boolean };
-type Group = { key: string; icon: React.ComponentType<{ className?: string }>; items: Item[] } | { single: Item };
+type Group = { key: string; items: Item[] };
+
+const desktopItems: Item[] = [
+  { to: '/app', key: 'dashboard', icon: LayoutDashboard, end: true },
+  { to: '/app/cards/virtual', key: 'cards', icon: CreditCard },
+  { to: '/app/transfer', key: 'transfer', icon: Send },
+  { to: '/app/deposit', key: 'deposit', icon: ArrowDownToLine },
+  { to: '/app/strone/exchange', key: 'lipaxeExchange', icon: Repeat },
+  { to: '/app/settings', key: 'settings', icon: Settings },
+];
 
 const groups: Group[] = [
-  { single: { to: '/app', key: 'dashboard', icon: LayoutDashboard, end: true } },
+  {
+    key: 'main',
+    items: [
+      { to: '/app', key: 'dashboard', icon: LayoutDashboard, end: true },
+      { to: '/app/transactions', key: 'transactions', icon: Receipt },
+      { to: '/app/deposit', key: 'deposit', icon: ArrowDownToLine },
+      { to: '/app/withdraw', key: 'withdraw', icon: ArrowUpFromLine },
+    ],
+  },
   {
     key: 'cards',
-    icon: CreditCard,
     items: [
       { to: '/app/cards/virtual', key: 'virtualCard', icon: CreditCard },
+      { to: '/app/cards/my', key: 'myCards', icon: Wallet },
       { to: '/app/cards/gift', key: 'giftCards', icon: Gift },
       { to: '/app/cards/nfc', key: 'nfcCards', icon: Nfc },
     ],
   },
   {
     key: 'transfers',
-    icon: Send,
     items: [
-      { to: '/app/transfer', key: 'internalTransfer', icon: Repeat },
+      { to: '/app/transfer', key: 'internalTransfer', icon: Send },
       { to: '/app/transfer/international', key: 'internationalTransfer', icon: Globe2 },
       { to: '/app/transfer/qr', key: 'transferQr', icon: QrCode },
       { to: '/app/transfer/nfc', key: 'transferNfc', icon: Nfc },
@@ -76,7 +76,6 @@ const groups: Group[] = [
   },
   {
     key: 'payments',
-    icon: Wallet,
     items: [
       { to: '/app/payments/payall', key: 'payAll', icon: Users2 },
       { to: '/app/payments/festipay', key: 'festiPay', icon: PartyPopper },
@@ -84,7 +83,6 @@ const groups: Group[] = [
   },
   {
     key: 'strone',
-    icon: Network,
     items: [
       { to: '/app/strone/exchange', key: 'lipaxeExchange', icon: Repeat },
       { to: '/app/strone/business', key: 'businessAll', icon: Briefcase },
@@ -94,180 +92,90 @@ const groups: Group[] = [
   },
   {
     key: 'account',
-    icon: User,
     items: [
-      { to: '/app/transactions', key: 'transactions', icon: Receipt },
       { to: '/app/savings', key: 'savings', icon: PiggyBank },
-      { to: '/app/deposit', key: 'deposit', icon: ArrowDownToLine },
-      { to: '/app/withdraw', key: 'withdraw', icon: ArrowUpFromLine },
       { to: '/app/profile', key: 'profile', icon: UserCircle2 },
       { to: '/app/kyc', key: 'kyc', icon: ShieldCheck },
       { to: '/app/affiliation', key: 'affiliation', icon: Users2 },
       { to: '/app/activity', key: 'activity', icon: History },
-      { to: '/app/settings', key: 'settings', icon: Settings },
       { to: '/app/security', key: 'security', icon: ShieldCheck },
+      { to: '/app/settings', key: 'settings', icon: Settings },
     ],
   },
 ];
 
-const mobileItems: Item[] = [
-  { to: '/app', key: 'dashboard', icon: LayoutDashboard, end: true },
-  { to: '/app/cards/virtual', key: 'cards', icon: CreditCard },
-  { to: '/app/transfer', key: 'transfer', icon: Send },
-  { to: '/app/deposit', key: 'deposit', icon: ArrowDownToLine },
-  { to: '/app/withdraw', key: 'withdraw', icon: ArrowUpFromLine },
-  { to: '/app/settings', key: 'settings', icon: Settings },
-];
+const NavItem = ({ item, compact = false }: { item: Item; compact?: boolean }) => {
+  const { t } = useTranslation();
+  const { pathname } = useLocation();
+  const active = item.end ? pathname === item.to : pathname.startsWith(item.to);
+  const Icon = item.icon;
+
+  return (
+    <NavLink
+      to={item.to}
+      end={item.end}
+      className={cn(
+        compact
+          ? 'flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-semibold'
+          : 'relative flex min-w-[150px] flex-col items-center justify-center gap-2 rounded-2xl px-5 py-4 text-base font-black',
+        active
+          ? 'bg-primary/16 text-primary shadow-sm ring-1 ring-primary/15'
+          : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+      )}
+    >
+      <Icon className={compact ? 'h-5 w-5' : 'h-7 w-7'} />
+      <span>{t(`nav.${item.key}`)}</span>
+      {active && !compact && <span className="absolute bottom-0 h-1 w-12 rounded-full bg-primary" />}
+    </NavLink>
+  );
+};
 
 export const AppSidebar = () => {
   const { t } = useTranslation();
-  const { state } = useSidebar();
-  const collapsed = state === 'collapsed';
-  const { pathname } = useLocation();
   const user = useAppSelector((s) => s.auth.user);
   const { data: kycData } = useGetKycDataQuery();
   const kycState = getKycState(kycData, user);
 
-  const initialOpen: Record<string, boolean> = {};
-  groups.forEach((g) => {
-    if ('items' in g) initialOpen[g.key] = g.items.some((i) => pathname.startsWith(i.to));
-  });
-  const [open, setOpen] = useState(initialOpen);
-
   return (
-    <>
-      <div className="sticky top-16 z-20 border-b border-border/70 bg-background/88 backdrop-blur-xl md:hidden">
-        <nav className="scrollbar-thin flex gap-2 overflow-x-auto px-3 py-2" aria-label="Navigation mobile web">
-          {mobileItems.map(({ to, key, icon: Icon, end }) => {
-            const active = end ? pathname === to : pathname.startsWith(to);
-            return (
-              <NavLink
-                key={to}
-                to={to}
-                end={end}
-                className={cn(
-                  'flex min-w-[92px] flex-col items-center justify-center gap-1 rounded-2xl px-3 py-2 text-xs font-semibold transition-smooth',
-                  active
-                    ? 'bg-primary/14 text-primary shadow-sm ring-1 ring-primary/20'
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-                )}
-              >
-                <Icon className="h-5 w-5" />
-                <span className="truncate">{t(`nav.${key}`)}</span>
-                {active && <span className="h-1 w-8 rounded-full bg-primary" />}
-              </NavLink>
-            );
-          })}
-        </nav>
+    <div className="sticky top-[76px] z-20 border-b border-border/70 bg-background/95 backdrop-blur-xl">
+      <div className="mx-auto hidden max-w-[1500px] items-end justify-center gap-4 px-6 py-3 md:flex">
+        {desktopItems.map((item) => <NavItem key={item.to} item={item} />)}
       </div>
 
-      <div className="hidden md:block">
-        <Sidebar collapsible="icon" className="border-r border-sidebar-border bg-sidebar/95 backdrop-blur-xl">
-          <SidebarHeader className="flex h-16 items-center border-b border-sidebar-border px-4">
-            <Logo compact={collapsed} />
-          </SidebarHeader>
-
-          <SidebarContent className="px-2 py-3">
-            <SidebarGroup>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {groups.map((g) => {
-                    if ('single' in g) {
-                      const { to, key, icon: Icon, end } = g.single;
-                      const active = end ? pathname === to : pathname.startsWith(to);
-                      return (
-                        <SidebarMenuItem key={key}>
-                          <SidebarMenuButton asChild isActive={active} tooltip={t(`nav.${key}`)}>
-                            <NavLink to={to} end={end} className="font-medium">
-                              <Icon className="h-[18px] w-[18px]" />
-                              <span>{t(`nav.${key}`)}</span>
-                            </NavLink>
-                          </SidebarMenuButton>
-                        </SidebarMenuItem>
-                      );
-                    }
-
-                    const { key, icon: Icon, items } = g;
-                    const visibleItems = items.filter((item) => item.key !== 'kyc' || !kycState.locked);
-                    if (!visibleItems.length) return null;
-                    const isOpen = open[key];
-                    const groupActive = visibleItems.some((i) => pathname === i.to || pathname.startsWith(`${i.to}/`));
-
-                    return (
-                      <SidebarMenuItem key={key}>
-                        <SidebarMenuButton
-                          onClick={() => setOpen((o) => ({ ...o, [key]: !o[key] }))}
-                          isActive={groupActive}
-                          tooltip={t(`nav.${key}`)}
-                          className="font-medium"
-                        >
-                          <Icon className="h-[18px] w-[18px]" />
-                          <span className="flex-1 text-left">{t(`nav.${key}`)}</span>
-                          <ChevronDown
-                            className={cn(
-                              'h-4 w-4 text-muted-foreground transition-transform duration-200',
-                              isOpen && 'rotate-180',
-                            )}
-                          />
-                        </SidebarMenuButton>
-
-                        <AnimatePresence initial={false}>
-                          {isOpen && !collapsed && (
-                            <motion.div
-                              initial={{ height: 0, opacity: 0 }}
-                              animate={{ height: 'auto', opacity: 1 }}
-                              exit={{ height: 0, opacity: 0 }}
-                              transition={{ duration: 0.18, ease: 'easeOut' }}
-                              className="overflow-hidden"
-                            >
-                              <SidebarMenuSub>
-                                {visibleItems.map((sub) => {
-                                  const subActive = pathname === sub.to || pathname.startsWith(`${sub.to}/`);
-                                  return (
-                                    <SidebarMenuSubItem key={sub.to}>
-                                      <SidebarMenuSubButton asChild isActive={subActive}>
-                                        <NavLink to={sub.to}>
-                                          <sub.icon className="h-4 w-4" />
-                                          <span>{t(`nav.${sub.key}`)}</span>
-                                        </NavLink>
-                                      </SidebarMenuSubButton>
-                                    </SidebarMenuSubItem>
-                                  );
-                                })}
-                              </SidebarMenuSub>
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-                      </SidebarMenuItem>
-                    );
-                  })}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-          </SidebarContent>
-
-          {!collapsed && (kycState.needsVerification || kycState.underReview) && (
-            <SidebarFooter className="p-3">
-              <div className="rounded-2xl border border-primary-foreground/10 bg-gradient-hero p-4 text-primary-foreground shadow-brand">
-                <p className="font-display text-sm font-semibold">
-                  {kycState.underReview ? t('dashboard.kycPendingTitle') : t('dashboard.verifyPrompt')}
-                </p>
-                {kycState.needsVerification ? (
-                  <NavLink
-                    to="/app/kyc"
-                    className="mt-2 inline-flex text-xs underline underline-offset-2 hover:opacity-80"
-                  >
-                    {t('dashboard.verifyNow')} →
-                  </NavLink>
-                ) : (
-                  <p className="mt-2 text-xs opacity-80">{t('dashboard.kycPending')}</p>
-                )}
-              </div>
-            </SidebarFooter>
-          )}
-        </Sidebar>
+      <div className="mx-auto flex max-w-[1500px] items-center justify-between px-3 py-3 md:hidden">
+        <Sheet>
+          <SheetTrigger asChild>
+            <Button variant="outline" className="rounded-2xl">
+              <Menu className="mr-2 h-4 w-4" />
+              Menu
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="left" className="w-[88vw] overflow-y-auto p-4">
+            <SheetHeader className="mb-5 text-left">
+              <Logo size={38} />
+              <SheetTitle className="sr-only">Lipaxe menu</SheetTitle>
+            </SheetHeader>
+            <div className="space-y-6">
+              {groups.map((group) => {
+                const visibleItems = group.items.filter((item) => item.key !== 'kyc' || !kycState.locked);
+                if (!visibleItems.length) return null;
+                return (
+                  <section key={group.key} className="space-y-2">
+                    <p className="px-2 text-[11px] font-black uppercase tracking-[0.18em] text-muted-foreground">
+                      {t(`nav.${group.key}`, group.key)}
+                    </p>
+                    <div className="grid gap-1">
+                      {visibleItems.map((item) => <NavItem key={item.to} item={item} compact />)}
+                    </div>
+                  </section>
+                );
+              })}
+            </div>
+          </SheetContent>
+        </Sheet>
+        <div className="text-sm font-semibold text-muted-foreground">Lipaxe</div>
       </div>
-    </>
+    </div>
   );
 };
 

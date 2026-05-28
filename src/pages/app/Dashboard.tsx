@@ -22,15 +22,15 @@ const AppDownloadBanner = () => (
           <Smartphone className="h-7 w-7" />
         </div>
         <div>
-          <h1 className="font-display text-2xl font-black lg:text-3xl">Lipaxe Mobile</h1>
+          <h1 className="font-display text-2xl font-bold lg:text-3xl">Lipaxe Mobile</h1>
           <p className="mt-1 text-sm text-primary-foreground/75">PIN, biometrie, QR, NFC et wallets toujours avec vous.</p>
         </div>
       </div>
       <div className="flex flex-wrap gap-2">
-        <button className="flex items-center gap-2 rounded-2xl bg-white px-4 py-3 text-sm font-black text-primary shadow-sm">
+        <button className="flex items-center gap-2 rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-primary shadow-sm">
           <FaApple className="h-4 w-4" /> App Store
         </button>
-        <button className="flex items-center gap-2 rounded-2xl bg-white/12 px-4 py-3 text-sm font-black text-white ring-1 ring-white/20">
+        <button className="flex items-center gap-2 rounded-2xl bg-white/12 px-4 py-3 text-sm font-semibold text-white ring-1 ring-white/20">
           <FaGooglePlay className="h-4 w-4" /> Play Store
         </button>
       </div>

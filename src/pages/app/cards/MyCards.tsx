@@ -55,8 +55,8 @@ const UserCardVisual = ({
   <div className={cn('relative overflow-hidden rounded-3xl bg-gradient-hero p-5 text-primary-foreground shadow-brand', frozen && 'grayscale')}>
     <div className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-white/15 blur-2xl" />
     <div className="flex items-center justify-between">
-      <span className="font-display text-lg font-black">Lipaxe</span>
-      <span className="text-xs font-bold uppercase tracking-[0.2em]">{brand}</span>
+      <span className="font-display text-lg font-bold">Lipaxe</span>
+      <span className="text-xs font-semibold tracking-[0.12em]">{brand}</span>
     </div>
     <div className="mt-8 font-mono text-lg tracking-[0.18em]">
       {reveal ? number : `**** **** **** ${number.replace(/\s/g, '').slice(-4) || '0000'}`}
@@ -155,7 +155,7 @@ const MyCards = () => {
                     <Badge variant={card.status === 'active' ? 'default' : 'secondary'} className="capitalize">
                       {card.status}
                     </Badge>
-                    <div className="font-display text-lg font-black tabular">{formatMoney(card.balance, card.currency)}</div>
+                    <div className="font-display text-lg font-bold tabular">{formatMoney(card.balance, card.currency)}</div>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <Button variant="outline" size="sm" onClick={() => setReveal((value) => ({ ...value, [card.id]: !value[card.id] }))}>

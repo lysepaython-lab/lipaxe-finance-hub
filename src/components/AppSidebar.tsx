@@ -133,7 +133,7 @@ export const AppSidebar = () => {
 
   return (
     <div className="sticky top-[76px] z-20 border-b border-border/70 bg-background/95 backdrop-blur-xl">
-      <div className="mx-auto hidden max-w-[1500px] gap-2 overflow-x-auto px-4 py-2 md:flex">
+      <div className="scrollbar-thin mx-auto hidden max-w-[1500px] gap-2 overflow-x-auto overscroll-x-contain px-4 py-2 md:flex">
         {desktopItems
           .filter((item) => item.key !== 'kyc' || !kycState.locked)
           .map((item) => <NavItem key={item.to} item={item} />)}

@@ -23,7 +23,7 @@ const apiMessage = (error: unknown, fallback: string) => {
 };
 
 const CardBrandMark = ({ brand }: { brand: 'Visa' | 'Mastercard' }) => {
-  if (brand === 'Visa') return <span className="font-display text-3xl font-black italic text-[#1a4f9c]">VISA</span>;
+  if (brand === 'Visa') return <span className="font-display text-3xl font-bold italic text-[#1a4f9c]">VISA</span>;
   return (
     <span className="relative block h-12 w-20">
       <span className="absolute left-4 top-1 h-10 w-10 rounded-full bg-[#eb001b]" />
@@ -65,7 +65,7 @@ const OfferCard = ({ offer, index, onCreate }: { offer: CardOffer; index: number
   <div className="flex min-h-[410px] flex-col items-center border-border/70 px-8 py-9 text-center lg:border-l first:lg:border-l-0">
     <Badge
       className={cn(
-        'mb-4 rounded-full px-5 py-1 text-[11px] font-black uppercase tracking-widest',
+        'mb-4 rounded-full px-4 py-1 text-[11px] font-semibold',
         index === 0 && 'bg-primary text-primary-foreground',
         index === 1 && 'bg-slate-800 text-white',
         index >= 2 && 'bg-amber-800 text-white',
@@ -76,10 +76,10 @@ const OfferCard = ({ offer, index, onCreate }: { offer: CardOffer; index: number
     <div className="mb-5 flex h-20 w-28 items-center justify-center rounded-2xl bg-muted/70">
       <CardBrandMark brand={offer.brand} />
     </div>
-    <h3 className="font-display text-2xl font-black tracking-tight">{offer.name}</h3>
-    <p className="mt-3 min-h-12 max-w-xs text-sm font-medium text-muted-foreground">{offerDescription(offer, index)}</p>
+    <h3 className="font-display text-xl font-bold tracking-tight">{offer.name}</h3>
+    <p className="mt-2 min-h-10 max-w-xs text-sm text-muted-foreground">{offerDescription(offer, index)}</p>
     <div className="my-7">
-      <div className="flex items-start justify-center font-display font-black text-6xl tracking-tight">
+      <div className="flex items-start justify-center font-display text-5xl font-bold tracking-tight">
         <span className="mt-2 text-2xl text-primary">$</span>
         {Number(offer.creation_fixed_fee || offer.price || 0).toFixed(0)}
       </div>
@@ -185,8 +185,8 @@ const VirtualCard = () => {
       <section className="overflow-hidden rounded-[2rem] border border-border/70 bg-card shadow-elegant">
         <div className="grid lg:grid-cols-[250px_1fr]">
           <div className="flex flex-col justify-center border-b border-border/70 bg-muted/35 p-8 lg:border-b-0 lg:border-r">
-            <h2 className="font-display text-2xl font-black">Compare cards</h2>
-            <p className="mt-3 text-sm font-medium text-muted-foreground">Fees, limits and payment rails.</p>
+            <h2 className="font-display text-2xl font-bold">Compare cards</h2>
+            <p className="mt-2 text-sm text-muted-foreground">Fees, limits, security.</p>
           </div>
           <div className="grid md:grid-cols-3">
             {isLoading
@@ -198,7 +198,7 @@ const VirtualCard = () => {
 
       {visibleOffers.length > 0 && (
         <section className="overflow-x-auto rounded-[1.75rem] border border-border/70 bg-card shadow-sm">
-          <div className="min-w-[760px] border-b border-border/70 bg-muted/35 px-6 py-4 text-sm font-black uppercase tracking-wider text-muted-foreground">
+          <div className="min-w-[760px] border-b border-border/70 bg-muted/35 px-6 py-4 text-sm font-semibold text-muted-foreground">
             Pricing & fees
           </div>
           <CompareRow label="Card issuance fee" values={visibleOffers.map((o) => money(o.creation_fixed_fee || o.price, o.currency))} />
@@ -209,7 +209,7 @@ const VirtualCard = () => {
           <CompareRow label="Maintenance fee" values={visibleOffers.map((o) => `${money(o.monthly_fee || 1, o.currency)}/mo`)} />
           <CompareRow label="Withdrawal fee" values={visibleOffers.map((o) => `${o.withdrawal_fee_percent || 1.5}%`)} />
 
-          <div className="min-w-[760px] border-y border-border/70 bg-muted/35 px-6 py-4 text-sm font-black uppercase tracking-wider text-muted-foreground">
+          <div className="min-w-[760px] border-y border-border/70 bg-muted/35 px-6 py-4 text-sm font-semibold text-muted-foreground">
             Security & payments
           </div>
           <CompareRow label="3D Secure (3DS)" values={visibleOffers.map((o) => <CheckState enabled={o.supports_3ds} />)} />
@@ -217,7 +217,7 @@ const VirtualCard = () => {
           <CompareRow label="Google Pay" values={visibleOffers.map((o) => <CheckState enabled={o.supports_google_pay} />)} />
           <CompareRow label="Authentication" values={visibleOffers.map((o) => <Badge variant="secondary">{o.authentication || 'OTP'}</Badge>)} />
 
-          <div className="min-w-[760px] border-y border-border/70 bg-muted/35 px-6 py-4 text-sm font-black uppercase tracking-wider text-muted-foreground">
+          <div className="min-w-[760px] border-y border-border/70 bg-muted/35 px-6 py-4 text-sm font-semibold text-muted-foreground">
             Limits & usage
           </div>
           <CompareRow label="Daily limit" values={visibleOffers.map((o) => money(o.daily_limit || 500, o.currency))} />
@@ -227,7 +227,7 @@ const VirtualCard = () => {
       )}
 
       <section className="rounded-[1.75rem] border border-border/70 bg-card p-5 shadow-sm">
-        <h2 className="font-display text-xl font-black">Works great with</h2>
+        <h2 className="font-display text-xl font-bold">Works great with</h2>
         <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {[
             ['Meta Ads', FaMeta],
@@ -259,7 +259,7 @@ const VirtualCard = () => {
                 <div className="mx-auto mb-4 flex h-20 w-28 items-center justify-center rounded-2xl bg-muted">
                   <CardBrandMark brand={selectedOffer.brand} />
                 </div>
-                <h3 className="font-display text-2xl font-black">{selectedOffer.name}</h3>
+                <h3 className="font-display text-2xl font-bold">{selectedOffer.name}</h3>
                 <p className="mt-1 font-semibold text-muted-foreground">{selectedOffer.currency}</p>
               </div>
             )}
@@ -286,7 +286,7 @@ const VirtualCard = () => {
                   <span>Initial Balance</span>
                   <span className="font-bold text-foreground">{money(initialBalance, selectedOffer?.currency)}</span>
                 </div>
-                <div className="mt-3 flex justify-between border-t border-border pt-4 font-display text-2xl font-black">
+                <div className="mt-3 flex justify-between border-t border-border pt-4 font-display text-2xl font-bold">
                   <span>Total</span>
                   <span className="text-primary">{money(orderTotal, selectedOffer?.currency)}</span>
                 </div>

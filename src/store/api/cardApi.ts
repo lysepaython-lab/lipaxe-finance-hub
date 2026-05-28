@@ -14,6 +14,20 @@ export interface CardOffer {
   currency: string;
   monthly_fee: number;
   description: string;
+  card_type?: string;
+  creation_fixed_fee?: number;
+  funding_fee_percent?: number;
+  settlement_fee?: number;
+  authorization_fee?: number;
+  cross_border_fee_percent?: number;
+  withdrawal_fee_percent?: number;
+  daily_limit?: number;
+  monthly_limit?: number;
+  min_funding?: number;
+  supports_3ds?: boolean;
+  supports_apple_pay?: boolean;
+  supports_google_pay?: boolean;
+  authentication?: string;
 }
 export interface UserCard {
   id: string;

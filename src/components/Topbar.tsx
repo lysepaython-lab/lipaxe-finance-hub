@@ -12,6 +12,7 @@ import {
 import { SidebarTrigger } from './ui/sidebar';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { Logo } from './Logo';
 
 export const Topbar = () => {
   const dispatch = useAppDispatch();
@@ -23,7 +24,8 @@ export const Topbar = () => {
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-2 border-b border-border/80 bg-background/72 px-4 backdrop-blur-xl lg:px-6">
-      <SidebarTrigger className="text-foreground" />
+      <SidebarTrigger className="hidden text-foreground md:inline-flex" />
+      <Logo className="md:hidden" size={34} />
 
       <div className="ml-auto flex items-center gap-1">
         <LanguageSwitcher />

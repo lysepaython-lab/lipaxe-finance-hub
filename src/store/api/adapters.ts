@@ -165,18 +165,34 @@ export const normalizeNotification = (payload: unknown) => {
 
 export const normalizeCardOffer = (payload: unknown) => {
   const raw = (payload ?? {}) as UnknownRecord;
-  const brand = (asString(raw.category, 'visa').toLowerCase().includes('master')
+  const sourceBrand = asString(raw.category ?? raw.brand ?? raw.card_type, 'visa');
+  const brand = (sourceBrand.toLowerCase().includes('master')
     ? 'Mastercard'
     : 'Visa') as 'Visa' | 'Mastercard';
+  const creationFee = asNumber(raw.creation_fixed_fee ?? raw.issuance_fee ?? raw.amount);
 
   return {
     id: asString(raw.id),
     brand,
     name: asString(raw.name ?? `${brand} Virtual`),
-    price: asNumber(raw.amount),
-    currency: 'USD',
-    monthly_fee: 0,
-    description: `Frais de creation ${asNumber(raw.creation_fixed_fee)} USD`,
+    price: asNumber(raw.amount ?? raw.price ?? creationFee),
+    currency: asString(raw.currency, 'USD'),
+    monthly_fee: asNumber(raw.monthly_fee ?? raw.maintenance_fee, 1),
+    description: asString(raw.description, `${brand} virtual card`),
+    card_type: asString(raw.card_type ?? raw.category, brand),
+    creation_fixed_fee: creationFee,
+    funding_fee_percent: asNumber(raw.funding_fee_percent ?? raw.funding_fee ?? raw.load_fee_percent, 2.5),
+    settlement_fee: asNumber(raw.settlement_fee, 0),
+    authorization_fee: asNumber(raw.authorization_fee, 0),
+    cross_border_fee_percent: asNumber(raw.cross_border_fee_percent ?? raw.cross_border_fee, 2.5),
+    withdrawal_fee_percent: asNumber(raw.withdrawal_fee_percent ?? raw.withdrawal_fee, 1.5),
+    daily_limit: asNumber(raw.daily_limit, 500),
+    monthly_limit: asNumber(raw.monthly_limit, 5000),
+    min_funding: asNumber(raw.min_funding ?? raw.minimum_funding, 5),
+    supports_3ds: Boolean(raw.supports_3ds ?? raw.three_ds ?? true),
+    supports_apple_pay: Boolean(raw.supports_apple_pay ?? raw.apple_pay),
+    supports_google_pay: Boolean(raw.supports_google_pay ?? raw.google_pay),
+    authentication: asString(raw.authentication, brand === 'Visa' ? 'OTP' : '3DS'),
   };
 };
 

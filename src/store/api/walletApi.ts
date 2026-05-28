@@ -9,6 +9,24 @@ export interface Transaction {
   wallet_id?: string;
 }
 export interface FxQuote { from: string; to: string; amount: number; rate: number; fee: number; receive: number; }
+export interface WalletSwapQuote {
+  from_currency: string;
+  to_currency: string;
+  from_amount: string;
+  fee_percent: string;
+  fee_amount: string;
+  net_source_amount: string;
+  to_amount: string;
+  effective_rate: string;
+}
+export interface WalletSwapResult {
+  detail: string;
+  transaction_id: string;
+  credit_transaction_id: string;
+  quote: WalletSwapQuote;
+  from_wallet: Wallet;
+  to_wallet: Wallet;
+}
 export interface RecipientLookup { account_no: string; name: string; avatar?: string; verified: boolean; }
 export interface DepositInitiation {
   id?: string;
@@ -79,6 +97,60 @@ export const walletApi = api.injectEndpoints({
           },
         };
       },
+    }),
+    walletSwapQuote: b.mutation<WalletSwapQuote, { from_wallet_id: string; to_currency: string; amount: number }>({
+      query: (body) => ({
+        url: '/wallets/swap/quote/',
+        method: 'POST',
+        body,
+      }),
+    }),
+    walletSwapExecute: b.mutation<WalletSwapResult, { from_wallet_id: string; to_currency: string; amount: number }>({
+      query: (body) => ({
+        url: '/wallets/swap/execute/',
+        method: 'POST',
+        body,
+      }),
+      transformResponse: (response: unknown) => {
+        const raw = (response ?? {}) as Record<string, unknown>;
+        const quote = (raw.quote ?? {}) as WalletSwapQuote;
+        return {
+          detail: String(raw.detail ?? ''),
+          transaction_id: String(raw.transaction_id ?? ''),
+          credit_transaction_id: String(raw.credit_transaction_id ?? ''),
+          quote,
+          from_wallet: normalizeWallet(raw.from_wallet),
+          to_wallet: normalizeWallet(raw.to_wallet),
+        };
+      },
+      invalidatesTags: ['Wallet', 'Transactions'],
+    }),
+    walletExchangeQuote: b.mutation<WalletSwapQuote, { from_wallet_id: string; to_currency: string; amount: number }>({
+      query: (body) => ({
+        url: '/wallets/exchange/quote/',
+        method: 'POST',
+        body,
+      }),
+    }),
+    walletExchangeExecute: b.mutation<WalletSwapResult, { from_wallet_id: string; to_currency: string; amount: number }>({
+      query: (body) => ({
+        url: '/wallets/exchange/execute/',
+        method: 'POST',
+        body,
+      }),
+      transformResponse: (response: unknown) => {
+        const raw = (response ?? {}) as Record<string, unknown>;
+        const quote = (raw.quote ?? {}) as WalletSwapQuote;
+        return {
+          detail: String(raw.detail ?? ''),
+          transaction_id: String(raw.transaction_id ?? ''),
+          credit_transaction_id: String(raw.credit_transaction_id ?? ''),
+          quote,
+          from_wallet: normalizeWallet(raw.from_wallet),
+          to_wallet: normalizeWallet(raw.to_wallet),
+        };
+      },
+      invalidatesTags: ['Wallet', 'Transactions'],
     }),
     deposit: b.mutation<DepositInitiation, { amount: number; payment_method: string; payment_method_id?: string; wallet_id: string; phone?: string }>({
       query: ({ phone, ...body }) => ({
@@ -250,7 +322,8 @@ export const walletApi = api.injectEndpoints({
 
 export const {
   useWalletsQuery, useTransactionsQuery, useTransactionQuery,
-  useFxQuoteMutation,
+  useFxQuoteMutation, useWalletSwapQuoteMutation, useWalletSwapExecuteMutation,
+  useWalletExchangeQuoteMutation, useWalletExchangeExecuteMutation,
   useDepositMutation, useAfripayDepositMutation, useAfripayDepositConfirmMutation, useCardDepositMutation, useElectronicDepositMutation, useCryptoDepositMutation,
   useWithdrawMutation, useTransferMutation,
   useTransferQrLinkMutation, useValidateQrMutation, useQrInfoQuery,

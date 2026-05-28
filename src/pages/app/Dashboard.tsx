@@ -34,7 +34,7 @@ const Dashboard = () => {
       <div className="flex flex-col gap-1">
         <p className="text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">{salutation}</p>
         <h1 className="font-display text-3xl font-bold tracking-tight lg:text-4xl capitalize">
-          {user?.firstName} <span className="text-primary">👋</span>
+          {user?.firstName}
         </h1>
         <p className="text-sm text-muted-foreground lg:text-base">{t('dashboard.description')}</p>
       </div>

@@ -1,73 +1,264 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Repeat, ArrowDown } from 'lucide-react';
+import { ArrowDown, Loader2, Repeat } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
+
 import { PageHeader } from '@/components/PageHeader';
-import { Card, CardContent } from '@/components/ui/card';
+import { PinModal, usePinGate } from '@/components/security/PinModal';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { toast } from 'sonner';
+import { Skeleton } from '@/components/ui/skeleton';
+import { formatMoney } from '@/lib/format';
+import {
+  useWalletExchangeExecuteMutation,
+  useWalletExchangeQuoteMutation,
+  useWalletsQuery,
+  type WalletSwapQuote,
+} from '@/store/api/walletApi';
 
-const RATES: Record<string, number> = { USD: 1, EUR: 0.92, GBP: 0.79, XOF: 605, NGN: 1580, GHS: 14.2, KES: 129, JPY: 156 };
-const cur = Object.keys(RATES);
+const CRYPTO_CURRENCIES = new Set(['BTC', 'USDT', 'USDC']);
+
+const parseAmount = (value: string) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const formatSwapAmount = (value: string | number | undefined, currency: string) => {
+  const amount = Number(value ?? 0);
+  if (!Number.isFinite(amount)) return `0 ${currency}`;
+  if (CRYPTO_CURRENCIES.has(currency)) {
+    return `${amount.toLocaleString(undefined, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: currency === 'BTC' ? 8 : 6,
+    })} ${currency}`;
+  }
+  return formatMoney(amount, currency);
+};
+
+const extractApiError = (error: unknown, fallback: string) =>
+  (error as { data?: { detail?: string; non_field_errors?: string[] } })?.data?.detail ||
+  (error as { data?: { non_field_errors?: string[] } })?.data?.non_field_errors?.[0] ||
+  fallback;
 
 const Exchange = () => {
   const { t } = useTranslation();
-  const [from, setFrom] = useState('USD');
-  const [to, setTo] = useState('EUR');
-  const [amount, setAmount] = useState(100);
-  const rate = RATES[to] / RATES[from];
-  const fee = Math.max(0.5, amount * 0.0085);
-  const receive = (amount - fee) * rate;
-  const swap = () => { setFrom(to); setTo(from); };
+  const { data: wallets = [], isLoading: walletsLoading } = useWalletsQuery();
+  const [quoteExchange, { isLoading: quoteLoading }] = useWalletExchangeQuoteMutation();
+  const [executeExchange, { isLoading: executeLoading }] = useWalletExchangeExecuteMutation();
+  const pin = usePinGate();
+
+  const [fromWalletId, setFromWalletId] = useState('');
+  const [toCurrency, setToCurrency] = useState('');
+  const [amount, setAmount] = useState('100');
+  const [quote, setQuote] = useState<WalletSwapQuote | null>(null);
+
+  const fromWallet = wallets.find((wallet) => wallet.id === fromWalletId);
+  const targetCurrencies = Array.from(
+    new Set(wallets.map((wallet) => wallet.currency).filter((currency) => currency !== fromWallet?.currency)),
+  );
+  const amountNumber = parseAmount(amount);
+  const canRequestQuote = Boolean(fromWalletId && toCurrency && amountNumber > 0);
+
+  useEffect(() => {
+    if (!fromWalletId && wallets.length > 0) {
+      setFromWalletId(wallets[0].id);
+    }
+  }, [fromWalletId, wallets]);
+
+  useEffect(() => {
+    if (fromWallet && (!toCurrency || toCurrency === fromWallet.currency)) {
+      setToCurrency(targetCurrencies[0] || '');
+    }
+  }, [fromWallet, targetCurrencies, toCurrency]);
+
+  useEffect(() => {
+    setQuote(null);
+  }, [fromWalletId, toCurrency, amount]);
+
+  const handleSwapDirection = () => {
+    if (!fromWallet || !toCurrency) return;
+    const targetWallet = wallets.find((wallet) => wallet.currency === toCurrency);
+    if (!targetWallet) return;
+    setFromWalletId(targetWallet.id);
+    setToCurrency(fromWallet.currency);
+  };
+
+  const handleQuote = async () => {
+    if (!canRequestQuote) {
+      toast.error(t('strone.exchangeMissingFields'));
+      return null;
+    }
+
+    try {
+      const response = await quoteExchange({
+        from_wallet_id: fromWalletId,
+        to_currency: toCurrency,
+        amount: amountNumber,
+      }).unwrap();
+      setQuote(response);
+      return response;
+    } catch (error) {
+      toast.error(extractApiError(error, t('common.error')));
+      return null;
+    }
+  };
+
+  const handleExecute = () => {
+    if (!canRequestQuote) {
+      toast.error(t('strone.exchangeMissingFields'));
+      return;
+    }
+
+    pin.guard(async () => {
+      try {
+        const response = await executeExchange({
+          from_wallet_id: fromWalletId,
+          to_currency: toCurrency,
+          amount: amountNumber,
+        }).unwrap();
+        setQuote(response.quote);
+        toast.success(t('strone.exchangeDone'));
+      } catch (error) {
+        toast.error(extractApiError(error, t('common.error')));
+      }
+    });
+  };
 
   return (
     <div>
       <PageHeader title={t('nav.lipaxeExchange')} subtitle={t('strone.exchangeSubtitle')} icon={<Repeat className="h-6 w-6" />} />
+
       <Card className="max-w-2xl bg-gradient-card">
-        <CardContent className="p-6 space-y-4">
-          <div className="grid grid-cols-3 gap-3">
-            <div className="col-span-2 space-y-2">
-              <Label>{t('common.from')}</Label>
-              <Input type="number" value={amount} onChange={(e) => setAmount(Number(e.target.value))} className="text-2xl font-display font-bold h-14 tabular" />
+        <CardContent className="space-y-5 p-6">
+          {walletsLoading ? (
+            <div className="space-y-4">
+              <Skeleton className="h-14 w-full rounded-xl" />
+              <Skeleton className="h-14 w-full rounded-xl" />
+              <Skeleton className="h-28 w-full rounded-xl" />
             </div>
-            <div className="space-y-2">
-              <Label>{t('common.currency')}</Label>
-              <Select value={from} onValueChange={setFrom}>
-                <SelectTrigger className="h-14"><SelectValue /></SelectTrigger>
-                <SelectContent>{cur.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
-              </Select>
+          ) : wallets.length < 2 ? (
+            <div className="rounded-2xl border border-border/70 bg-muted/30 p-5 text-sm text-muted-foreground">
+              {t('strone.exchangeNeedsWallets')}
             </div>
-          </div>
-          <div className="flex justify-center">
-            <Button onClick={swap} variant="outline" size="icon" className="rounded-full">
-              <motion.div whileTap={{ rotate: 180 }}><ArrowDown className="h-4 w-4" /></motion.div>
-            </Button>
-          </div>
-          <div className="grid grid-cols-3 gap-3">
-            <div className="col-span-2 space-y-2">
-              <Label>{t('common.to')}</Label>
-              <div className="h-14 px-3 rounded-md border border-input bg-muted/30 flex items-center text-2xl font-display font-bold tabular">
-                {receive.toFixed(2)}
+          ) : (
+            <>
+              <div className="grid gap-3 md:grid-cols-3">
+                <div className="space-y-2 md:col-span-2">
+                  <Label>{t('common.from')}</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    value={amount}
+                    onChange={(event) => setAmount(event.target.value)}
+                    className="h-14 font-display text-2xl font-bold tabular-nums"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>{t('strone.sourceWallet')}</Label>
+                  <Select value={fromWalletId} onValueChange={setFromWalletId}>
+                    <SelectTrigger className="h-14">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {wallets.map((wallet) => (
+                        <SelectItem key={wallet.id} value={wallet.id}>
+                          {wallet.currency} - {formatSwapAmount(wallet.available, wallet.currency)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-            </div>
-            <div className="space-y-2">
-              <Label>{t('common.currency')}</Label>
-              <Select value={to} onValueChange={setTo}>
-                <SelectTrigger className="h-14"><SelectValue /></SelectTrigger>
-                <SelectContent>{cur.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
-          </div>
-          <div className="rounded-xl bg-muted/40 p-4 text-sm space-y-1">
-            <div className="flex justify-between"><span className="text-muted-foreground">{t('transfer.rate')}</span><span className="font-medium tabular">1 {from} = {rate.toFixed(4)} {to}</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">{t('transfer.fee')}</span><span className="font-medium tabular">{fee.toFixed(2)} {from}</span></div>
-          </div>
-          <Button onClick={() => toast.success(t('strone.exchangeDone'))} className="w-full bg-gradient-brand shadow-brand h-11">{t('strone.exchangeNow')}</Button>
+
+              <div className="flex justify-center">
+                <Button onClick={handleSwapDirection} variant="outline" size="icon" className="rounded-full">
+                  <motion.div whileTap={{ rotate: 180 }}>
+                    <ArrowDown className="h-4 w-4" />
+                  </motion.div>
+                </Button>
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-3">
+                <div className="space-y-2 md:col-span-2">
+                  <Label>{t('common.to')}</Label>
+                  <div className="flex h-14 items-center rounded-md border border-input bg-muted/30 px-3 font-display text-2xl font-bold tabular-nums">
+                    {quote ? formatSwapAmount(quote.to_amount, quote.to_currency) : '--'}
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>{t('common.currency')}</Label>
+                  <Select value={toCurrency} onValueChange={setToCurrency}>
+                    <SelectTrigger className="h-14">
+                      <SelectValue placeholder={t('strone.targetCurrency')} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {targetCurrencies.map((currency) => (
+                        <SelectItem key={currency} value={currency}>
+                          {currency}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="rounded-2xl bg-muted/40 p-4 text-sm">
+                {quote ? (
+                  <div className="space-y-2">
+                    <div className="flex justify-between gap-4">
+                      <span className="text-muted-foreground">{t('transfer.rate')}</span>
+                      <span className="font-medium tabular-nums">
+                        1 {quote.from_currency} = {Number(quote.effective_rate).toLocaleString(undefined, { maximumFractionDigits: 8 })}{' '}
+                        {quote.to_currency}
+                      </span>
+                    </div>
+                    <div className="flex justify-between gap-4">
+                      <span className="text-muted-foreground">{t('transfer.fee')}</span>
+                      <span className="font-medium tabular-nums">
+                        {formatSwapAmount(quote.fee_amount, quote.from_currency)} ({Number(quote.fee_percent).toFixed(2)}%)
+                      </span>
+                    </div>
+                    <div className="flex justify-between gap-4">
+                      <span className="text-muted-foreground">{t('strone.convertedAmount')}</span>
+                      <span className="font-medium tabular-nums">
+                        {formatSwapAmount(quote.net_source_amount, quote.from_currency)}
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground">{t('strone.exchangePreviewHint')}</p>
+                )}
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Button
+                  onClick={handleQuote}
+                  disabled={!canRequestQuote || quoteLoading}
+                  variant="outline"
+                  className="h-11 rounded-xl"
+                >
+                  {quoteLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {t('strone.getQuote')}
+                </Button>
+                <Button
+                  onClick={handleExecute}
+                  disabled={!canRequestQuote || quoteLoading || executeLoading}
+                  className="h-11 rounded-xl bg-gradient-brand shadow-brand"
+                >
+                  {executeLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {t('strone.exchangeNow')}
+                </Button>
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
+
+      <PinModal open={pin.open} onOpenChange={pin.setOpen} onSuccess={pin.onSuccess} />
     </div>
   );
 };

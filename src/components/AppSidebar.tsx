@@ -1,17 +1,48 @@
 import { useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
-  LayoutDashboard, CreditCard, Send, Wallet, Network, User,
-  ArrowDownToLine, ArrowUpFromLine, Gift, Nfc, QrCode, Globe2,
-  Users2, PartyPopper, Repeat, Briefcase, Bitcoin, Receipt,
-  Settings, ShieldCheck, History, UserCircle2, ChevronDown, PiggyBank, Landmark,
+  ArrowDownToLine,
+  ArrowUpFromLine,
+  Bitcoin,
+  Briefcase,
+  ChevronDown,
+  CreditCard,
+  Gift,
+  Globe2,
+  History,
+  Landmark,
+  LayoutDashboard,
+  Network,
+  Nfc,
+  PartyPopper,
+  PiggyBank,
+  QrCode,
+  Receipt,
+  Repeat,
+  Send,
+  Settings,
+  ShieldCheck,
+  User,
+  UserCircle2,
+  Users2,
+  Wallet,
 } from 'lucide-react';
 import {
-  Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent,
-  SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem,
-  SidebarMenuSub, SidebarMenuSubButton, SidebarMenuSubItem, useSidebar,
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
+  useSidebar,
 } from '@/components/ui/sidebar';
 import { Logo } from './Logo';
 import { cn } from '@/lib/utils';
@@ -79,127 +110,164 @@ const groups: Group[] = [
   },
 ];
 
+const mobileItems: Item[] = [
+  { to: '/app', key: 'dashboard', icon: LayoutDashboard, end: true },
+  { to: '/app/cards/virtual', key: 'cards', icon: CreditCard },
+  { to: '/app/transfer', key: 'transfer', icon: Send },
+  { to: '/app/deposit', key: 'deposit', icon: ArrowDownToLine },
+  { to: '/app/withdraw', key: 'withdraw', icon: ArrowUpFromLine },
+  { to: '/app/settings', key: 'settings', icon: Settings },
+];
+
 export const AppSidebar = () => {
   const { t } = useTranslation();
   const { state } = useSidebar();
   const collapsed = state === 'collapsed';
-  const location = useLocation();
-  const path = location.pathname;
+  const { pathname } = useLocation();
   const user = useAppSelector((s) => s.auth.user);
   const { data: kycData } = useGetKycDataQuery();
   const kycState = getKycState(kycData, user);
 
   const initialOpen: Record<string, boolean> = {};
   groups.forEach((g) => {
-    if ('items' in g) initialOpen[g.key] = g.items.some((i) => path.startsWith(i.to));
+    if ('items' in g) initialOpen[g.key] = g.items.some((i) => pathname.startsWith(i.to));
   });
   const [open, setOpen] = useState(initialOpen);
 
   return (
-    <Sidebar collapsible="icon" className="border-r border-sidebar-border bg-sidebar/95 backdrop-blur-xl">
-      <SidebarHeader className="flex h-16 items-center border-b border-sidebar-border px-4">
-        <Logo compact={collapsed} />
-      </SidebarHeader>
-
-      <SidebarContent className="px-2 py-3">
-        <SidebarGroup>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {groups.map((g) => {
-                if ('single' in g) {
-                  const { to, key, icon: Icon, end } = g.single;
-                  const active = end ? path === to : path.startsWith(to);
-                  return (
-                    <SidebarMenuItem key={key}>
-                      <SidebarMenuButton asChild isActive={active} tooltip={t(`nav.${key}`)}>
-                        <NavLink to={to} end={end} className="font-medium">
-                          <Icon className="h-[18px] w-[18px]" />
-                          <span>{t(`nav.${key}`)}</span>
-                        </NavLink>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  );
-                }
-
-                const { key, icon: Icon, items } = g;
-                const visibleItems = items.filter((item) => item.key !== 'kyc' || !kycState.locked);
-                if (!visibleItems.length) return null;
-                const isOpen = open[key];
-                const groupActive = visibleItems.some((i) => path === i.to || path.startsWith(`${i.to}/`));
-
-                return (
-                  <SidebarMenuItem key={key}>
-                    <SidebarMenuButton
-                      onClick={() => setOpen((o) => ({ ...o, [key]: !o[key] }))}
-                      isActive={groupActive}
-                      tooltip={t(`nav.${key}`)}
-                      className="font-medium"
-                    >
-                      <Icon className="h-[18px] w-[18px]" />
-                      <span className="flex-1 text-left">{t(`nav.${key}`)}</span>
-                      <ChevronDown
-                        className={cn(
-                          'h-4 w-4 text-muted-foreground transition-transform duration-200',
-                          isOpen && 'rotate-180',
-                        )}
-                      />
-                    </SidebarMenuButton>
-
-                    <AnimatePresence initial={false}>
-                      {isOpen && !collapsed && (
-                        <motion.div
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: 'auto', opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          transition={{ duration: 0.18, ease: 'easeOut' }}
-                          className="overflow-hidden"
-                        >
-                          <SidebarMenuSub>
-                            {visibleItems.map((sub) => {
-                              const subActive = path === sub.to || path.startsWith(`${sub.to}/`);
-                              return (
-                                <SidebarMenuSubItem key={sub.to}>
-                                  <SidebarMenuSubButton asChild isActive={subActive}>
-                                    <NavLink to={sub.to}>
-                                      <sub.icon className="h-4 w-4" />
-                                      <span>{t(`nav.${sub.key}`)}</span>
-                                    </NavLink>
-                                  </SidebarMenuSubButton>
-                                </SidebarMenuSubItem>
-                              );
-                            })}
-                          </SidebarMenuSub>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </SidebarMenuItem>
-                );
-              })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-      </SidebarContent>
-
-      {!collapsed && (kycState.needsVerification || kycState.underReview) && (
-        <SidebarFooter className="p-3">
-          <div className="rounded-2xl border border-primary-foreground/10 bg-gradient-hero p-4 text-primary-foreground shadow-brand">
-            <p className="font-display text-sm font-semibold">
-              {kycState.underReview ? t('dashboard.kycPendingTitle') : t('dashboard.verifyPrompt')}
-            </p>
-            {kycState.needsVerification ? (
+    <>
+      <div className="sticky top-16 z-20 border-b border-border/70 bg-background/88 backdrop-blur-xl md:hidden">
+        <nav className="scrollbar-thin flex gap-2 overflow-x-auto px-3 py-2" aria-label="Navigation mobile web">
+          {mobileItems.map(({ to, key, icon: Icon, end }) => {
+            const active = end ? pathname === to : pathname.startsWith(to);
+            return (
               <NavLink
-                to="/app/kyc"
-                className="mt-2 inline-flex text-xs underline underline-offset-2 hover:opacity-80"
+                key={to}
+                to={to}
+                end={end}
+                className={cn(
+                  'flex min-w-[92px] flex-col items-center justify-center gap-1 rounded-2xl px-3 py-2 text-xs font-semibold transition-smooth',
+                  active
+                    ? 'bg-primary/14 text-primary shadow-sm ring-1 ring-primary/20'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                )}
               >
-                {t('dashboard.verifyNow')} →
+                <Icon className="h-5 w-5" />
+                <span className="truncate">{t(`nav.${key}`)}</span>
+                {active && <span className="h-1 w-8 rounded-full bg-primary" />}
               </NavLink>
-            ) : (
-              <p className="mt-2 text-xs opacity-80">{t('dashboard.kycPending')}</p>
-            )}
-          </div>
-        </SidebarFooter>
-      )}
-    </Sidebar>
+            );
+          })}
+        </nav>
+      </div>
+
+      <div className="hidden md:block">
+        <Sidebar collapsible="icon" className="border-r border-sidebar-border bg-sidebar/95 backdrop-blur-xl">
+          <SidebarHeader className="flex h-16 items-center border-b border-sidebar-border px-4">
+            <Logo compact={collapsed} />
+          </SidebarHeader>
+
+          <SidebarContent className="px-2 py-3">
+            <SidebarGroup>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {groups.map((g) => {
+                    if ('single' in g) {
+                      const { to, key, icon: Icon, end } = g.single;
+                      const active = end ? pathname === to : pathname.startsWith(to);
+                      return (
+                        <SidebarMenuItem key={key}>
+                          <SidebarMenuButton asChild isActive={active} tooltip={t(`nav.${key}`)}>
+                            <NavLink to={to} end={end} className="font-medium">
+                              <Icon className="h-[18px] w-[18px]" />
+                              <span>{t(`nav.${key}`)}</span>
+                            </NavLink>
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
+                      );
+                    }
+
+                    const { key, icon: Icon, items } = g;
+                    const visibleItems = items.filter((item) => item.key !== 'kyc' || !kycState.locked);
+                    if (!visibleItems.length) return null;
+                    const isOpen = open[key];
+                    const groupActive = visibleItems.some((i) => pathname === i.to || pathname.startsWith(`${i.to}/`));
+
+                    return (
+                      <SidebarMenuItem key={key}>
+                        <SidebarMenuButton
+                          onClick={() => setOpen((o) => ({ ...o, [key]: !o[key] }))}
+                          isActive={groupActive}
+                          tooltip={t(`nav.${key}`)}
+                          className="font-medium"
+                        >
+                          <Icon className="h-[18px] w-[18px]" />
+                          <span className="flex-1 text-left">{t(`nav.${key}`)}</span>
+                          <ChevronDown
+                            className={cn(
+                              'h-4 w-4 text-muted-foreground transition-transform duration-200',
+                              isOpen && 'rotate-180',
+                            )}
+                          />
+                        </SidebarMenuButton>
+
+                        <AnimatePresence initial={false}>
+                          {isOpen && !collapsed && (
+                            <motion.div
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: 'auto', opacity: 1 }}
+                              exit={{ height: 0, opacity: 0 }}
+                              transition={{ duration: 0.18, ease: 'easeOut' }}
+                              className="overflow-hidden"
+                            >
+                              <SidebarMenuSub>
+                                {visibleItems.map((sub) => {
+                                  const subActive = pathname === sub.to || pathname.startsWith(`${sub.to}/`);
+                                  return (
+                                    <SidebarMenuSubItem key={sub.to}>
+                                      <SidebarMenuSubButton asChild isActive={subActive}>
+                                        <NavLink to={sub.to}>
+                                          <sub.icon className="h-4 w-4" />
+                                          <span>{t(`nav.${sub.key}`)}</span>
+                                        </NavLink>
+                                      </SidebarMenuSubButton>
+                                    </SidebarMenuSubItem>
+                                  );
+                                })}
+                              </SidebarMenuSub>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </SidebarMenuItem>
+                    );
+                  })}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </SidebarContent>
+
+          {!collapsed && (kycState.needsVerification || kycState.underReview) && (
+            <SidebarFooter className="p-3">
+              <div className="rounded-2xl border border-primary-foreground/10 bg-gradient-hero p-4 text-primary-foreground shadow-brand">
+                <p className="font-display text-sm font-semibold">
+                  {kycState.underReview ? t('dashboard.kycPendingTitle') : t('dashboard.verifyPrompt')}
+                </p>
+                {kycState.needsVerification ? (
+                  <NavLink
+                    to="/app/kyc"
+                    className="mt-2 inline-flex text-xs underline underline-offset-2 hover:opacity-80"
+                  >
+                    {t('dashboard.verifyNow')} →
+                  </NavLink>
+                ) : (
+                  <p className="mt-2 text-xs opacity-80">{t('dashboard.kycPending')}</p>
+                )}
+              </div>
+            </SidebarFooter>
+          )}
+        </Sidebar>
+      </div>
+    </>
   );
 };
 

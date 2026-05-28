@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { AlertTriangle, Download, ShieldCheck, Smartphone } from 'lucide-react';
+import { AlertTriangle, ShieldCheck, Smartphone } from 'lucide-react';
+import { FaApple, FaGooglePlay } from 'react-icons/fa';
 import { useAppSelector } from '@/store/hooks';
 import { BalanceCard } from '@/components/dashboard/BalanceCard';
 import { SpendingChart } from '@/components/dashboard/SpendingChart';
@@ -27,10 +28,10 @@ const AppDownloadBanner = () => (
       </div>
       <div className="flex flex-wrap gap-2">
         <button className="flex items-center gap-2 rounded-2xl bg-white px-4 py-3 text-sm font-black text-primary shadow-sm">
-          <Download className="h-4 w-4" /> App Store
+          <FaApple className="h-4 w-4" /> App Store
         </button>
         <button className="flex items-center gap-2 rounded-2xl bg-white/12 px-4 py-3 text-sm font-black text-white ring-1 ring-white/20">
-          <Download className="h-4 w-4" /> Play Store
+          <FaGooglePlay className="h-4 w-4" /> Play Store
         </button>
       </div>
     </div>

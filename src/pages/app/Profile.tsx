@@ -1,27 +1,89 @@
 import { useRef } from 'react';
+import type { ComponentType } from 'react';
 import { motion } from 'framer-motion';
-import { UserCircle2, Mail, ShieldCheck, Pencil, Phone, MapPin, Calendar, Loader2 } from 'lucide-react';
+import {
+  Briefcase,
+  Calendar,
+  FileCheck2,
+  Loader2,
+  Mail,
+  MapPin,
+  Pencil,
+  Phone,
+  ShieldCheck,
+  UserCircle2,
+} from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { PageHeader } from '@/components/PageHeader';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { useUpdateProfileImageMutation } from '@/store/api/authApi';
+import { useGetKycDataQuery, type KycServerRecord } from '@/store/api/kycApi';
 import { updateUser } from '@/store/slices/authSlice';
 import { toast } from 'sonner';
+
+type ProfileRow = {
+  Icon: ComponentType<{ className?: string }>;
+  label: string;
+  value?: unknown;
+};
+
+const asText = (value: unknown) => {
+  if (value === null || value === undefined || value === '') return '-';
+  if (typeof value === 'object') {
+    const objectValue = value as Record<string, unknown>;
+    return String(objectValue.name || objectValue.label || objectValue.code || objectValue.alpha_2 || '-');
+  }
+  return String(value);
+};
+
+const fromRecord = (record: KycServerRecord, keys: string[]) => {
+  for (const key of keys) {
+    const value = record[key];
+    if (value !== null && value !== undefined && value !== '') return value;
+  }
+  return undefined;
+};
+
+const statusLabel = (verified?: boolean) => (verified ? 'Verified' : 'Non verified');
 
 const Profile = () => {
   const { t } = useTranslation();
   const dispatch = useAppDispatch();
   const user = useAppSelector((s) => s.auth.user);
-  console.log("User in Profile:", user); // Debug log to check user data
+  const { data: kycData } = useGetKycDataQuery();
   const [updateProfileImage, { isLoading: uploading }] = useUpdateProfileImageMutation();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
   if (!user) return null;
-  const initials = `${user.firstName[0]}${user.lastName[0]}`;
-  const kycVariant: any = user.kycStatus === 'verified' ? 'default' : user.kycStatus === 'pending' ? 'secondary' : 'destructive';
+
+  const kycRecord = (kycData?.data || kycData || {}) as KycServerRecord;
+  const kycVerified = Boolean(kycData?.kyc_verified ?? kycRecord.kyc_verified ?? user.kycStatus === 'verified');
+  const kycComplete = Boolean(kycData?.kyc_complete ?? kycRecord.kyc_complete);
+  const kycStatus = kycVerified ? 'verified' : kycComplete ? 'pending' : user.kycStatus || 'unverified';
+  const kycVariant: any = kycVerified ? 'default' : kycComplete ? 'secondary' : 'destructive';
+  const initials = `${user.firstName?.[0] || ''}${user.lastName?.[0] || ''}`.toUpperCase();
+
+  const personalRows: ProfileRow[] = [
+    { Icon: Mail, label: t('auth.email'), value: user.email },
+    { Icon: Phone, label: t('kyc.phone'), value: fromRecord(kycRecord, ['phone', 'phone_number']) },
+    { Icon: Calendar, label: t('kyc.dob'), value: fromRecord(kycRecord, ['date_of_birth', 'dob']) },
+    { Icon: MapPin, label: t('kyc.country'), value: fromRecord(kycRecord, ['country', 'country_name']) },
+    { Icon: MapPin, label: t('kyc.address'), value: fromRecord(kycRecord, ['address', 'street']) },
+    { Icon: MapPin, label: 'Ville / Province', value: [fromRecord(kycRecord, ['city']), fromRecord(kycRecord, ['province'])].filter(Boolean).join(' / ') },
+  ];
+
+  const kycRows: ProfileRow[] = [
+    { Icon: UserCircle2, label: 'Genre', value: fromRecord(kycRecord, ['gender']) },
+    { Icon: Briefcase, label: 'Emploi', value: fromRecord(kycRecord, ['employmentStatus', 'employment_status']) },
+    { Icon: ShieldCheck, label: 'Usage du compte', value: fromRecord(kycRecord, ['purposeOfAccount', 'purpose_of_account']) },
+    { Icon: ShieldCheck, label: 'Source des fonds', value: fromRecord(kycRecord, ['sourceOfFunds', 'source_of_funds']) },
+    { Icon: FileCheck2, label: 'Type document', value: fromRecord(kycRecord, ['identity_type', 'document_type']) },
+    { Icon: FileCheck2, label: 'Numero document', value: fromRecord(kycRecord, ['id_number', 'document_number']) },
+  ];
 
   const onPickImage = async (file?: File | null) => {
     if (!file) return;
@@ -42,13 +104,23 @@ const Profile = () => {
     }
   };
 
+  const renderRows = (rows: ProfileRow[]) => rows.map((row) => (
+    <div key={row.label} className="flex items-center justify-between gap-4 border-b border-border py-3 last:border-0">
+      <div className="flex items-center gap-3 text-sm text-muted-foreground">
+        <row.Icon className="h-4 w-4" />
+        {row.label}
+      </div>
+      <div className="text-right text-sm font-medium">{asText(row.value)}</div>
+    </div>
+  ));
+
   return (
     <div>
       <PageHeader title={t('nav.profile')} subtitle={t('profile.subtitle')} icon={<UserCircle2 className="h-6 w-6" />} />
       <div className="grid gap-6 lg:grid-cols-3">
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="lg:col-span-1">
           <Card className="bg-gradient-card">
-            <CardContent className="p-6 text-center space-y-4">
+            <CardContent className="space-y-4 p-6 text-center">
               {user.avatar ? (
                 <img
                   src={`${import.meta.env.VITE_API_URL}${user.avatar}`}
@@ -56,19 +128,23 @@ const Profile = () => {
                   className="mx-auto h-24 w-24 rounded-full object-cover shadow-brand ring-2 ring-primary/20"
                 />
               ) : (
-                <div className="mx-auto h-24 w-24 rounded-full bg-gradient-brand text-primary-foreground flex items-center justify-center text-3xl font-display font-bold shadow-brand">{initials}</div>
+                <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-gradient-brand font-display text-3xl font-bold text-primary-foreground shadow-brand">
+                  {initials}
+                </div>
               )}
               <div>
                 <div className="font-display text-xl font-bold">{user.firstName} {user.lastName}</div>
                 <div className="text-sm text-muted-foreground">@{user.username}</div>
               </div>
-              <Badge variant={kycVariant} className="gap-1"><ShieldCheck className="h-3 w-3" /> {t(`profile.kyc.${user.kycStatus}`)}</Badge>
+              <Badge variant={kycVariant} className="gap-1">
+                <ShieldCheck className="h-3 w-3" /> {t(`profile.kyc.${kycStatus}`)}
+              </Badge>
               <input
                 ref={fileInputRef}
                 type="file"
                 accept="image/*"
                 className="hidden"
-                onChange={(e) => void onPickImage(e.target.files?.[0])}
+                onChange={(event) => void onPickImage(event.target.files?.[0])}
               />
               <Button
                 variant="outline"
@@ -83,23 +159,36 @@ const Profile = () => {
           </Card>
         </motion.div>
 
-        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="lg:col-span-2">
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="space-y-6 lg:col-span-2">
           <Card>
-            <CardContent className="p-6 space-y-1">
-              <h3 className="font-display font-semibold mb-4">{t('profile.personalInfo')}</h3>
-              {[
-                { Icon: Mail, label: t('auth.email'), value: user.email },
-                { Icon: Phone, label: t('kyc.phone'), value: '+1 555 0192' },
-                { Icon: MapPin, label: t('kyc.country'), value: 'United States' },
-                { Icon: Calendar, label: t('kyc.dob'), value: '—' },
-              ].map((row) => (
-                <div key={row.label} className="flex items-center justify-between py-3 border-b border-border last:border-0">
-                  <div className="flex items-center gap-3 text-sm text-muted-foreground"><row.Icon className="h-4 w-4" />{row.label}</div>
-                  <div className="font-medium">{row.value}</div>
-                </div>
-              ))}
-              {user.kycStatus !== 'verified' && (
-                <div className="mt-4 rounded-xl bg-warning/10 border border-warning/30 p-4 flex items-center justify-between">
+            <CardHeader>
+              <CardTitle className="font-display">{t('profile.personalInfo')}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-1">{renderRows(personalRows)}</CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="font-display">KYC</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-1">
+              {renderRows(kycRows)}
+              <div className="grid gap-3 pt-4 sm:grid-cols-3">
+                {[
+                  ['Document', Boolean(fromRecord(kycRecord, ['photo_id_front', 'photo_id_back']))],
+                  ['Selfie / liveness', Boolean(fromRecord(kycRecord, ['selfie_with_id', 'liveness_image']))],
+                  ['Decision KYC', kycVerified],
+                ].map(([label, verified]) => (
+                  <div key={String(label)} className="rounded-2xl border border-border/70 bg-muted/25 p-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">{label}</p>
+                    <Badge variant={verified ? 'default' : 'secondary'} className="mt-3">
+                      {statusLabel(Boolean(verified))}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+              {!kycVerified && (
+                <div className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-warning/30 bg-warning/10 p-4">
                   <div className="text-sm">{t('profile.kycPrompt')}</div>
                   <Link to="/app/kyc"><Button size="sm" className="bg-gradient-brand shadow-brand">{t('dashboard.verifyNow')}</Button></Link>
                 </div>

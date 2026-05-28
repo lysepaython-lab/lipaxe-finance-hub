@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAppSelector } from '@/store/hooks';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,11 +8,41 @@ import { Button } from '@/components/ui/button';
 import { QRCodeSVG } from 'qrcode.react';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';
+import { useUpdatePinMutation } from '@/store/api/platformApi';
+import { PIN_REGEX } from '@/lib/security';
+import { toast } from 'sonner';
 
 const Settings = () => {
   const { t } = useTranslation();
   const user = useAppSelector(s => s.auth.user);
+  const [updatePin, { isLoading: updatingPin }] = useUpdatePinMutation();
+  const [currentPin, setCurrentPin] = useState('');
+  const [newPin, setNewPin] = useState('');
+  const [confirmPin, setConfirmPin] = useState('');
   const payUrl = `https://pay.lipaxe.app/${user?.username || 'demo'}`;
+
+  const normalizePin = (value: string) => value.replace(/\D/g, '').slice(0, 5);
+
+  const onUpdatePin = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!PIN_REGEX.test(newPin)) {
+      toast.error(t('settings.pinInvalid'));
+      return;
+    }
+    if (newPin !== confirmPin) {
+      toast.error(t('settings.pinMismatch'));
+      return;
+    }
+    try {
+      await updatePin({ pin: newPin, current_pin: currentPin || undefined }).unwrap();
+      setCurrentPin('');
+      setNewPin('');
+      setConfirmPin('');
+      toast.success(t('settings.pinUpdated'));
+    } catch (error) {
+      toast.error((error as { data?: { detail?: string } })?.data?.detail || t('common.error'));
+    }
+  };
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -51,6 +82,57 @@ const Settings = () => {
               <span className="text-sm font-medium">{t('common.language')}</span>
               <LanguageSwitcher />
             </div>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-elegant border-border/60 lg:col-span-2">
+          <CardHeader>
+            <CardTitle className="font-display">{t('settings.pinTitle')}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={onUpdatePin} className="grid gap-4 md:grid-cols-3">
+              <div className="space-y-2">
+                <Label>{t('settings.currentPin')}</Label>
+                <Input
+                  type="password"
+                  inputMode="numeric"
+                  maxLength={5}
+                  value={currentPin}
+                  onChange={(event) => setCurrentPin(normalizePin(event.target.value))}
+                  placeholder="•••••"
+                  className="h-12 rounded-xl tracking-[0.4em]"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>{t('settings.newPin')}</Label>
+                <Input
+                  type="password"
+                  inputMode="numeric"
+                  maxLength={5}
+                  value={newPin}
+                  onChange={(event) => setNewPin(normalizePin(event.target.value))}
+                  placeholder="•••••"
+                  className="h-12 rounded-xl tracking-[0.4em]"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>{t('settings.confirmPin')}</Label>
+                <Input
+                  type="password"
+                  inputMode="numeric"
+                  maxLength={5}
+                  value={confirmPin}
+                  onChange={(event) => setConfirmPin(normalizePin(event.target.value))}
+                  placeholder="•••••"
+                  className="h-12 rounded-xl tracking-[0.4em]"
+                />
+              </div>
+              <div className="md:col-span-3">
+                <Button type="submit" disabled={updatingPin} className="h-11 rounded-xl bg-gradient-brand shadow-brand">
+                  {t('settings.updatePin')}
+                </Button>
+              </div>
+            </form>
           </CardContent>
         </Card>
       </div>

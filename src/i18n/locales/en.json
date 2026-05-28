@@ -581,7 +581,15 @@
     "profile": "Profile",
     "security": "Security",
     "preferences": "Preferences",
-    "qr": "Your payment QR"
+    "qr": "Your payment QR",
+    "pinTitle": "Security PIN",
+    "currentPin": "Current PIN",
+    "newPin": "New PIN",
+    "confirmPin": "Confirm PIN",
+    "updatePin": "Update PIN",
+    "pinUpdated": "PIN updated",
+    "pinInvalid": "PIN must contain exactly 5 digits.",
+    "pinMismatch": "PIN values do not match."
   },
   "cards": {
     "virtualSubtitle": "Create and manage virtual Visa and Mastercard cards",

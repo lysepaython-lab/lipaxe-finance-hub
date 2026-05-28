@@ -13,6 +13,17 @@ interface WalletSelectorProps {
   label?: string;
 }
 
+const walletLogoClass = (currency: string) => {
+  const code = currency.toUpperCase();
+  if (code === 'BTC') return 'bg-orange-500 text-white';
+  if (code === 'USDT') return 'bg-emerald-500 text-white';
+  if (code === 'USDC') return 'bg-blue-500 text-white';
+  if (code === 'BIF') return 'bg-red-500 text-white';
+  if (code === 'CDF') return 'bg-sky-600 text-white';
+  if (code === 'RWF') return 'bg-amber-500 text-white';
+  return 'bg-gradient-brand text-primary-foreground';
+};
+
 export const WalletSelector = ({ value, onChange, filterCurrency, excludeCurrencies = [], label }: WalletSelectorProps) => {
   const { data: wallets, isLoading } = useWalletsV2Query();
   const excluded = excludeCurrencies.map((currency) => currency.toUpperCase());
@@ -54,8 +65,11 @@ export const WalletSelector = ({ value, onChange, filterCurrency, excludeCurrenc
               )}
             >
               <div className="flex items-center gap-2">
-                <div className="h-9 w-9 rounded-lg bg-gradient-brand text-primary-foreground flex items-center justify-center font-display font-bold text-sm">
-                  {w.symbol}
+                <div className={cn(
+                  'h-9 w-9 rounded-full flex items-center justify-center font-display text-[11px] font-black shadow-sm ring-1 ring-black/5',
+                  walletLogoClass(w.currency),
+                )}>
+                  {w.currency.slice(0, 3)}
                 </div>
                 <div className="flex-1">
                   <div className="text-sm font-semibold flex items-center gap-1.5">

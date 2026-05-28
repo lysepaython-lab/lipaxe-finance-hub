@@ -62,6 +62,7 @@ const Exchange = () => {
   );
   const amountNumber = parseAmount(amount);
   const canRequestQuote = Boolean(fromWalletId && toCurrency && amountNumber > 0);
+  const insufficient = fromWallet ? amountNumber > fromWallet.available : false;
 
   useEffect(() => {
     if (!fromWalletId && wallets.length > 0) {
@@ -92,6 +93,10 @@ const Exchange = () => {
       toast.error(t('strone.exchangeMissingFields'));
       return null;
     }
+    if (insufficient) {
+      toast.error(t('transfer.insufficientBalance'));
+      return null;
+    }
 
     try {
       const response = await quoteExchange({
@@ -110,6 +115,10 @@ const Exchange = () => {
   const handleExecute = () => {
     if (!canRequestQuote) {
       toast.error(t('strone.exchangeMissingFields'));
+      return;
+    }
+    if (insufficient) {
+      toast.error(t('transfer.insufficientBalance'));
       return;
     }
 
@@ -166,7 +175,7 @@ const Exchange = () => {
                     <SelectContent>
                       {wallets.map((wallet) => (
                         <SelectItem key={wallet.id} value={wallet.id}>
-                          {wallet.currency} - {formatSwapAmount(wallet.available, wallet.currency)}
+                    {wallet.currency} - {formatSwapAmount(wallet.available, wallet.currency)}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -206,6 +215,12 @@ const Exchange = () => {
                 </div>
               </div>
 
+              {fromWallet && insufficient && (
+                <div className="rounded-2xl border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+                  {t('transfer.insufficientBalance')} Disponible: {formatSwapAmount(fromWallet.available, fromWallet.currency)}.
+                </div>
+              )}
+
               <div className="rounded-2xl bg-muted/40 p-4 text-sm">
                 {quote ? (
                   <div className="space-y-2">
@@ -237,7 +252,7 @@ const Exchange = () => {
               <div className="grid gap-3 sm:grid-cols-2">
                 <Button
                   onClick={handleQuote}
-                  disabled={!canRequestQuote || quoteLoading}
+                  disabled={!canRequestQuote || quoteLoading || insufficient}
                   variant="outline"
                   className="h-11 rounded-xl"
                 >
@@ -246,7 +261,7 @@ const Exchange = () => {
                 </Button>
                 <Button
                   onClick={handleExecute}
-                  disabled={!canRequestQuote || quoteLoading || executeLoading}
+                  disabled={!canRequestQuote || quoteLoading || executeLoading || insufficient}
                   className="h-11 rounded-xl bg-gradient-brand shadow-brand"
                 >
                   {executeLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

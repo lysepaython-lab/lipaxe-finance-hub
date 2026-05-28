@@ -24,6 +24,11 @@ import { cn } from '@/lib/utils';
 
 const submitThrottle = new Throttle(8, 60_000);
 
+const paymentMethodLogo = (method: PaymentMethod) => {
+  if (!method.icon) return null;
+  return method.icon.startsWith('http') ? method.icon : `${import.meta.env.VITE_API_URL}${method.icon}`;
+};
+
 const Withdraw = () => {
   const { t } = useTranslation();
   const user = useAppSelector((s) => s.auth.user);
@@ -207,7 +212,16 @@ const Withdraw = () => {
                             methodId === m.id ? 'border-primary bg-primary/5' : 'border-input hover:border-primary/40',
                           )}
                         >
-                          <div className="font-semibold text-sm">{m.name}</div>
+                          <div className="flex items-center gap-2">
+                            {paymentMethodLogo(m) ? (
+                              <img src={paymentMethodLogo(m)!} alt="" className="h-8 w-8 rounded-full object-cover ring-1 ring-border" />
+                            ) : (
+                              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-[10px] font-black text-primary">
+                                {m.name.slice(0, 2).toUpperCase()}
+                              </span>
+                            )}
+                            <div className="font-semibold text-sm">{m.name}</div>
+                          </div>
                           {m.fees && (
                             <div className="text-xs text-muted-foreground mt-1">
                               {m.fees.fixed > 0 && `${m.fees.fixed} + `}{m.fees.percent}%
@@ -277,6 +291,9 @@ const Withdraw = () => {
                   {formatMoney(total, wallet?.currency || 'USD')}
                 </span>
               </div>
+              {insufficient && (
+                <p className="text-xs text-destructive">{t('transfer.insufficientBalance')}</p>
+              )}
             </div>
 
             <Button

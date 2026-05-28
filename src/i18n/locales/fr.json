@@ -580,7 +580,15 @@
     "profile": "Profil",
     "security": "Securite",
     "preferences": "Preferences",
-    "qr": "Votre QR de paiement"
+    "qr": "Votre QR de paiement",
+    "pinTitle": "Code PIN",
+    "currentPin": "PIN actuel",
+    "newPin": "Nouveau PIN",
+    "confirmPin": "Confirmer le PIN",
+    "updatePin": "Mettre a jour le PIN",
+    "pinUpdated": "Code PIN mis a jour",
+    "pinInvalid": "Le PIN doit contenir exactement 5 chiffres.",
+    "pinMismatch": "Les deux PIN ne correspondent pas."
   },
   "cards": {
     "virtualSubtitle": "Creez et gerez des cartes Visa et Mastercard virtuelles",

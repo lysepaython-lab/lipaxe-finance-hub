@@ -37,15 +37,6 @@ import { getKycState } from '@/lib/kycStatus';
 type Item = { to: string; key: string; icon: React.ComponentType<{ className?: string }>; end?: boolean };
 type Group = { key: string; items: Item[] };
 
-const desktopItems: Item[] = [
-  { to: '/app', key: 'dashboard', icon: LayoutDashboard, end: true },
-  { to: '/app/cards/virtual', key: 'cards', icon: CreditCard },
-  { to: '/app/transfer', key: 'transfer', icon: Send },
-  { to: '/app/deposit', key: 'deposit', icon: ArrowDownToLine },
-  { to: '/app/strone/exchange', key: 'lipaxeExchange', icon: Repeat },
-  { to: '/app/settings', key: 'settings', icon: Settings },
-];
-
 const groups: Group[] = [
   {
     key: 'main',
@@ -104,6 +95,10 @@ const groups: Group[] = [
   },
 ];
 
+const desktopItems: Item[] = groups.flatMap((group) => group.items).filter((item, index, items) => (
+  items.findIndex((candidate) => candidate.to === item.to) === index
+));
+
 const NavItem = ({ item, compact = false }: { item: Item; compact?: boolean }) => {
   const { t } = useTranslation();
   const { pathname } = useLocation();
@@ -117,15 +112,15 @@ const NavItem = ({ item, compact = false }: { item: Item; compact?: boolean }) =
       className={cn(
         compact
           ? 'flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-semibold'
-          : 'relative flex min-w-[150px] flex-col items-center justify-center gap-2 rounded-2xl px-5 py-4 text-base font-black',
+          : 'relative flex min-w-[104px] flex-col items-center justify-center gap-1.5 rounded-2xl px-3 py-2.5 text-xs font-semibold',
         active
           ? 'bg-primary/16 text-primary shadow-sm ring-1 ring-primary/15'
           : 'text-muted-foreground hover:bg-muted hover:text-foreground',
       )}
     >
-      <Icon className={compact ? 'h-5 w-5' : 'h-7 w-7'} />
-      <span>{t(`nav.${item.key}`)}</span>
-      {active && !compact && <span className="absolute bottom-0 h-1 w-12 rounded-full bg-primary" />}
+      <Icon className={compact ? 'h-5 w-5' : 'h-5 w-5'} />
+      <span className="whitespace-nowrap">{t(`nav.${item.key}`)}</span>
+      {active && !compact && <span className="absolute bottom-0 h-0.5 w-9 rounded-full bg-primary" />}
     </NavLink>
   );
 };
@@ -138,8 +133,10 @@ export const AppSidebar = () => {
 
   return (
     <div className="sticky top-[76px] z-20 border-b border-border/70 bg-background/95 backdrop-blur-xl">
-      <div className="mx-auto hidden max-w-[1500px] items-end justify-center gap-4 px-6 py-3 md:flex">
-        {desktopItems.map((item) => <NavItem key={item.to} item={item} />)}
+      <div className="mx-auto hidden max-w-[1500px] gap-2 overflow-x-auto px-4 py-2 md:flex">
+        {desktopItems
+          .filter((item) => item.key !== 'kyc' || !kycState.locked)
+          .map((item) => <NavItem key={item.to} item={item} />)}
       </div>
 
       <div className="mx-auto flex max-w-[1500px] items-center justify-between px-3 py-3 md:hidden">

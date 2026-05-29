@@ -12,7 +12,6 @@ import {
   Landmark,
   LayoutDashboard,
   Menu,
-  Network,
   Nfc,
   PartyPopper,
   PiggyBank,
@@ -95,10 +94,6 @@ const groups: Group[] = [
   },
 ];
 
-const desktopItems: Item[] = groups.flatMap((group) => group.items).filter((item, index, items) => (
-  items.findIndex((candidate) => candidate.to === item.to) === index
-));
-
 const NavItem = ({ item, compact = false }: { item: Item; compact?: boolean }) => {
   const { t } = useTranslation();
   const { pathname } = useLocation();
@@ -132,14 +127,8 @@ export const AppSidebar = () => {
   const kycState = getKycState(kycData, user);
 
   return (
-    <div className="sticky top-[76px] z-20 border-b border-border/70 bg-background/95 backdrop-blur-xl">
-      <div className="scrollbar-thin mx-auto hidden max-w-[1500px] gap-2 overflow-x-auto overscroll-x-contain px-4 py-2 md:flex">
-        {desktopItems
-          .filter((item) => item.key !== 'kyc' || !kycState.locked)
-          .map((item) => <NavItem key={item.to} item={item} />)}
-      </div>
-
-      <div className="mx-auto flex max-w-[1500px] items-center justify-between px-3 py-3 md:hidden">
+    <div className="sticky top-[76px] z-20 border-b border-border/70 bg-background/95 backdrop-blur-xl lg:hidden">
+      <div className="mx-auto flex max-w-[1500px] items-center justify-between px-3 py-3">
         <Sheet>
           <SheetTrigger asChild>
             <Button variant="outline" className="rounded-2xl">

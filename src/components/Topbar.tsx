@@ -1,4 +1,4 @@
-import { LogOut, User as UserIcon } from 'lucide-react';
+import { CreditCard, LayoutDashboard, LogOut, Repeat, Send, Settings, User as UserIcon, Users2 } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { logout } from '@/store/slices/authSlice';
 import { Button } from './ui/button';
@@ -9,9 +9,19 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
 } from './ui/dropdown-menu';
-import { useNavigate } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Logo } from './Logo';
+import { cn } from '@/lib/utils';
+
+const mainNav = [
+  { to: '/app', key: 'dashboard', icon: LayoutDashboard, end: true },
+  { to: '/app/cards/virtual', key: 'cards', icon: CreditCard },
+  { to: '/app/transfer', key: 'transfer', icon: Send },
+  { to: '/app/payments/payall', key: 'payAll', icon: Users2 },
+  { to: '/app/strone/exchange', key: 'lipaxeExchange', icon: Repeat },
+  { to: '/app/settings', key: 'settings', icon: Settings },
+];
 
 export const Topbar = () => {
   const dispatch = useAppDispatch();
@@ -22,8 +32,30 @@ export const Topbar = () => {
   const initials = user ? `${user.firstName[0]}${user.lastName[0]}` : 'LX';
 
   return (
-    <header className="sticky top-0 z-30 flex h-[76px] items-center gap-2 bg-primary px-4 text-primary-foreground shadow-sm lg:px-10">
+    <header className="sticky top-0 z-30 flex h-[76px] items-center gap-3 bg-primary px-4 text-primary-foreground shadow-sm lg:px-8">
       <Logo size={42} textClassName="text-primary-foreground text-2xl" />
+
+      <nav className="ml-4 hidden min-w-0 flex-1 items-center justify-center gap-1.5 lg:flex">
+        {mainNav.map((item) => {
+          const Icon = item.icon;
+          return (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              end={item.end}
+              className={({ isActive }) => cn(
+                'flex items-center gap-2 rounded-2xl px-3.5 py-2 text-sm font-semibold transition-colors',
+                isActive
+                  ? 'bg-white text-primary shadow-sm'
+                  : 'text-primary-foreground/78 hover:bg-white/10 hover:text-primary-foreground',
+              )}
+            >
+              <Icon className="h-4 w-4" />
+              <span className="whitespace-nowrap">{t(`nav.${item.key}`)}</span>
+            </NavLink>
+          );
+        })}
+      </nav>
 
       <div className="ml-auto flex items-center gap-1">
         <LanguageSwitcher />

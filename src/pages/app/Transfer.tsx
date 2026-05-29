@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,7 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useFxQuoteMutation, useTransferMutation, useLookupRecipientMutation, type RecipientLookup } from '@/store/api/walletApi';
 import { usePaymentMethodsInternationalQuery, type WalletV2 } from '@/store/api/platformApi';
-import { Loader2, Check, ArrowDown, Search, ShieldCheck } from 'lucide-react';
+import { Loader2, Check, ArrowDown, Search, ShieldCheck, Globe2, QrCode, Nfc } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatMoney } from '@/lib/format';
 import { WalletSelector } from '@/components/security/WalletSelector';
@@ -160,6 +160,23 @@ const Transfer = () => {
           <h1 className="font-display text-3xl font-bold">{t('transfer.title')}</h1>
           <p className="text-muted-foreground mt-1">{t('transfer.subtitle')}</p>
         </div>
+      </div>
+
+      <div className="grid gap-2 sm:grid-cols-3">
+        {[
+          { to: '/app/transfer/international', label: t('nav.internationalTransfer'), icon: Globe2 },
+          { to: '/app/transfer/qr', label: t('nav.transferQr'), icon: QrCode },
+          { to: '/app/transfer/nfc', label: t('nav.transferNfc'), icon: Nfc },
+        ].map((item) => (
+          <Link
+            key={item.to}
+            to={item.to}
+            className="flex items-center gap-2 rounded-2xl border border-border/70 bg-card px-4 py-3 text-sm font-semibold shadow-sm transition-colors hover:border-primary/30 hover:bg-primary/5 hover:text-primary"
+          >
+            <item.icon className="h-4 w-4" />
+            {item.label}
+          </Link>
+        ))}
       </div>
 
       <Tabs value={kind} onValueChange={(v) => setKind(v as 'internal' | 'international')}>

@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
-import { Apple, Check, CreditCard, Loader2, Minus, Plus, Shield, X } from 'lucide-react';
+import { Apple, Check, CreditCard, Gift, Loader2, Minus, Nfc, Plus, Shield, Wallet, X } from 'lucide-react';
 import { FaGoogle, FaMeta, FaTiktok } from 'react-icons/fa6';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { PageHeader } from '@/components/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -181,6 +182,23 @@ const VirtualCard = () => {
           )
         }
       />
+
+      <div className="grid gap-2 sm:grid-cols-3">
+        {[
+          { to: '/app/cards/my', label: t('nav.myCards'), icon: Wallet },
+          { to: '/app/cards/gift', label: t('nav.giftCards'), icon: Gift },
+          { to: '/app/cards/nfc', label: t('nav.nfcCards'), icon: Nfc },
+        ].map((item) => (
+          <Link
+            key={item.to}
+            to={item.to}
+            className="flex items-center gap-2 rounded-2xl border border-border/70 bg-card px-4 py-3 text-sm font-semibold shadow-sm transition-colors hover:border-primary/30 hover:bg-primary/5 hover:text-primary"
+          >
+            <item.icon className="h-4 w-4" />
+            {item.label}
+          </Link>
+        ))}
+      </div>
 
       <section className="overflow-hidden rounded-[2rem] border border-border/70 bg-card shadow-elegant">
         <div className="grid lg:grid-cols-[250px_1fr]">

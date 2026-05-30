@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowDown, Loader2, Repeat } from 'lucide-react';
+import { ArrowDown, Bitcoin, Landmark, Loader2, Repeat } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import { PageHeader } from '@/components/PageHeader';
@@ -140,6 +141,22 @@ const Exchange = () => {
   return (
     <div>
       <PageHeader title={t('nav.lipaxeExchange')} subtitle={t('strone.exchangeSubtitle')} icon={<Repeat className="h-6 w-6" />} />
+
+      <div className="mb-5 grid gap-2 sm:grid-cols-2">
+        {[
+          { to: '/app/strone/cryptos', label: t('nav.lipaxeCryptos'), icon: Bitcoin },
+          { to: '/app/strone/vaults', label: t('nav.yieldVaults'), icon: Landmark },
+        ].map((item) => (
+          <Link
+            key={item.to}
+            to={item.to}
+            className="flex items-center gap-2 rounded-2xl border border-border/70 bg-card px-4 py-3 text-sm font-semibold shadow-sm transition-colors hover:border-primary/30 hover:bg-primary/5 hover:text-primary"
+          >
+            <item.icon className="h-4 w-4" />
+            {item.label}
+          </Link>
+        ))}
+      </div>
 
       <Card className="max-w-2xl bg-gradient-card">
         <CardContent className="space-y-5 p-6">

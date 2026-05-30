@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Apple, Check, CreditCard, Gift, Loader2, Minus, Nfc, Plus, Shield, Wallet, X } from 'lucide-react';
+import { Apple, Check, CreditCard, Gift, Loader2, Minus, Plus, Shield, Wallet, X } from 'lucide-react';
 import { FaGoogle, FaMeta, FaTiktok } from 'react-icons/fa6';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -187,7 +187,6 @@ const VirtualCard = () => {
         {[
           { to: '/app/cards/my', label: t('nav.myCards'), icon: Wallet },
           { to: '/app/cards/gift', label: t('nav.giftCards'), icon: Gift },
-          { to: '/app/cards/nfc', label: t('nav.nfcCards'), icon: Nfc },
         ].map((item) => (
           <Link
             key={item.to}

@@ -9,23 +9,24 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
 } from './ui/dropdown-menu';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Logo } from './Logo';
 import { cn } from '@/lib/utils';
 
 const mainNav = [
-  { to: '/app', key: 'dashboard', icon: LayoutDashboard, end: true },
-  { to: '/app/cards/virtual', key: 'cards', icon: CreditCard },
-  { to: '/app/transfer', key: 'transfer', icon: Send },
-  { to: '/app/payments/payall', key: 'payAll', icon: Users2 },
-  { to: '/app/strone/exchange', key: 'lipaxeExchange', icon: Repeat },
-  { to: '/app/settings', key: 'settings', icon: Settings },
+  { to: '/app', key: 'dashboard', icon: LayoutDashboard, match: ['/app'] },
+  { to: '/app/cards/virtual', key: 'cards', icon: CreditCard, match: ['/app/cards'] },
+  { to: '/app/transfer', key: 'transfer', icon: Send, match: ['/app/transfer'] },
+  { to: '/app/payments/payall', key: 'payAll', icon: Users2, match: ['/app/payments', '/app/savings', '/app/strone/business'] },
+  { to: '/app/strone/exchange', key: 'lipaxeExchange', icon: Repeat, match: ['/app/strone/exchange', '/app/strone/cryptos', '/app/strone/vaults'] },
+  { to: '/app/settings', key: 'settings', icon: Settings, match: ['/app/settings'] },
 ];
 
 export const Topbar = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
   const { t } = useTranslation();
   const user = useAppSelector((s) => s.auth.user);
 
@@ -38,12 +39,14 @@ export const Topbar = () => {
       <nav className="ml-4 hidden min-w-0 flex-1 items-center justify-center gap-1.5 lg:flex">
         {mainNav.map((item) => {
           const Icon = item.icon;
+          const isActive = item.match.some((match) => (
+            match === '/app' ? location.pathname === '/app' : location.pathname.startsWith(match)
+          ));
           return (
-            <NavLink
+            <Link
               key={item.to}
               to={item.to}
-              end={item.end}
-              className={({ isActive }) => cn(
+              className={cn(
                 'flex items-center gap-2 rounded-2xl px-3.5 py-2 text-sm font-semibold transition-colors',
                 isActive
                   ? 'bg-white text-primary shadow-sm'
@@ -52,7 +55,7 @@ export const Topbar = () => {
             >
               <Icon className="h-4 w-4" />
               <span className="whitespace-nowrap">{t(`nav.${item.key}`)}</span>
-            </NavLink>
+            </Link>
           );
         })}
       </nav>

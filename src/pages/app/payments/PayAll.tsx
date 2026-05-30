@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Users2, Send, Zap, Droplets, Wifi, Tv, Loader2, Ticket, Search, BookmarkCheck, CheckCircle2 } from 'lucide-react';
+import { Users2, Send, Zap, Droplets, Wifi, Tv, Loader2, Ticket, Search, BookmarkCheck, CheckCircle2, PartyPopper, PiggyBank, Landmark, Briefcase } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { PageHeader } from '@/components/PageHeader';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -221,6 +222,24 @@ const PayAll = () => {
   return (
     <div>
       <PageHeader title={t('nav.payAll')} subtitle={t('payments.payAllSubtitle')} icon={<Users2 className="h-6 w-6" />} />
+
+      <div className="mb-5 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+        {[
+          { to: '/app/payments/festipay', label: t('nav.festiPay'), icon: PartyPopper },
+          { to: '/app/savings', label: t('nav.savings'), icon: PiggyBank },
+          { to: '/app/strone/vaults', label: t('nav.yieldVaults'), icon: Landmark },
+          { to: '/app/strone/business', label: t('nav.businessAll'), icon: Briefcase },
+        ].map((item) => (
+          <Link
+            key={item.to}
+            to={item.to}
+            className="flex items-center gap-2 rounded-2xl border border-border/70 bg-card px-4 py-3 text-sm font-semibold shadow-sm transition-colors hover:border-primary/30 hover:bg-primary/5 hover:text-primary"
+          >
+            <item.icon className="h-4 w-4" />
+            {item.label}
+          </Link>
+        ))}
+      </div>
 
       <Tabs
         value={category}

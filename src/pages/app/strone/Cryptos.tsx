@@ -9,6 +9,7 @@ import {
   Loader2,
   TrendingDown,
   TrendingUp,
+  X,
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { useTranslation } from 'react-i18next';
@@ -219,20 +220,26 @@ const Cryptos = () => {
       )}
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>{modeTitle(mode, symbol)}</DialogTitle>
+        <DialogContent className="max-h-[92vh] max-w-2xl overflow-hidden p-0">
+          <DialogHeader className="flex-row items-center justify-between bg-primary px-7 py-5 text-primary-foreground">
+            <DialogTitle className="flex items-center gap-3 font-display text-2xl">
+              <Bitcoin className="h-6 w-6" /> {modeTitle(mode, symbol)}
+            </DialogTitle>
+            <button onClick={() => setOpen(false)} className="rounded-full p-1 text-primary-foreground/70 hover:text-primary-foreground">
+              <X className="h-5 w-5" />
+            </button>
           </DialogHeader>
 
-          <Tabs value={mode} onValueChange={(value) => { setMode(value as CryptoMode); setQuote(null); setGenerated(null); }}>
-            <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="buy">Achat</TabsTrigger>
-              <TabsTrigger value="sell">Vente</TabsTrigger>
-              <TabsTrigger value="deposit">Depot</TabsTrigger>
-              <TabsTrigger value="withdraw">Retrait</TabsTrigger>
-            </TabsList>
+          <div className="max-h-[calc(92vh-148px)] overflow-y-auto p-7">
+            <Tabs value={mode} onValueChange={(value) => { setMode(value as CryptoMode); setQuote(null); setGenerated(null); }}>
+              <TabsList className="grid w-full grid-cols-4 rounded-2xl">
+                <TabsTrigger value="buy" className="rounded-xl">Achat</TabsTrigger>
+                <TabsTrigger value="sell" className="rounded-xl">Vente</TabsTrigger>
+                <TabsTrigger value="deposit" className="rounded-xl">Depot</TabsTrigger>
+                <TabsTrigger value="withdraw" className="rounded-xl">Retrait</TabsTrigger>
+              </TabsList>
 
-            <div className="space-y-4 py-4">
+              <div className="space-y-4 py-5">
               {(mode === 'buy' || mode === 'sell') ? (
                 <>
                   <WalletSelector
@@ -321,25 +328,26 @@ const Cryptos = () => {
                 <Input value={address} onChange={(event) => setAddress(event.target.value)} placeholder="TR... ou 0x..." className="font-mono text-sm" />
                 <p className="text-xs text-warning">Verifiez deux fois: les transactions crypto sont irreversibles.</p>
               </TabsContent>
-            </div>
-          </Tabs>
+              </div>
+            </Tabs>
+          </div>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)}>Fermer</Button>
+          <DialogFooter className="border-t border-border bg-background px-7 py-5">
+            <Button variant="outline" onClick={() => setOpen(false)} className="min-w-32 rounded-2xl">Fermer</Button>
             {(mode === 'buy' || mode === 'sell') && (
               <>
-                <Button variant="outline" onClick={handleQuote} disabled={quoteLoading}>
+                <Button variant="outline" onClick={handleQuote} disabled={quoteLoading} className="rounded-2xl">
                   {quoteLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Obtenir le prix
                 </Button>
-                <Button onClick={handleExecuteTrade} disabled={executeLoading || !quote} className="bg-gradient-brand shadow-brand">
+                <Button onClick={handleExecuteTrade} disabled={executeLoading || !quote} className="rounded-2xl bg-primary text-primary-foreground shadow-brand hover:bg-primary/90">
                   {executeLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Confirmer
                 </Button>
               </>
             )}
             {mode === 'withdraw' && (
-              <Button onClick={handleWithdraw} disabled={wdLoading} className="bg-gradient-brand shadow-brand">
+              <Button onClick={handleWithdraw} disabled={wdLoading} className="rounded-2xl bg-primary text-primary-foreground shadow-brand hover:bg-primary/90">
                 {wdLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Envoyer
               </Button>

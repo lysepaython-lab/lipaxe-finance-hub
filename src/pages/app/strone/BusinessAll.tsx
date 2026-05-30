@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Briefcase, Plus, Users, Calendar, Crown, Loader2 } from 'lucide-react';
+import { Briefcase, Plus, Users, Crown, Loader2, X, Check } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { PageHeader } from '@/components/PageHeader';
 import { Card, CardContent } from '@/components/ui/card';
@@ -226,9 +226,16 @@ const BusinessAll = () => {
       )}
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader><DialogTitle>Nouvelle tontine</DialogTitle></DialogHeader>
-          <div className="space-y-3 py-2">
+        <DialogContent className="max-h-[92vh] max-w-2xl overflow-hidden p-0">
+          <DialogHeader className="flex-row items-center justify-between bg-primary px-7 py-5 text-primary-foreground">
+            <DialogTitle className="flex items-center gap-3 font-display text-2xl">
+              <Briefcase className="h-6 w-6" /> Nouvelle tontine
+            </DialogTitle>
+            <button onClick={() => setOpen(false)} className="rounded-full p-1 text-primary-foreground/70 hover:text-primary-foreground">
+              <X className="h-5 w-5" />
+            </button>
+          </DialogHeader>
+          <div className="max-h-[calc(92vh-148px)] space-y-4 overflow-y-auto p-7">
             <div className="space-y-2"><Label>Nom</Label><Input value={name} onChange={(e) => setName(e.target.value)} maxLength={50} /></div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2"><Label>Contribution</Label><Input type="number" value={contribution} onChange={(e) => setContribution(e.target.value)} /></div>
@@ -269,25 +276,34 @@ const BusinessAll = () => {
             <WalletSelector label="Wallet trésorerie" value={treasuryWalletId} onChange={(id) => setTreasuryWalletId(id)} />
             <div className="space-y-2"><Label>Membres (séparés par virgules)</Label><Input value={members} onChange={(e) => setMembers(e.target.value)} placeholder="@alex, @marie" /></div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)}>Annuler</Button>
-            <Button onClick={submitCreate} disabled={creating} className="bg-gradient-brand shadow-brand">
-              {creating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Créer
+          <DialogFooter className="border-t border-border bg-background px-7 py-5">
+            <Button variant="outline" onClick={() => setOpen(false)} className="min-w-32 rounded-2xl">Annuler</Button>
+            <Button onClick={submitCreate} disabled={creating} className="min-w-40 rounded-2xl bg-primary text-primary-foreground shadow-brand hover:bg-primary/90">
+              {creating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}Créer
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       <Dialog open={contribOpen} onOpenChange={setContribOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader><DialogTitle>Contribuer</DialogTitle></DialogHeader>
-          <div className="space-y-3 py-2">
+        <DialogContent className="max-w-lg overflow-hidden p-0">
+          <DialogHeader className="flex-row items-center justify-between bg-primary px-7 py-5 text-primary-foreground">
+            <DialogTitle className="flex items-center gap-3 font-display text-2xl">
+              <Users className="h-6 w-6" /> Contribuer
+            </DialogTitle>
+            <button onClick={() => setContribOpen(false)} className="rounded-full p-1 text-primary-foreground/70 hover:text-primary-foreground">
+              <X className="h-5 w-5" />
+            </button>
+          </DialogHeader>
+          <div className="space-y-4 p-7">
             <WalletSelector label="Portefeuille" value={contribWallet} onChange={(id) => setContribWallet(id)} />
             <div className="space-y-2"><Label>Montant</Label><Input type="number" value={contribAmount} onChange={(e) => setContribAmount(e.target.value)} /></div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setContribOpen(false)}>Annuler</Button>
-            <Button onClick={submitContribute} className="bg-gradient-brand shadow-brand">Confirmer</Button>
+          <DialogFooter className="border-t border-border bg-background px-7 py-5">
+            <Button variant="outline" onClick={() => setContribOpen(false)} className="min-w-32 rounded-2xl">Annuler</Button>
+            <Button onClick={submitContribute} className="min-w-40 rounded-2xl bg-primary text-primary-foreground shadow-brand hover:bg-primary/90">
+              <Check className="mr-2 h-4 w-4" />Confirmer
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

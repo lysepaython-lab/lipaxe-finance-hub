@@ -11,7 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useFxQuoteMutation, useTransferMutation, useLookupRecipientMutation, type RecipientLookup } from '@/store/api/walletApi';
 import { usePaymentMethodsInternationalQuery, type WalletV2 } from '@/store/api/platformApi';
-import { Loader2, Check, ArrowDown, Search, ShieldCheck, Globe2, QrCode, Nfc } from 'lucide-react';
+import { Loader2, Check, ArrowDown, Search, ShieldCheck, Globe2, QrCode } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatMoney } from '@/lib/format';
 import { WalletSelector } from '@/components/security/WalletSelector';
@@ -166,7 +166,6 @@ const Transfer = () => {
         {[
           { to: '/app/transfer/international', label: t('nav.internationalTransfer'), icon: Globe2 },
           { to: '/app/transfer/qr', label: t('nav.transferQr'), icon: QrCode },
-          { to: '/app/transfer/nfc', label: t('nav.transferNfc'), icon: Nfc },
         ].map((item) => (
           <Link
             key={item.to}

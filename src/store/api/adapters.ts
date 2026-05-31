@@ -98,6 +98,14 @@ export const normalizePaymentMethod = (payload: unknown) => {
   const raw = (payload ?? {}) as UnknownRecord;
   const paymentType = (raw.payment_type ?? {}) as UnknownRecord;
   const paymentTypeName = asString(paymentType.name);
+  const lipaxeDepositPercent = asNumber(raw.deposit_fee_percentage);
+  const providerDepositPercent = asNumber(raw.provider_fee);
+  const transferPercent = asNumber(raw.transfer_fee_percentage);
+  const withdrawalPercent = asNumber(raw.withdrawal_fee_percentage);
+  const providerWithdrawalPercent = asNumber(raw.provider_fee_with);
+  const totalPercent = lipaxeDepositPercent + providerDepositPercent
+    || withdrawalPercent + providerWithdrawalPercent
+    || transferPercent;
   const canonicalPaymentTypeName = (
     paymentTypeName === 'Cryptos' || paymentTypeName === 'Cryptomonnaies'
       ? 'Cryptos'
@@ -137,10 +145,13 @@ export const normalizePaymentMethod = (payload: unknown) => {
         })
       : [],
     fees: {
-      fixed: asNumber(raw.provider_fee ?? raw.provider_fee_with),
-      percent: asNumber(
-        raw.deposit_fee_percentage ?? raw.withdrawal_fee_percentage ?? raw.transfer_fee_percentage,
-      ),
+      fixed: 0,
+      percent: totalPercent,
+      lipaxePercent: lipaxeDepositPercent,
+      providerPercent: providerDepositPercent,
+      transferPercent,
+      withdrawalPercent,
+      providerWithdrawalPercent,
     },
   };
 };

@@ -14,7 +14,15 @@ export interface PaymentMethod {
   payment_type?: { name: PaymentTypeName };
   icon?: string;
   countries: { country: { name: string; alpha_2: string } }[];
-  fees?: { fixed: number; percent: number };
+  fees?: {
+    fixed: number;
+    percent: number;
+    lipaxePercent?: number;
+    providerPercent?: number;
+    transferPercent?: number;
+    withdrawalPercent?: number;
+    providerWithdrawalPercent?: number;
+  };
 }
 export interface WalletV2 {
   id: string;

@@ -78,7 +78,13 @@ const Deposit = () => {
   }, [allMethods]);
 
   const amt = parseFloat(amount) || 0;
-  const fee = selectedMethod ? (selectedMethod.fees?.fixed || 0) + amt * ((selectedMethod.fees?.percent || 0) / 100) : 0;
+  const fixedFee = selectedMethod?.fees?.fixed || 0;
+  const lipaxeFee = amt * ((selectedMethod?.fees?.lipaxePercent || 0) / 100);
+  const providerFee = amt * ((selectedMethod?.fees?.providerPercent || 0) / 100);
+  const hasFeeBreakdown = lipaxeFee > 0 || providerFee > 0;
+  const fallbackFee = hasFeeBreakdown ? 0 : amt * ((selectedMethod?.fees?.percent || 0) / 100);
+  const totalFee = fixedFee + lipaxeFee + providerFee + fallbackFee;
+  const totalToPay = amt + totalFee;
   const isLoading = l1 || lAfripay || lAfripayConfirm || l2 || l3 || l4;
 
   const validateExtra = (): string | null => {
@@ -291,7 +297,9 @@ const Deposit = () => {
                           </div>
                           {m.fees && (
                             <div className="text-xs text-muted-foreground mt-1">
-                              {m.fees.fixed > 0 && `${m.fees.fixed} + `}{m.fees.percent}%
+                              {m.fees.lipaxePercent || m.fees.providerPercent
+                                ? `${t('deposit.totalFees')} ${m.fees.percent}% (${t('deposit.lipaxeFee')} ${m.fees.lipaxePercent || 0}% + ${t('deposit.providerFee')} ${m.fees.providerPercent || 0}%)`
+                                : `${t('deposit.totalFees')} ${m.fees.percent}%`}
                             </div>
                           )}
                         </motion.button>
@@ -370,13 +378,39 @@ const Deposit = () => {
                 <span className="text-muted-foreground">{t('deposit.amount')}</span>
                 <span className="tabular">{formatMoney(amt, wallet?.currency || 'USD')}</span>
               </div>
+              {lipaxeFee > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">
+                    {t('deposit.lipaxeFee')} ({selectedMethod?.fees?.lipaxePercent || 0}%)
+                  </span>
+                  <span className="tabular">{formatMoney(lipaxeFee, wallet?.currency || 'USD')}</span>
+                </div>
+              )}
+              {providerFee > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">
+                    {t('deposit.providerFee')} ({selectedMethod?.fees?.providerPercent || 0}%)
+                  </span>
+                  <span className="tabular">{formatMoney(providerFee, wallet?.currency || 'USD')}</span>
+                </div>
+              )}
+              {fixedFee > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">{t('deposit.fixedFee')}</span>
+                  <span className="tabular">{formatMoney(fixedFee, wallet?.currency || 'USD')}</span>
+                </div>
+              )}
               <div className="flex justify-between">
-                <span className="text-muted-foreground">{t('deposit.fee')}</span>
-                <span className="tabular">{formatMoney(fee, wallet?.currency || 'USD')}</span>
+                <span className="text-muted-foreground">{t('deposit.totalFees')}</span>
+                <span className="tabular">{formatMoney(totalFee, wallet?.currency || 'USD')}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">{t('deposit.totalToPay')}</span>
+                <span className="tabular font-semibold">{formatMoney(totalToPay, wallet?.currency || 'USD')}</span>
               </div>
               <div className="border-t border-border pt-2 flex justify-between font-semibold">
                 <span>{t('deposit.youReceive')}</span>
-                <span className="tabular text-primary">{formatMoney(Math.max(0, amt - fee), wallet?.currency || 'USD')}</span>
+                <span className="tabular text-primary">{formatMoney(amt, wallet?.currency || 'USD')}</span>
               </div>
             </div>
 

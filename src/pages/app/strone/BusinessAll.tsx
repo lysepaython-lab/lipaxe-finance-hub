@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Briefcase, Plus, Users, Crown, Loader2, X, Check } from 'lucide-react';
+import { BellRing, Briefcase, Plus, Users, Crown, Loader2, X, Check, UserPlus } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { PageHeader } from '@/components/PageHeader';
 import { Card, CardContent } from '@/components/ui/card';
@@ -13,7 +13,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
-  useTontinesQuery, useCreateTontineMutation, useContributeTontineMutation, useLazyTontineEligibilityQuery, useRespondTontineInvitationMutation,
+  useTontinesQuery, useCreateTontineMutation, useContributeTontineMutation, useInviteTontineMembersMutation, useLazyTontineEligibilityQuery, useRemindTontineMembersMutation, useRespondTontineInvitationMutation,
 } from '@/store/api/businessApi';
 import { WalletSelector } from '@/components/security/WalletSelector';
 import { PinModal, usePinGate } from '@/components/security/PinModal';
@@ -32,6 +32,8 @@ const BusinessAll = () => {
   const [createTontine, { isLoading: creating }] = useCreateTontineMutation();
   const [contribute] = useContributeTontineMutation();
   const [respondInvitation, { isLoading: respondingInvitation }] = useRespondTontineInvitationMutation();
+  const [inviteMembers, { isLoading: invitingMembers }] = useInviteTontineMembersMutation();
+  const [remindMembers, { isLoading: remindingMembers }] = useRemindTontineMembersMutation();
   const pin = usePinGate();
 
   const [open, setOpen] = useState(false);
@@ -55,10 +57,15 @@ const BusinessAll = () => {
   const [contribWallet, setContribWallet] = useState<string>();
   const [contribAmount, setContribAmount] = useState('50');
   const [loadEligibility] = useLazyTontineEligibilityQuery();
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [inviteTontineId, setInviteTontineId] = useState<string | null>(null);
+  const [inviteText, setInviteText] = useState('');
+
+  const parseMembers = (value: string) => value.split(/[\n,;]+/).map((m) => m.trim()).filter(Boolean);
 
   const submitCreate = async () => {
     if (!name) { toast.error('Nom requis'); return; }
-    const invitedMembers = members.split(/[\n,;]+/).map((m) => m.trim()).filter(Boolean);
+    const invitedMembers = parseMembers(members);
     if (invitedMembers.length < 3) {
       toast.error('Ajoutez au moins 3 membres par email ou numero de compte');
       return;
@@ -107,6 +114,32 @@ const BusinessAll = () => {
         toast.error((e as { data?: { detail?: string } })?.data?.detail || t('common.error'));
       }
     });
+  };
+
+  const submitInviteMembers = async () => {
+    if (!inviteTontineId) return;
+    const invitedMembers = parseMembers(inviteText);
+    if (!invitedMembers.length) {
+      toast.error('Ajoutez au moins un email ou numero de compte');
+      return;
+    }
+    try {
+      const result = await inviteMembers({ tontine_id: inviteTontineId, members: invitedMembers }).unwrap();
+      toast.success(`${result.added.length} invitation(s) envoyee(s)`);
+      setInviteText('');
+      setInviteOpen(false);
+    } catch (e) {
+      toast.error((e as { data?: { detail?: string } })?.data?.detail || t('common.error'));
+    }
+  };
+
+  const submitReminder = async (tontineId: string) => {
+    try {
+      const result = await remindMembers({ tontine_id: tontineId }).unwrap();
+      toast.success(`${result.notified.length} rappel(s) envoye(s)`);
+    } catch (e) {
+      toast.error((e as { data?: { detail?: string } })?.data?.detail || t('common.error'));
+    }
   };
 
   const handleInvitationDecision = (tontineId: string, action: 'accept' | 'reject') => {
@@ -204,6 +237,27 @@ const BusinessAll = () => {
                       </div>
                     ))}
                   </div>
+                  {tn.is_owner && ['draft', 'pending'].includes(tn.status) && (
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="rounded-2xl"
+                        onClick={() => { setInviteTontineId(tn.id); setInviteOpen(true); }}
+                      >
+                        <UserPlus className="mr-2 h-4 w-4" />Ajouter
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="rounded-2xl"
+                        disabled={remindingMembers}
+                        onClick={() => submitReminder(tn.id)}
+                      >
+                        <BellRing className="mr-2 h-4 w-4" />Rappeler
+                      </Button>
+                    </div>
+                  )}
                   <Button
                     onClick={() => { setContribTontineId(tn.id); setContribAmount(String(tn.contribution)); setContribOpen(true); }}
                     className="w-full bg-gradient-brand shadow-brand"
@@ -313,6 +367,35 @@ const BusinessAll = () => {
             <Button variant="outline" onClick={() => setContribOpen(false)} className="min-w-32 rounded-2xl">Annuler</Button>
             <Button onClick={submitContribute} className="min-w-40 rounded-2xl bg-primary text-primary-foreground shadow-brand hover:bg-primary/90">
               <Check className="mr-2 h-4 w-4" />Confirmer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
+        <DialogContent className="max-w-lg overflow-hidden p-0">
+          <DialogHeader className="flex-row items-center justify-between bg-primary px-7 py-5 text-primary-foreground">
+            <DialogTitle className="flex items-center gap-3 font-display text-2xl">
+              <UserPlus className="h-6 w-6" /> Ajouter membres
+            </DialogTitle>
+            <button onClick={() => setInviteOpen(false)} className="rounded-full p-1 text-primary-foreground/70 hover:text-primary-foreground">
+              <X className="h-5 w-5" />
+            </button>
+          </DialogHeader>
+          <div className="space-y-3 p-7">
+            <Label>Email ou numero de compte</Label>
+            <Textarea
+              value={inviteText}
+              onChange={(e) => setInviteText(e.target.value)}
+              placeholder="user@email.com, LI1234567890"
+              className="min-h-32 resize-none rounded-2xl"
+            />
+            <p className="text-xs text-muted-foreground">Les membres recevront une invitation et devront accepter avant activation.</p>
+          </div>
+          <DialogFooter className="border-t border-border bg-background px-7 py-5">
+            <Button variant="outline" onClick={() => setInviteOpen(false)} className="min-w-32 rounded-2xl">Annuler</Button>
+            <Button onClick={submitInviteMembers} disabled={invitingMembers} className="min-w-40 rounded-2xl bg-primary text-primary-foreground shadow-brand hover:bg-primary/90">
+              {invitingMembers ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}Inviter
             </Button>
           </DialogFooter>
         </DialogContent>

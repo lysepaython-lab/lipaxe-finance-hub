@@ -23,6 +23,8 @@ export interface Tontine {
   next_beneficiary?: string;
   next_payout_at?: string;
   my_join_status?: string;
+  owner_account?: string;
+  is_owner?: boolean;
   escrow_wallet?: string;
   treasury_wallet?: string;
   max_members?: number | null;
@@ -303,6 +305,21 @@ export const businessApi = api.injectEndpoints({
       }),
       invalidatesTags: ['Tontine'],
     }),
+    inviteTontineMembers: b.mutation<{ detail: string; added: string[]; tontine: Tontine }, { tontine_id: string; members: string[] }>({
+      query: ({ tontine_id, members }) => ({
+        url: `/tontines/${tontine_id}/members/`,
+        method: 'POST',
+        body: { members },
+      }),
+      invalidatesTags: ['Tontine'],
+    }),
+    remindTontineMembers: b.mutation<{ detail: string; notified: string[] }, { tontine_id: string }>({
+      query: ({ tontine_id }) => ({
+        url: `/tontines/${tontine_id}/reminders/`,
+        method: 'POST',
+      }),
+      invalidatesTags: ['Tontine'],
+    }),
     cryptoAssets: b.query<CryptoAsset[], void>({
       query: () => '/crypto-market/rates/',
       transformResponse: (response: unknown) =>
@@ -363,6 +380,8 @@ export const {
   useCreateTontineMutation,
   useContributeTontineMutation,
   useRespondTontineInvitationMutation,
+  useInviteTontineMembersMutation,
+  useRemindTontineMembersMutation,
   useLazyTontineEligibilityQuery,
   useTontineEligibilityQuery,
   useFestiEventsQuery,

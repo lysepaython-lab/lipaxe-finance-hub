@@ -50,7 +50,9 @@ const Transfer = () => {
   const [lookup, { isLoading: looking }] = useLookupRecipientMutation();
 
   const intlMethodsForCountry = useMemo(
-    () => (intlMethods || []).filter((m) => m.countries.some((c) => c.country.alpha_2?.toUpperCase() === countryTo.toUpperCase())),
+    () => (intlMethods || []).filter((m) =>
+      !m.countries?.length || m.countries.some((c) => c.country.alpha_2?.toUpperCase() === countryTo.toUpperCase()),
+    ),
     [intlMethods, countryTo],
   );
 
@@ -257,6 +259,11 @@ const Transfer = () => {
                         <div className="text-xs text-muted-foreground capitalize">{m.type}</div>
                       </button>
                     ))}
+                    {intlMethodsForCountry.length === 0 && (
+                      <div className="rounded-xl border border-dashed border-border bg-muted/30 p-4 text-sm text-muted-foreground sm:col-span-2">
+                        Aucune methode disponible pour ce pays.
+                      </div>
+                    )}
                   </div>
                 </div>
               </>

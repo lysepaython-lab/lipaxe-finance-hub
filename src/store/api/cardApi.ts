@@ -16,7 +16,9 @@ export interface CardOffer {
   description: string;
   card_type?: string;
   creation_fixed_fee?: number;
+  funding_fixed_fee?: number;
   funding_fee_percent?: number;
+  lipaxe_fee_percent?: number;
   settlement_fee?: number;
   authorization_fee?: number;
   cross_border_fee_percent?: number;

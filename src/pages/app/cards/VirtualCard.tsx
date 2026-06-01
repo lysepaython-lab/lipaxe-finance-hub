@@ -135,7 +135,11 @@ const VirtualCard = () => {
   const visibleOffers = useMemo(() => (offers || []).slice(0, 3), [offers]);
   const issuanceFee = Number(selectedOffer?.creation_fixed_fee || selectedOffer?.price || 0);
   const initialBalance = Number(funding || 0);
-  const orderTotal = issuanceFee + initialBalance;
+  const providerFundingFee = Number(selectedOffer?.funding_fixed_fee || 0)
+    + initialBalance * (Number(selectedOffer?.funding_fee_percent || 0) / 100);
+  const lipaxeFundingFee = initialBalance * (Number(selectedOffer?.lipaxe_fee_percent || 0) / 100);
+  const totalFundingFee = providerFundingFee + lipaxeFundingFee;
+  const orderTotal = issuanceFee + initialBalance + totalFundingFee;
 
   const openCreate = (offer: CardOffer) => {
     setSelectedOffer(offer);
@@ -219,7 +223,15 @@ const VirtualCard = () => {
             Pricing & fees
           </div>
           <CompareRow label="Card issuance fee" values={visibleOffers.map((o) => money(o.creation_fixed_fee || o.price, o.currency))} />
-          <CompareRow label="Card funding fee" values={visibleOffers.map((o) => `${o.funding_fee_percent || 2.5}%`)} />
+          <CompareRow
+            label="Card funding fee"
+            values={visibleOffers.map((o) => {
+              const fixed = Number(o.funding_fixed_fee || 0);
+              const provider = Number(o.funding_fee_percent || 0);
+              const lipaxe = Number(o.lipaxe_fee_percent || 0);
+              return `${fixed ? `${money(fixed, o.currency)} + ` : ''}${provider + lipaxe}%`;
+            })}
+          />
           <CompareRow label="Settlement fee" values={visibleOffers.map((o) => (Number(o.settlement_fee || 0) === 0 ? <Badge className="bg-emerald-100 text-emerald-700">Free</Badge> : money(o.settlement_fee, o.currency)))} />
           <CompareRow label="Authorization fee" values={visibleOffers.map((o) => (o.authorization_fee ? money(o.authorization_fee, o.currency) : <Minus className="mx-auto h-4 w-4 text-muted-foreground" />))} />
           <CompareRow label="Cross-border fee" values={visibleOffers.map((o) => `${o.cross_border_fee_percent || 2.5}%`)} />
@@ -302,6 +314,18 @@ const VirtualCard = () => {
                 <div className="flex justify-between py-1 text-muted-foreground">
                   <span>Initial Balance</span>
                   <span className="font-bold text-foreground">{money(initialBalance, selectedOffer?.currency)}</span>
+                </div>
+                <div className="flex justify-between py-1 text-muted-foreground">
+                  <span>Lipaxe Fee</span>
+                  <span className="font-bold text-foreground">{money(lipaxeFundingFee, selectedOffer?.currency)}</span>
+                </div>
+                <div className="flex justify-between py-1 text-muted-foreground">
+                  <span>Provider Fee</span>
+                  <span className="font-bold text-foreground">{money(providerFundingFee, selectedOffer?.currency)}</span>
+                </div>
+                <div className="flex justify-between py-1 text-muted-foreground">
+                  <span>Total Fees</span>
+                  <span className="font-bold text-foreground">{money(totalFundingFee, selectedOffer?.currency)}</span>
                 </div>
                 <div className="mt-3 flex justify-between border-t border-border pt-4 font-display text-2xl font-bold">
                   <span>Total</span>

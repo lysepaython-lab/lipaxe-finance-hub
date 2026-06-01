@@ -79,7 +79,11 @@ export const walletApi = api.injectEndpoints({
     }),
     transaction: b.query<Transaction, string>({
       query: (id) => `/transactions/${id}/`,
-      transformResponse: (response: unknown) => normalizeTransaction(response),
+      transformResponse: (response: unknown) => {
+        const data = unwrapData<unknown[] | unknown>(response, {});
+        const item = Array.isArray(data) ? data[0] : data;
+        return normalizeTransaction(item);
+      },
       providesTags: (_r, _e, id) => [{ type: 'Transactions', id }],
     }),
     fxQuote: b.mutation<FxQuote, { from: string; to: string; amount: number }>({

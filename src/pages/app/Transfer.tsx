@@ -50,7 +50,7 @@ const Transfer = () => {
   const [lookup, { isLoading: looking }] = useLookupRecipientMutation();
 
   const intlMethodsForCountry = useMemo(
-    () => (intlMethods || []).filter((m) => m.countries.some((c) => c.country.alpha_2 === countryTo)),
+    () => (intlMethods || []).filter((m) => m.countries.some((c) => c.country.alpha_2?.toUpperCase() === countryTo.toUpperCase())),
     [intlMethods, countryTo],
   );
 
@@ -119,7 +119,8 @@ const Transfer = () => {
       toast.success(t('transfer.success'));
       setDone(true);
     } catch (e) {
-      const detail = (e as { data?: { detail?: string } })?.data?.detail || t('common.error');
+      const errorData = (e as { data?: { detail?: string; error?: string; erreur?: string; message?: string } })?.data;
+      const detail = errorData?.detail || errorData?.error || errorData?.erreur || errorData?.message || t('common.error');
       toast.error(detail);
     }
   };

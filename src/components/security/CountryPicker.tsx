@@ -33,9 +33,12 @@ export const CountryPicker = ({ value, onChange, placeholder, label, paymentMeth
     if (!paymentMethods) return null;
     const set = new Set<string>();
     paymentMethods.forEach((m) =>
-      m.countries.forEach((c) => set.add(c.country.alpha_2.toUpperCase())),
+      (m.countries || []).forEach((c) => {
+        const alpha2 = c.country?.alpha_2?.toUpperCase();
+        if (alpha2) set.add(alpha2);
+      }),
     );
-    return set;
+    return set.size ? set : null;
   }, [paymentMethods]);
 
   const list = useMemo(() => {
@@ -47,7 +50,7 @@ export const CountryPicker = ({ value, onChange, placeholder, label, paymentMeth
       );
   }, [countries, allowed, q]);
 
-  const selected = (countries || []).find((c) => c.country.alpha_2 === value)?.country;
+  const selected = (countries || []).find((c) => c.country.alpha_2?.toUpperCase() === value?.toUpperCase())?.country;
 
   return (
     <div className="space-y-1.5">

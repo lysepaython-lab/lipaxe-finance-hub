@@ -7,6 +7,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -40,7 +41,7 @@ const BusinessAll = () => {
   const [frequency, setFrequency] = useState<'weekly' | 'monthly'>('monthly');
   const [duration, setDuration] = useState('6');
   const [selection, setSelection] = useState<'random' | 'ordered' | 'credit_score'>('ordered');
-  const [members, setMembers] = useState('@alex, @marie.d, @john.k');
+  const [members, setMembers] = useState('');
   const [maxMembers, setMaxMembers] = useState('12');
   const [minCreditScore, setMinCreditScore] = useState('600');
   const [inviteOnly, setInviteOnly] = useState(true);
@@ -57,9 +58,9 @@ const BusinessAll = () => {
 
   const submitCreate = async () => {
     if (!name) { toast.error('Nom requis'); return; }
-    const invitedMembers = members.split(',').map((m) => m.trim()).filter(Boolean);
+    const invitedMembers = members.split(/[\n,;]+/).map((m) => m.trim()).filter(Boolean);
     if (invitedMembers.length < 3) {
-      toast.error('Au moins 3 utilisateurs invités sont requis');
+      toast.error('Ajoutez au moins 3 membres par email ou numero de compte');
       return;
     }
     try {
@@ -274,7 +275,16 @@ const BusinessAll = () => {
             </div>
             <WalletSelector label="Wallet d'escrow" value={escrowWalletId} onChange={(id) => setEscrowWalletId(id)} />
             <WalletSelector label="Wallet trésorerie" value={treasuryWalletId} onChange={(id) => setTreasuryWalletId(id)} />
-            <div className="space-y-2"><Label>Membres (séparés par virgules)</Label><Input value={members} onChange={(e) => setMembers(e.target.value)} placeholder="@alex, @marie" /></div>
+            <div className="space-y-2">
+              <Label>Membres</Label>
+              <Textarea
+                value={members}
+                onChange={(e) => setMembers(e.target.value)}
+                placeholder="email@lipaxe.com, LI1234567890"
+                className="min-h-28 resize-none rounded-2xl"
+              />
+              <p className="text-xs text-muted-foreground">Email ou numero de compte, separes par virgule ou retour a la ligne.</p>
+            </div>
           </div>
           <DialogFooter className="border-t border-border bg-background px-7 py-5">
             <Button variant="outline" onClick={() => setOpen(false)} className="min-w-32 rounded-2xl">Annuler</Button>

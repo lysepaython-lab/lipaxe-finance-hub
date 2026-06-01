@@ -169,7 +169,10 @@ const Deposit = () => {
       toast.success(t('deposit.success'));
       setDone(true);
     } catch (e) {
-      const detail = (e as { data?: { detail?: string } })?.data?.detail || t('common.error');
+      const detail = (e as { data?: { detail?: string; message?: string; error?: string } })?.data?.detail
+        || (e as { data?: { detail?: string; message?: string; error?: string } })?.data?.message
+        || (e as { data?: { detail?: string; message?: string; error?: string } })?.data?.error
+        || t('common.error');
       toast.error(detail);
     }
   };

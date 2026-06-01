@@ -139,7 +139,12 @@ export const normalizePaymentMethod = (payload: unknown) => {
           return {
             country: {
               name: asString(item.name ?? (item.country as UnknownRecord | undefined)?.name),
-              alpha_2: asString(item.alpha_2 ?? (item.country as UnknownRecord | undefined)?.alpha_2),
+              alpha_2: asString(
+                item.alpha_2 ??
+                  item.isoCode ??
+                  (item.country as UnknownRecord | undefined)?.alpha_2 ??
+                  (item.country as UnknownRecord | undefined)?.isoCode,
+              ),
             },
           };
         })
@@ -192,7 +197,9 @@ export const normalizeCardOffer = (payload: unknown) => {
     description: asString(raw.description, `${brand} virtual card`),
     card_type: asString(raw.card_type ?? raw.category, brand),
     creation_fixed_fee: creationFee,
-    funding_fee_percent: asNumber(raw.funding_fee_percent ?? raw.funding_fee ?? raw.load_fee_percent, 2.5),
+    funding_fixed_fee: asNumber(raw.funding_fixed_fee, 0),
+    funding_fee_percent: asNumber(raw.funding_percentage_fee ?? raw.funding_fee_percent ?? raw.funding_fee ?? raw.load_fee_percent, 2.5),
+    lipaxe_fee_percent: asNumber(raw.lipax_fee_percentage ?? raw.lipaxe_fee_percent, 0),
     settlement_fee: asNumber(raw.settlement_fee, 0),
     authorization_fee: asNumber(raw.authorization_fee, 0),
     cross_border_fee_percent: asNumber(raw.cross_border_fee_percent ?? raw.cross_border_fee, 2.5),

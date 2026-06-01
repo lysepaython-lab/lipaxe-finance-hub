@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { PiggyBank, Plus, ShieldCheck, TimerReset, WalletCards, ArrowRight, Loader2, ArrowDownToLine } from 'lucide-react';
+import { PiggyBank, Plus, ShieldCheck, TimerReset, WalletCards, ArrowRight, Loader2, ArrowDownToLine, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { PageHeader } from '@/components/PageHeader';
 import { Card, CardContent } from '@/components/ui/card';
@@ -419,11 +419,16 @@ const SavingsHub = () => {
       </div>
 
       <Dialog open={openCreate} onOpenChange={setOpenCreate}>
-        <DialogContent className="max-w-xl">
-          <DialogHeader>
-            <DialogTitle>{t('savings.openPlan')}</DialogTitle>
+        <DialogContent className="max-h-[92vh] max-w-2xl overflow-hidden p-0">
+          <DialogHeader className="flex-row items-center justify-between bg-primary px-7 py-5 text-primary-foreground">
+            <DialogTitle className="flex items-center gap-3 font-display text-2xl">
+              <PiggyBank className="h-6 w-6" /> {t('savings.openPlan')}
+            </DialogTitle>
+            <button onClick={() => setOpenCreate(false)} className="rounded-full p-1 text-primary-foreground/70 hover:text-primary-foreground">
+              <X className="h-5 w-5" />
+            </button>
           </DialogHeader>
-          <div className="grid gap-4 py-2">
+          <div className="grid max-h-[calc(92vh-148px)] gap-4 overflow-y-auto p-7">
             <div className="space-y-2">
               <Label>{t('savings.plan')}</Label>
               <Select value={selectedPlanId} onValueChange={setSelectedPlanId}>
@@ -521,9 +526,9 @@ const SavingsHub = () => {
               </div>
             )}
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setOpenCreate(false)}>{t('common.cancel')}</Button>
-            <Button onClick={submitCreate} disabled={creating} className="bg-gradient-brand shadow-brand">
+          <DialogFooter className="border-t border-border bg-background px-7 py-5">
+            <Button variant="outline" onClick={() => setOpenCreate(false)} className="min-w-32 rounded-2xl">{t('common.cancel')}</Button>
+            <Button onClick={submitCreate} disabled={creating} className="min-w-40 rounded-2xl bg-primary text-primary-foreground shadow-brand hover:bg-primary/90">
               {creating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               {t('savings.openPlan')}
             </Button>
@@ -532,11 +537,16 @@ const SavingsHub = () => {
       </Dialog>
 
       <Dialog open={openContribute} onOpenChange={setOpenContribute}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>{t('savings.addContribution')}</DialogTitle>
+        <DialogContent className="max-w-lg overflow-hidden p-0">
+          <DialogHeader className="flex-row items-center justify-between bg-primary px-7 py-5 text-primary-foreground">
+            <DialogTitle className="flex items-center gap-3 font-display text-2xl">
+              <Plus className="h-6 w-6" /> {t('savings.addContribution')}
+            </DialogTitle>
+            <button onClick={() => setOpenContribute(false)} className="rounded-full p-1 text-primary-foreground/70 hover:text-primary-foreground">
+              <X className="h-5 w-5" />
+            </button>
           </DialogHeader>
-          <div className="grid gap-4 py-2">
+          <div className="grid gap-4 p-7">
             <WalletSelector
               label={t('savings.sourceWallet')}
               value={contributeWalletId}
@@ -548,9 +558,9 @@ const SavingsHub = () => {
               <Input type="number" value={contributeAmount} onChange={(e) => setContributeAmount(e.target.value)} />
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setOpenContribute(false)}>{t('common.cancel')}</Button>
-            <Button onClick={submitContribute} disabled={contributing} className="bg-gradient-brand shadow-brand">
+          <DialogFooter className="border-t border-border bg-background px-7 py-5">
+            <Button variant="outline" onClick={() => setOpenContribute(false)} className="min-w-32 rounded-2xl">{t('common.cancel')}</Button>
+            <Button onClick={submitContribute} disabled={contributing} className="min-w-40 rounded-2xl bg-primary text-primary-foreground shadow-brand hover:bg-primary/90">
               {contributing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               {t('savings.addContribution')}
             </Button>
@@ -559,11 +569,16 @@ const SavingsHub = () => {
       </Dialog>
 
       <Dialog open={Boolean(withdrawTarget)} onOpenChange={(open) => !open && setWithdrawTarget(null)}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>{t('savings.withdraw')}</DialogTitle>
+        <DialogContent className="max-w-lg overflow-hidden p-0">
+          <DialogHeader className="flex-row items-center justify-between bg-primary px-7 py-5 text-primary-foreground">
+            <DialogTitle className="flex items-center gap-3 font-display text-2xl">
+              <ArrowDownToLine className="h-6 w-6" /> {t('savings.withdraw')}
+            </DialogTitle>
+            <button onClick={() => setWithdrawTarget(null)} className="rounded-full p-1 text-primary-foreground/70 hover:text-primary-foreground">
+              <X className="h-5 w-5" />
+            </button>
           </DialogHeader>
-          <div className="grid gap-4 py-2">
+          <div className="grid gap-4 p-7">
             <WalletSelector
               label={t('savings.destinationWallet')}
               value={withdrawWalletId}
@@ -587,9 +602,9 @@ const SavingsHub = () => {
               </div>
             ) : null}
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setWithdrawTarget(null)}>{t('common.cancel')}</Button>
-            <Button onClick={submitWithdraw} disabled={withdrawing} className="bg-gradient-brand shadow-brand">
+          <DialogFooter className="border-t border-border bg-background px-7 py-5">
+            <Button variant="outline" onClick={() => setWithdrawTarget(null)} className="min-w-32 rounded-2xl">{t('common.cancel')}</Button>
+            <Button onClick={submitWithdraw} disabled={withdrawing} className="min-w-40 rounded-2xl bg-primary text-primary-foreground shadow-brand hover:bg-primary/90">
               {withdrawing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               {t('savings.confirmWithdraw')}
             </Button>

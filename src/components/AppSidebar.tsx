@@ -132,8 +132,8 @@ export const AppSidebar = () => {
         <Sheet>
           <SheetTrigger asChild>
             <Button variant="outline" className="rounded-2xl">
-              <Menu className="mr-2 h-4 w-4" />
-              Menu
+              <Menu className="mr-4 h-8 w-8" />
+              {/* Menu */}
             </Button>
           </SheetTrigger>
           <SheetContent side="left" className="w-[88vw] overflow-y-auto p-4">
@@ -159,7 +159,7 @@ export const AppSidebar = () => {
             </div>
           </SheetContent>
         </Sheet>
-        <div className="text-sm font-semibold text-muted-foreground">Lipaxe</div>
+        {/* <div className="text-sm font-semibold text-muted-foreground">Lipaxe</div> */}
       </div>
     </div>
   );

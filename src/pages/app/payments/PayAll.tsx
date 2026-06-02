@@ -249,10 +249,12 @@ const PayAll = () => {
           resetTransportFlow();
         }}
       >
-        <TabsList className="rounded-xl">
+        <TabsList className="h-auto w-full flex-col gap-1 rounded-xl sm:flex-row sm:gap-0">
           {CATEGORIES.map((c) => (
-            <TabsTrigger key={c.id} value={c.id} className="rounded-lg gap-1.5">
-              <c.icon className="h-4 w-4" /> {c.name}
+            <TabsTrigger key={c.id} value={c.id} className="w-full justify-start gap-2 rounded-lg sm:w-auto sm:justify-center">
+              <c.icon className="h-4 w-4 shrink-0" />
+              <span className="hidden sm:inline">{c.name}</span>
+              <span className="sm:hidden">{c.name}</span>
             </TabsTrigger>
           ))}
         </TabsList>
@@ -343,19 +345,19 @@ const PayAll = () => {
                       </div>
                     </div>
                     <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-2">
-                      <Label>Type billet</Label>
-                      <Input value={ebilletType} onChange={(e) => setEbilletType(e.target.value)} placeholder="ticket, boarding pass..." />
-                    </div>
-                    <div className="rounded-xl bg-muted/40 p-3 text-xs space-y-1">
-                      <div className="font-semibold text-foreground">Contrat transport</div>
-                      <div>Le fournisseur peut accepter n'importe quel format si `accept_any_ebillet` est activé.</div>
-                      <div>Sinon, le type envoyé doit correspondre à la liste `accepted_formats` du backoffice.</div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Émetteur</Label>
-                      <Input value={ebilletIssuer} onChange={(e) => setEbilletIssuer(e.target.value)} placeholder="Compagnie / opérateur" />
-                    </div>
+                      <div className="space-y-2">
+                        <Label>Type billet</Label>
+                        <Input value={ebilletType} onChange={(e) => setEbilletType(e.target.value)} placeholder="ticket, boarding pass..." />
+                      </div>
+                      <div className="rounded-xl bg-muted/40 p-3 text-xs space-y-1">
+                        <div className="font-semibold text-foreground">Contrat transport</div>
+                        <div>Le fournisseur peut accepter n'importe quel format si `accept_any_ebillet` est activé.</div>
+                        <div>Sinon, le type envoyé doit correspondre à la liste `accepted_formats` du backoffice.</div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Émetteur</Label>
+                        <Input value={ebilletIssuer} onChange={(e) => setEbilletIssuer(e.target.value)} placeholder="Compagnie / opérateur" />
+                      </div>
                     </div>
                     <div className="space-y-2">
                       <Label>Payload QR</Label>

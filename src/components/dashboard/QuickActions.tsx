@@ -1,5 +1,8 @@
 import { useNavigate } from 'react-router-dom';
-import { ArrowDownToLine, ArrowUpFromLine, Coins, CreditCard, QrCode, Send } from 'lucide-react';
+import { ArrowDownToLine, ArrowUpFromLine, Coins, 
+  CreditCard,
+   QrCode, Send,Wallet,
+   Vault,RefreshCw,Sprout } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,6 +19,15 @@ export const QuickActions = () => {
     { to: '/app/transfer/qr', label: 'QR Pay', icon: QrCode, tone: 'from-brand-500 to-brand-900' },
     { to: '/app/cards/virtual', label: t('nav.cards'), icon: CreditCard, tone: 'from-brand-400 to-brand-700' },
     { to: '/app/strone/cryptos', label: 'Crypto', icon: Coins, tone: 'from-brand-300 to-brand-600' },
+
+    { to: '/app/payments/festipay', label:t('nav.festiPay'), icon: QrCode, tone: 'from-brand-500 to-brand-900' },
+    { to: '/app/strone/business', label: t('nav.businessAll'), icon: CreditCard, tone: 'from-brand-400 to-brand-700' },
+    { to: '/app/savings', label: t('nav.savings'), icon: Wallet, tone: 'from-brand-300 to-brand-600' },
+    { to: '/app/strone/vaults', label: t('nav.yieldVaults'), icon: Vault, tone: 'from-brand-500 to-brand-900' },
+    { to: '/app/strone/exchange', label: t('nav.swap'), icon: RefreshCw, tone: 'from-brand-400 to-brand-700' },
+    { to: '/app/strone/cryptos', label: t('nav.earn'), icon: Sprout, tone: 'from-brand-300 to-brand-600' },
+
+
   ];
 
   return (

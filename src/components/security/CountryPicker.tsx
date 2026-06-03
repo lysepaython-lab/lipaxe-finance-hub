@@ -21,7 +21,7 @@ interface CountryPickerProps {
   placeholder?: string;
   label?: string;
   /** Filter countries to only those served by the given payment methods. */
-  paymentMethods?: { countries: { country: { alpha_2: string } }[] }[];
+  paymentMethods?: { countries: { country: { alpha_2?: string; isoCode?: string; name?: string } }[] }[];
 }
 
 export const CountryPicker = ({ value, onChange, placeholder, label, paymentMethods }: CountryPickerProps) => {
@@ -35,7 +35,11 @@ export const CountryPicker = ({ value, onChange, placeholder, label, paymentMeth
     paymentMethods.forEach((m) =>
       (m.countries || []).forEach((c) => {
         const alpha2 = c.country?.alpha_2?.toUpperCase();
+        const isoCode = c.country?.isoCode?.toUpperCase();
+        const name = c.country?.name?.toUpperCase();
         if (alpha2) set.add(alpha2);
+        if (isoCode) set.add(isoCode);
+        if (name) set.add(name);
       }),
     );
     return set.size ? set : null;
@@ -44,13 +48,24 @@ export const CountryPicker = ({ value, onChange, placeholder, label, paymentMeth
   const list = useMemo(() => {
     const base = (countries || []).map((c) => c.country);
     return base
-      .filter((c) => !allowed || allowed.has(c.alpha_2.toUpperCase()))
+      .filter((c) => {
+        if (!allowed) return true;
+        return [
+          c.alpha_2,
+          c.isoCode,
+          c.name,
+        ].some((candidate) => candidate && allowed.has(candidate.toUpperCase()));
+      })
       .filter((c) =>
         !q ? true : c.name.toLowerCase().includes(q.toLowerCase()) || c.alpha_2.toLowerCase().includes(q.toLowerCase()),
       );
   }, [countries, allowed, q]);
 
-  const selected = (countries || []).find((c) => c.country.alpha_2?.toUpperCase() === value?.toUpperCase())?.country;
+  const selected = (countries || []).find((c) =>
+    [c.country.alpha_2, c.country.isoCode, c.country.name].some(
+      (candidate) => candidate?.toUpperCase() === value?.toUpperCase(),
+    ),
+  )?.country;
 
   return (
     <div className="space-y-1.5">
@@ -89,22 +104,22 @@ export const CountryPicker = ({ value, onChange, placeholder, label, paymentMeth
             <div className="p-1">
               {list.map((c) => (
                 <button
-                  key={c.alpha_2}
+                  key={c.id || c.alpha_2 || c.isoCode || c.name}
                   type="button"
                   onClick={() => {
-                    onChange(c.alpha_2, c.name);
+                    onChange(c.alpha_2 || c.isoCode || c.name, c.name);
                     setOpen(false);
                     setQ('');
                   }}
                   className={cn(
                     'w-full text-left flex items-center gap-2 rounded-md px-2.5 py-2 text-sm hover:bg-muted',
-                    value === c.alpha_2 && 'bg-muted',
+                    value?.toUpperCase() === c.alpha_2?.toUpperCase() && 'bg-muted',
                   )}
                 >
                   <span className="text-lg leading-none">{flagEmoji(c.alpha_2)}</span>
                   <span className="flex-1">{c.name}</span>
                   <span className="text-xs text-muted-foreground">{c.alpha_2}</span>
-                  {value === c.alpha_2 && <Check className="h-4 w-4 text-primary" />}
+                  {value?.toUpperCase() === c.alpha_2?.toUpperCase() && <Check className="h-4 w-4 text-primary" />}
                 </button>
               ))}
               {list.length === 0 && (

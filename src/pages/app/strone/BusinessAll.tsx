@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { BellRing, Briefcase, Plus, Users, Crown, Loader2, X, Check, UserPlus } from 'lucide-react';
+import { BellRing, Briefcase, Plus, Users, Crown, Loader2, X, Check, UserPlus, Pencil } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { PageHeader } from '@/components/PageHeader';
 import { Card, CardContent } from '@/components/ui/card';
@@ -13,7 +13,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
-  useTontinesQuery, useCreateTontineMutation, useContributeTontineMutation, useInviteTontineMembersMutation, useLazyTontineEligibilityQuery, useRemindTontineMembersMutation, useRespondTontineInvitationMutation,
+  useTontinesQuery, useCreateTontineMutation, useUpdateTontineMutation, useContributeTontineMutation, useInviteTontineMembersMutation, useLazyTontineEligibilityQuery, useRemindTontineMembersMutation, useRespondTontineInvitationMutation,
 } from '@/store/api/businessApi';
 import { WalletSelector } from '@/components/security/WalletSelector';
 import { PinModal, usePinGate } from '@/components/security/PinModal';
@@ -30,6 +30,7 @@ const BusinessAll = () => {
   const { t } = useTranslation();
   const { data: tontines, isLoading } = useTontinesQuery();
   const [createTontine, { isLoading: creating }] = useCreateTontineMutation();
+  const [updateTontine, { isLoading: updating }] = useUpdateTontineMutation();
   const [contribute] = useContributeTontineMutation();
   const [respondInvitation, { isLoading: respondingInvitation }] = useRespondTontineInvitationMutation();
   const [inviteMembers, { isLoading: invitingMembers }] = useInviteTontineMembersMutation();
@@ -37,6 +38,7 @@ const BusinessAll = () => {
   const pin = usePinGate();
 
   const [open, setOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [contribution, setContribution] = useState('50');
   const [currency, setCurrency] = useState('USD');
@@ -63,11 +65,87 @@ const BusinessAll = () => {
 
   const parseMembers = (value: string) => value.split(/[\n,;]+/).map((m) => m.trim()).filter(Boolean);
 
+  const resetForm = () => {
+    setEditingId(null);
+    setName('');
+    setContribution('50');
+    setCurrency('USD');
+    setFrequency('monthly');
+    setDuration('6');
+    setSelection('ordered');
+    setMembers('');
+    setMaxMembers('12');
+    setMinCreditScore('600');
+    setInviteOnly(true);
+    setPayoutCommission('1.50');
+    setReservePercent('0.00');
+    setEscrowWalletId(undefined);
+    setTreasuryWalletId(undefined);
+  };
+
+  const openCreateDialog = () => {
+    resetForm();
+    setOpen(true);
+  };
+
+  const openEditDialog = (tn: NonNullable<typeof tontines>[number]) => {
+    setEditingId(tn.id);
+    setName(tn.name);
+    setContribution(String(tn.contribution));
+    setCurrency(tn.currency);
+    setFrequency(tn.frequency);
+    setDuration(String(tn.duration_months));
+    setSelection(tn.selection);
+    setMembers('');
+    setMaxMembers(String(tn.max_members || Math.max(tn.members.length, 12)));
+    setMinCreditScore(String(tn.min_credit_score ?? 600));
+    setInviteOnly(Boolean(tn.invite_only ?? true));
+    setPayoutCommission(String(tn.payout_commission_percent ?? '1.50'));
+    setReservePercent(String(tn.reserve_percent ?? '0.00'));
+    setEscrowWalletId(tn.escrow_wallet_id || tn.escrow_wallet);
+    setTreasuryWalletId(tn.treasury_wallet_id || tn.treasury_wallet);
+    setOpen(true);
+  };
+
   const submitCreate = async () => {
     if (!name) { toast.error('Nom requis'); return; }
     const invitedMembers = parseMembers(members);
-    if (invitedMembers.length < 3) {
+    if (!editingId && invitedMembers.length < 3) {
       toast.error('Ajoutez au moins 3 membres par email ou numero de compte');
+      return;
+    }
+    if (editingId) {
+      try {
+        await updateTontine({
+          tontine_id: editingId,
+          name,
+          contribution: Number(contribution),
+          currency,
+          frequency,
+          duration_months: Number(duration),
+          selection,
+          max_members: Number(maxMembers),
+          min_credit_score: Number(minCreditScore),
+          require_kyc_verified: true,
+          invite_only: inviteOnly,
+          payout_commission_percent: Number(payoutCommission),
+          reserve_percent: Number(reservePercent),
+          escrow_wallet_id: escrowWalletId,
+          treasury_wallet_id: treasuryWalletId,
+          policy: {
+            invite_only: inviteOnly,
+            min_credit_score: Number(minCreditScore),
+            payout_commission_percent: payoutCommission,
+            reserve_percent: reservePercent,
+            contract_version: 'v1',
+          },
+        }).unwrap();
+        toast.success('Tontine mise a jour');
+        setOpen(false);
+        resetForm();
+      } catch (e) {
+        toast.error((e as { data?: { detail?: string } })?.data?.detail || t('common.error'));
+      }
       return;
     }
     try {
@@ -159,7 +237,7 @@ const BusinessAll = () => {
         title={t('nav.businessAll')}
         subtitle={t('strone.businessSubtitle')}
         icon={<Briefcase className="h-6 w-6" />}
-        actions={<Button onClick={() => setOpen(true)} className="bg-gradient-brand shadow-brand"><Plus className="mr-2 h-4 w-4" />Nouvelle tontine</Button>}
+        actions={<Button onClick={openCreateDialog} className="bg-gradient-brand shadow-brand"><Plus className="mr-2 h-4 w-4" />Nouvelle tontine</Button>}
       />
 
       {isLoading ? (
@@ -238,7 +316,15 @@ const BusinessAll = () => {
                     ))}
                   </div>
                   {tn.is_owner && ['draft', 'pending'].includes(tn.status) && (
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="rounded-2xl"
+                        onClick={() => openEditDialog(tn)}
+                      >
+                        <Pencil className="mr-2 h-4 w-4" />Editer
+                      </Button>
                       <Button
                         type="button"
                         variant="outline"
@@ -280,11 +366,11 @@ const BusinessAll = () => {
         </div>
       )}
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={open} onOpenChange={(next) => { setOpen(next); if (!next) resetForm(); }}>
         <DialogContent className="max-h-[92vh] max-w-2xl overflow-hidden p-0">
           <DialogHeader className="flex-row items-center justify-between bg-primary px-7 py-5 text-primary-foreground">
             <DialogTitle className="flex items-center gap-3 font-display text-2xl">
-              <Briefcase className="h-6 w-6" /> Nouvelle tontine
+              <Briefcase className="h-6 w-6" /> {editingId ? 'Editer tontine' : 'Nouvelle tontine'}
             </DialogTitle>
             <button onClick={() => setOpen(false)} className="rounded-full p-1 text-primary-foreground/70 hover:text-primary-foreground">
               <X className="h-5 w-5" />
@@ -329,20 +415,22 @@ const BusinessAll = () => {
             </div>
             <WalletSelector label="Wallet d'escrow" value={escrowWalletId} onChange={(id) => setEscrowWalletId(id)} />
             <WalletSelector label="Wallet trésorerie" value={treasuryWalletId} onChange={(id) => setTreasuryWalletId(id)} />
-            <div className="space-y-2">
-              <Label>Membres</Label>
-              <Textarea
-                value={members}
-                onChange={(e) => setMembers(e.target.value)}
-                placeholder="email@lipaxe.com, LI1234567890"
-                className="min-h-28 resize-none rounded-2xl"
-              />
-              <p className="text-xs text-muted-foreground">Email ou numero de compte, separes par virgule ou retour a la ligne.</p>
-            </div>
+            {!editingId && (
+              <div className="space-y-2">
+                <Label>Membres</Label>
+                <Textarea
+                  value={members}
+                  onChange={(e) => setMembers(e.target.value)}
+                  placeholder="email@lipaxe.com, LI1234567890"
+                  className="min-h-28 resize-none rounded-2xl"
+                />
+                <p className="text-xs text-muted-foreground">Email ou numero de compte, separes par virgule ou retour a la ligne.</p>
+              </div>
+            )}
           </div>
           <DialogFooter className="border-t border-border bg-background px-7 py-5">
-            <Button variant="outline" onClick={() => setOpen(false)} className="min-w-32 rounded-2xl">Annuler</Button>
-            <Button onClick={submitCreate} disabled={creating} className="min-w-40 rounded-2xl bg-primary text-primary-foreground shadow-brand hover:bg-primary/90">
+            <Button variant="outline" onClick={() => { setOpen(false); resetForm(); }} className="min-w-32 rounded-2xl">Annuler</Button>
+            <Button onClick={submitCreate} disabled={creating || updating} className="min-w-40 rounded-2xl bg-primary text-primary-foreground shadow-brand hover:bg-primary/90">
               {creating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}Créer
             </Button>
           </DialogFooter>

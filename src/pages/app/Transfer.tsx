@@ -25,6 +25,21 @@ import { transferSchema } from '@/lib/validation';
 
 const submitThrottle = new Throttle(8, 60_000);
 
+const iso2ToIso3: Record<string, string> = {
+  BI: 'BDI',
+  CD: 'COD',
+  CG: 'COG',
+  RW: 'RWA',
+  TZ: 'TZA',
+  UG: 'UGA',
+  KE: 'KEN',
+  SN: 'SEN',
+  CI: 'CIV',
+  CM: 'CMR',
+  GH: 'GHA',
+  NG: 'NGA',
+};
+
 const Transfer = () => {
   const { t } = useTranslation();
   const [params] = useSearchParams();
@@ -37,6 +52,7 @@ const Transfer = () => {
   const [recipient, setRecipient] = useState('');
   const [recipientInfo, setRecipientInfo] = useState<RecipientLookup | null>(null);
   const [countryTo, setCountryTo] = useState('NG');
+  const [countryToName, setCountryToName] = useState('');
   const [methodId, setMethodId] = useState('');
   const [amount, setAmount] = useState('100');
   const [note, setNote] = useState('');
@@ -49,12 +65,17 @@ const Transfer = () => {
   const [transfer, { isLoading }] = useTransferMutation();
   const [lookup, { isLoading: looking }] = useLookupRecipientMutation();
 
-  const intlMethodsForCountry = useMemo(
-    () => (intlMethods || []).filter((m) =>
-      !m.countries?.length || m.countries.some((c) => c.country.alpha_2?.toUpperCase() === countryTo.toUpperCase()),
-    ),
-    [intlMethods, countryTo],
-  );
+  const intlMethodsForCountry = useMemo(() => {
+    const selectedCodes = [countryTo, iso2ToIso3[countryTo.toUpperCase()], countryToName].map((value) => String(value || '').trim().toUpperCase()).filter(Boolean);
+    return (intlMethods || []).filter((method) => {
+      if (!method.countries?.length) return true;
+      return method.countries.some((entry) => {
+        const country = entry.country || {};
+        const candidates = [country.alpha_2, country.isoCode, country.name].map((value) => String(value || '').trim().toUpperCase()).filter(Boolean);
+        return candidates.some((candidate) => selectedCodes.includes(candidate));
+      });
+    });
+  }, [intlMethods, countryTo, countryToName]);
 
   // Reset recipient info when input changes
   useEffect(() => { setRecipientInfo(null); }, [recipient, kind]);
@@ -241,7 +262,7 @@ const Transfer = () => {
                 <CountryPicker
                   label={t('transfer.country')}
                   value={countryTo}
-                  onChange={(c) => { setCountryTo(c); setMethodId(''); }}
+                  onChange={(c, name) => { setCountryTo(c); setCountryToName(name); setMethodId(''); }}
                   paymentMethods={intlMethods}
                 />
 

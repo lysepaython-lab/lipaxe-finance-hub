@@ -25,6 +25,14 @@ const asNumber = (value: unknown, fallback = 0): number => {
   return fallback;
 };
 
+const firstText = (...values: unknown[]): string => {
+  for (const value of values) {
+    const text = asString(value).trim();
+    if (text) return text;
+  }
+  return '';
+};
+
 export const normalizeUser = (payload: unknown): User => {
   const raw = (payload ?? {}) as UnknownRecord;
   const kycStatus = normalizeKycStatusValue(asString(raw.kyc_status ?? raw.kycStatus));
@@ -136,15 +144,20 @@ export const normalizePaymentMethod = (payload: unknown) => {
     countries: Array.isArray(raw.countries)
       ? raw.countries.map((country) => {
           const item = (country ?? {}) as UnknownRecord;
+          const nested = (item.country as UnknownRecord | undefined) ?? {};
           return {
             country: {
-              name: asString(item.name ?? (item.country as UnknownRecord | undefined)?.name),
-              alpha_2: asString(
-                item.alpha_2 ??
-                  item.isoCode ??
-                  (item.country as UnknownRecord | undefined)?.alpha_2 ??
-                  (item.country as UnknownRecord | undefined)?.isoCode,
+              id: firstText(item.id, nested.id),
+              name: firstText(item.name, nested.name),
+              alpha_2: firstText(
+                item.alpha_2,
+                item.alpha2,
+                item.iso_code,
+                nested.alpha_2,
+                nested.alpha2,
+                nested.iso_code,
               ),
+              isoCode: firstText(item.isoCode, item.code, item.alpha_3, nested.isoCode, nested.code, nested.alpha_3),
             },
           };
         })

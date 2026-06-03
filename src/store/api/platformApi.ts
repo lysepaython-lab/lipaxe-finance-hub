@@ -2,7 +2,7 @@ import { api } from './baseApi';
 import { normalizePaymentMethod, normalizeWallet, unwrapData } from './adapters';
 
 export interface IncountryEntry {
-  country: { id?: string; name: string; alpha_2: string; phone_code?: string; dialling_code?: string };
+  country: { id?: string; name: string; alpha_2: string; isoCode?: string; phone_code?: string; dialling_code?: string };
 }
 export type PaymentTypeName = 'Mobile Payment' | 'Electronic' | 'Cryptos' | 'Bank Transfer';
 export interface PaymentMethod {
@@ -13,7 +13,7 @@ export interface PaymentMethod {
   type: 'mobile' | 'card' | 'bank' | 'electronic' | 'crypto';
   payment_type?: { name: PaymentTypeName };
   icon?: string;
-  countries: { country: { name: string; alpha_2: string } }[];
+  countries: { country: { id?: string; name: string; alpha_2: string; isoCode?: string } }[];
   fees?: {
     fixed: number;
     percent: number;
@@ -44,6 +44,7 @@ export const platformApi = api.injectEndpoints({
           const id = entry.id ?? nested.id ?? '';
           const name = nested.name ?? entry.name ?? '';
           const alpha2 = nested.alpha_2 ?? entry.alpha_2 ?? '';
+          const isoCode = nested.isoCode ?? entry.isoCode ?? '';
           const phoneCode =
             nested.phone_code ??
             nested.dialling_code ??
@@ -55,6 +56,7 @@ export const platformApi = api.injectEndpoints({
               id: String(id),
               name: String(name),
               alpha_2: String(alpha2),
+              isoCode: String(isoCode || ''),
               phone_code: String(phoneCode || ''),
               dialling_code: String(phoneCode || ''),
             },

@@ -27,6 +27,8 @@ export interface Tontine {
   is_owner?: boolean;
   escrow_wallet?: string;
   treasury_wallet?: string;
+  escrow_wallet_id?: string;
+  treasury_wallet_id?: string;
   max_members?: number | null;
   min_credit_score?: number;
   require_kyc_verified?: boolean;
@@ -56,6 +58,9 @@ export interface CreateTontineBody {
   treasury_wallet_id?: string;
   policy?: Record<string, unknown>;
 }
+export type UpdateTontineBody = Partial<Omit<CreateTontineBody, 'members'>> & {
+  tontine_id: string;
+};
 export interface FestiEvent {
   id: string;
   name: string;
@@ -214,6 +219,14 @@ export const businessApi = api.injectEndpoints({
       query: (body) => ({
         url: '/tontines/',
         method: 'POST',
+        body,
+      }),
+      invalidatesTags: ['Tontine'],
+    }),
+    updateTontine: b.mutation<{ detail: string; tontine: Tontine }, UpdateTontineBody>({
+      query: ({ tontine_id, ...body }) => ({
+        url: `/tontines/${tontine_id}/`,
+        method: 'PATCH',
         body,
       }),
       invalidatesTags: ['Tontine'],
@@ -378,6 +391,7 @@ export const businessApi = api.injectEndpoints({
 export const {
   useTontinesQuery,
   useCreateTontineMutation,
+  useUpdateTontineMutation,
   useContributeTontineMutation,
   useRespondTontineInvitationMutation,
   useInviteTontineMembersMutation,

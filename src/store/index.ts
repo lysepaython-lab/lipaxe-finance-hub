@@ -4,6 +4,7 @@ import authReducer from './slices/authSlice';
 import uiReducer from './slices/uiSlice';
 import kycReducer from './slices/kycSlice';
 import notificationsReducer from './slices/notificationsSlice';
+import systemReducer from './slices/systemSlice';
 import { api } from './api/baseApi';
 
 export const store = configureStore({
@@ -12,6 +13,7 @@ export const store = configureStore({
     ui: uiReducer,
     kyc: kycReducer,
     notifications: notificationsReducer,
+    system: systemReducer,
     [api.reducerPath]: api.reducer,
   },
   middleware: (getDefault) => getDefault().concat(api.middleware),

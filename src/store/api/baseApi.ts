@@ -9,6 +9,7 @@ import { Mutex } from 'async-mutex';
 import type { RootState } from '../index';
 import { mockHandler } from './mock';
 import { setCredentials, logout } from '../slices/authSlice';
+import { clearMaintenance, setBackendVersion, setMaintenance } from '../slices/systemSlice';
 
 const RAW_API_URL = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '');
 export const API_URL = RAW_API_URL
@@ -45,6 +46,39 @@ const mockBaseQuery: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQueryErro
 
 const refreshMutex = new Mutex();
 
+const readHeader = (result: unknown, name: string) => {
+  const meta = (result as { meta?: { response?: Response } })?.meta;
+  return meta?.response?.headers.get(name) || undefined;
+};
+
+const handlePlatformStatus = (result: unknown, apiCtx: Parameters<BaseQueryFn>[1]) => {
+  const version = readHeader(result, 'X-Lipaxe-App-Version');
+  if (version) apiCtx.dispatch(setBackendVersion(version));
+
+  const error = (result as { error?: FetchBaseQueryError })?.error;
+  if (error?.status === 503) {
+    const data = (error.data || {}) as {
+      detail?: string;
+      message?: string;
+      retry_after?: number;
+      version?: string;
+      status?: string;
+    };
+    apiCtx.dispatch(
+      setMaintenance({
+        message: data.message || data.detail || 'Lipaxe est momentanement en maintenance.',
+        retryAfter: data.retry_after,
+        version: data.version || version,
+      }),
+    );
+    return;
+  }
+
+  if (!error && readHeader(result, 'X-Lipaxe-Maintenance') !== '1') {
+    apiCtx.dispatch(clearMaintenance());
+  }
+};
+
 const baseQueryWithReauth: BaseQueryFn<
   string | FetchArgs,
   unknown,
@@ -53,6 +87,7 @@ const baseQueryWithReauth: BaseQueryFn<
   await refreshMutex.waitForUnlock();
   const inner = USE_MOCK ? mockBaseQuery : realBaseQuery;
   let result = await inner(args, apiCtx, extraOptions);
+  handlePlatformStatus(result, apiCtx);
   
 
   if (result.error?.status === 401 && !USE_MOCK) {
@@ -75,6 +110,7 @@ const baseQueryWithReauth: BaseQueryFn<
             }),
           );
           result = await inner(args, apiCtx, extraOptions);
+          handlePlatformStatus(result, apiCtx);
         } else {
           apiCtx.dispatch(logout());
         }
@@ -84,6 +120,7 @@ const baseQueryWithReauth: BaseQueryFn<
     } else {
       await refreshMutex.waitForUnlock();
       result = await inner(args, apiCtx, extraOptions);
+      handlePlatformStatus(result, apiCtx);
     }
   }
 

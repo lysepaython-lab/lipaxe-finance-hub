@@ -10,6 +10,7 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { AppLayout } from "./components/AppLayout";
 import { HostRedirect } from "./components/HostRedirect";
+import { MaintenanceOverlay } from "./components/MaintenanceOverlay";
 import { buildAppUrl } from "./config/site";
 import { getPendingVerification } from "./lib/pendingVerification";
 import "./i18n";
@@ -127,6 +128,7 @@ const App = () => (
           <Sonner position="top-right" />
           <BrowserRouter>
             <AppRoutes />
+            <MaintenanceOverlay />
           </BrowserRouter>
         </TooltipProvider>
       </QueryClientProvider>

@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { notificationsApi } from '@/store/api/notificationsApi';
-import { isPushSupported, ensureServiceWorker } from '@/lib/pushNotifications';
+import { notificationsApi, useNotificationsQuery } from '@/store/api/notificationsApi';
+import { isPushSupported, ensureServiceWorker, showLocalNotification } from '@/lib/pushNotifications';
 
 /**
  * Backend currently exposes only the REST notifications API.
@@ -14,7 +14,12 @@ import { isPushSupported, ensureServiceWorker } from '@/lib/pushNotifications';
 export const useNotificationsStream = () => {
   const dispatch = useAppDispatch();
   const isAuthed = useAppSelector((s) => !!s.auth.accessToken);
-  const lastUnreadRef = useRef(0);
+  const seenIdsRef = useRef<Set<string>>(new Set());
+  const bootstrappedRef = useRef(false);
+  const { data: notifications } = useNotificationsQuery(undefined, {
+    skip: !isAuthed,
+    pollingInterval: 15_000,
+  });
 
   useEffect(() => {
     if (!isAuthed) return;
@@ -25,7 +30,29 @@ export const useNotificationsStream = () => {
     refetch();
 
     return () => {
-      lastUnreadRef.current = 0;
+      seenIdsRef.current = new Set();
+      bootstrappedRef.current = false;
     };
   }, [isAuthed, dispatch]);
+
+  useEffect(() => {
+    if (!isAuthed || !notifications?.length) return;
+
+    const unread = notifications.filter((item) => !item.read);
+    if (!bootstrappedRef.current) {
+      seenIdsRef.current = new Set(unread.map((item) => String(item.id)));
+      bootstrappedRef.current = true;
+      return;
+    }
+
+    for (const item of unread) {
+      const id = String(item.id);
+      if (seenIdsRef.current.has(id)) continue;
+      seenIdsRef.current.add(id);
+      showLocalNotification(item.title || 'Lipaxe', item.body || '', {
+        tag: `lipaxe-${id}`,
+        data: { url: item.link || '/app/notifications' },
+      });
+    }
+  }, [isAuthed, notifications]);
 };

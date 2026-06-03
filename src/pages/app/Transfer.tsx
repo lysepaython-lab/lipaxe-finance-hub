@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { CountryFlag } from 'currency-code-to-country-flag';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -40,6 +41,56 @@ const iso2ToIso3: Record<string, string> = {
   NG: 'NGA',
 };
 
+const cryptoCurrencyIcon: Record<string, string> = {
+  BTC: '₿',
+  USDT: '₮',
+  USDC: '◎',
+};
+
+const currencyForCountry: Record<string, string> = {
+  BI: 'BIF',
+  CD: 'CDF',
+  RW: 'RWF',
+  TZ: 'TZS',
+  UG: 'UGX',
+  KE: 'KES',
+  SN: 'XOF',
+  CI: 'XOF',
+  CM: 'XAF',
+  GH: 'GHS',
+  NG: 'NGN',
+  GB: 'GBP',
+  US: 'USD',
+};
+
+const codeValue = (value?: string | null) => String(value || '').trim().toUpperCase();
+
+const methodSupportsCountry = (method: { countries?: { country?: { alpha_2?: string; isoCode?: string; name?: string } }[] }, countryCode: string) => {
+  const selectedAlpha2 = codeValue(countryCode);
+  const selectedAlpha3 = codeValue(iso2ToIso3[selectedAlpha2]);
+  if (!selectedAlpha2 || !method.countries?.length) return false;
+
+  return method.countries.some((entry) => {
+    const country = entry.country || {};
+    const alpha2 = codeValue(country.alpha_2);
+    const isoCode = codeValue(country.isoCode);
+    return alpha2 === selectedAlpha2 || isoCode === selectedAlpha2 || isoCode === selectedAlpha3;
+  });
+};
+
+const CurrencyFlagMark = ({ currency }: { currency?: string }) => {
+  const code = codeValue(currency);
+  if (cryptoCurrencyIcon[code]) {
+    return (
+      <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
+        {cryptoCurrencyIcon[code]}
+      </span>
+    );
+  }
+  if (!code) return <span className="inline-flex h-6 w-6 rounded-full bg-muted" />;
+  return <CountryFlag currency={code} size="24" ratio="square" className="rounded-full shadow-sm" />;
+};
+
 const Transfer = () => {
   const { t } = useTranslation();
   const [params] = useSearchParams();
@@ -66,16 +117,8 @@ const Transfer = () => {
   const [lookup, { isLoading: looking }] = useLookupRecipientMutation();
 
   const intlMethodsForCountry = useMemo(() => {
-    const selectedCodes = [countryTo, iso2ToIso3[countryTo.toUpperCase()], countryToName].map((value) => String(value || '').trim().toUpperCase()).filter(Boolean);
-    return (intlMethods || []).filter((method) => {
-      if (!method.countries?.length) return true;
-      return method.countries.some((entry) => {
-        const country = entry.country || {};
-        const candidates = [country.alpha_2, country.isoCode, country.name].map((value) => String(value || '').trim().toUpperCase()).filter(Boolean);
-        return candidates.some((candidate) => selectedCodes.includes(candidate));
-      });
-    });
-  }, [intlMethods, countryTo, countryToName]);
+    return (intlMethods || []).filter((method) => methodSupportsCountry(method, countryTo));
+  }, [intlMethods, countryTo]);
 
   // Reset recipient info when input changes
   useEffect(() => { setRecipientInfo(null); }, [recipient, kind]);
@@ -85,7 +128,7 @@ const Transfer = () => {
     const amt = parseFloat(amount);
     if (kind === 'international' && amt > 0 && wallet) {
       const id = setTimeout(() => {
-        getQuote({ from: wallet.currency, to: countryTo === 'NG' ? 'NGN' : countryTo === 'GH' ? 'GHS' : countryTo === 'SN' ? 'XOF' : countryTo === 'KE' ? 'KES' : countryTo === 'GB' ? 'GBP' : 'EUR', amount: amt });
+        getQuote({ from: wallet.currency, to: currencyForCountry[countryTo.toUpperCase()] || 'USD', amount: amt });
       }, 300);
       return () => clearTimeout(id);
     }
@@ -276,8 +319,17 @@ const Transfer = () => {
                         onClick={() => setMethodId(m.id)}
                         className={`rounded-xl border-2 p-3 text-left text-sm transition-colors ${methodId === m.id ? 'border-primary bg-primary/5' : 'border-input hover:border-primary/40'}`}
                       >
-                        <div className="font-semibold">{m.name}</div>
-                        <div className="text-xs text-muted-foreground capitalize">{m.type}</div>
+                        <div className="flex items-center gap-3">
+                          {m.icon ? (
+                            <img src={m.icon} alt="" className="h-8 w-8 rounded-full object-cover" />
+                          ) : (
+                            <CurrencyFlagMark currency={wallet?.currency} />
+                          )}
+                          <div>
+                            <div className="font-semibold">{m.name}</div>
+                            <div className="text-xs text-muted-foreground capitalize">{m.type}</div>
+                          </div>
+                        </div>
                       </button>
                     ))}
                     {intlMethodsForCountry.length === 0 && (
@@ -336,11 +388,15 @@ const Transfer = () => {
               )}
               <div className="flex justify-between">
                 <span className="text-muted-foreground">{t('transfer.fee')}</span>
-                <span className="tabular">{formatMoney(fee, wallet?.currency || 'USD')}</span>
+                <span className="inline-flex items-center gap-2 tabular">
+                  <CurrencyFlagMark currency={wallet?.currency || 'USD'} />
+                  {formatMoney(fee, wallet?.currency || 'USD')}
+                </span>
               </div>
               <div className="border-t border-border pt-2 flex justify-between font-semibold">
                 <span>{t('transfer.totalCost')}</span>
-                <span className={`tabular ${insufficient ? 'text-destructive' : 'text-primary'}`}>
+                <span className={`inline-flex items-center gap-2 tabular ${insufficient ? 'text-destructive' : 'text-primary'}`}>
+                  <CurrencyFlagMark currency={wallet?.currency || 'USD'} />
                   {formatMoney(total, wallet?.currency || 'USD')}
                 </span>
               </div>

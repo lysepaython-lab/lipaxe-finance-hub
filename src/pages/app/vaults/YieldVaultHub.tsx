@@ -341,15 +341,41 @@ const YieldVaultHub = () => {
       </div>
 
       <Dialog open={openCreate} onOpenChange={setOpenCreate}>
-        <DialogContent className="max-w-xl">
-          <DialogHeader>
-            <DialogTitle>{t('yieldVaults.open')}</DialogTitle>
+        <DialogContent className="max-h-[92vh] max-w-2xl overflow-hidden rounded-[2rem] border-0 p-0 shadow-2xl">
+          <DialogHeader className="bg-primary px-6 py-5 text-primary-foreground">
+            <div className="flex items-center gap-3">
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/15">
+                <Landmark className="h-5 w-5" />
+              </div>
+              <div>
+                <DialogTitle className="text-2xl">{t('yieldVaults.open')}</DialogTitle>
+                <p className="mt-1 text-sm text-primary-foreground/75">{selectedPlan?.name || t('yieldVaults.plan')}</p>
+              </div>
+            </div>
           </DialogHeader>
-          <div className="grid gap-4 py-2">
+          <div className="max-h-[calc(92vh-10rem)] space-y-5 overflow-y-auto px-6 py-5">
+            {selectedPlan && (
+              <div className="rounded-3xl border border-primary/15 bg-primary/5 p-4">
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <div>
+                    <div className="text-xs text-muted-foreground">{t('yieldVaults.apyRange')}</div>
+                    <div className="font-display text-xl font-bold">{selectedPlan.apy_min}% - {selectedPlan.apy_max}%</div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-muted-foreground">{t('yieldVaults.lockDays')}</div>
+                    <div className="font-display text-xl font-bold">{lockDays} j</div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-muted-foreground">{t('yieldVaults.principal')}</div>
+                    <div className="font-display text-xl font-bold">{formatMoney(Number(principalAmount || 0), currency)}</div>
+                  </div>
+                </div>
+              </div>
+            )}
             <div className="space-y-2">
               <Label>{t('yieldVaults.plan')}</Label>
               <Select value={selectedPlanId} onValueChange={setSelectedPlanId}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger className="h-12 rounded-2xl"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {(plans || []).map((plan) => (
                     <SelectItem key={plan.id} value={plan.id}>{plan.name}</SelectItem>
@@ -360,14 +386,14 @@ const YieldVaultHub = () => {
 
             <div className="space-y-2">
               <Label>{t('yieldVaults.positionName')}</Label>
-              <Input value={name} onChange={(e) => setName(e.target.value)} maxLength={60} />
+              <Input className="h-12 rounded-2xl" value={name} onChange={(e) => setName(e.target.value)} maxLength={60} />
             </div>
 
             <div className="grid gap-4 sm:grid-cols-3">
               <div className="space-y-2">
                 <Label>{t('yieldVaults.currency')}</Label>
                 <Select value={currency} onValueChange={setCurrency}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="h-12 rounded-2xl"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {(selectedPlan?.currencies || ['USD']).map((item) => (
                       <SelectItem key={item} value={item}>{item}</SelectItem>
@@ -377,12 +403,12 @@ const YieldVaultHub = () => {
               </div>
               <div className="space-y-2">
                 <Label>{t('yieldVaults.principal')}</Label>
-                <Input type="number" value={principalAmount} onChange={(e) => setPrincipalAmount(e.target.value)} />
+                <Input className="h-12 rounded-2xl text-lg font-semibold" type="number" value={principalAmount} onChange={(e) => setPrincipalAmount(e.target.value)} />
               </div>
               <div className="space-y-2">
                 <Label>{t('yieldVaults.lockDays')}</Label>
                 <Select value={lockDays} onValueChange={setLockDays}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="h-12 rounded-2xl"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {(selectedPlan?.allowed_lock_days || [30]).map((value) => (
                       <SelectItem key={value} value={String(value)}>{value} jours</SelectItem>
@@ -394,7 +420,7 @@ const YieldVaultHub = () => {
 
             <WalletSelector label={t('yieldVaults.sourceWallet')} value={sourceWalletId} onChange={(id) => setSourceWalletId(id)} filterCurrency={currency} />
 
-            <div className="flex items-center justify-between rounded-2xl border border-border bg-muted/20 p-4">
+            <div className="flex items-center justify-between rounded-3xl border border-border bg-muted/20 p-4">
               <div>
                 <div className="font-medium">{t('yieldVaults.autoRollover')}</div>
                 <p className="text-sm text-muted-foreground">{t('yieldVaults.autoRolloverHint')}</p>
@@ -403,11 +429,11 @@ const YieldVaultHub = () => {
             </div>
 
             {selectedPlan && (
-              <div className="space-y-3 rounded-2xl border border-border bg-muted/20 p-4">
+              <div className="space-y-3 rounded-3xl border border-border bg-muted/20 p-4">
                 <div className="font-semibold">{t('yieldVaults.rules')}</div>
                 <div className="grid gap-2 sm:grid-cols-2">
                   {selectedPlan.rules.map((rule) => (
-                    <div key={rule.title} className="rounded-xl bg-background/70 p-3 text-sm">
+                    <div key={rule.title} className="rounded-2xl bg-background/70 p-3 text-sm">
                       <div className="text-xs text-muted-foreground">{rule.title}</div>
                       <div className="mt-1 font-medium">{rule.value}</div>
                     </div>
@@ -421,9 +447,9 @@ const YieldVaultHub = () => {
               </div>
             )}
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setOpenCreate(false)}>{t('common.cancel')}</Button>
-            <Button onClick={submitCreate} disabled={creating} className="bg-gradient-brand shadow-brand">
+          <DialogFooter className="border-t bg-background px-6 py-4">
+            <Button variant="outline" className="h-12 rounded-2xl px-6" onClick={() => setOpenCreate(false)}>{t('common.cancel')}</Button>
+            <Button onClick={submitCreate} disabled={creating} className="h-12 rounded-2xl bg-primary px-6 shadow-brand hover:bg-primary/90">
               {creating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               {t('yieldVaults.open')}
             </Button>
@@ -432,11 +458,18 @@ const YieldVaultHub = () => {
       </Dialog>
 
       <Dialog open={openTopup} onOpenChange={setOpenTopup}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>{t('yieldVaults.addCapital')}</DialogTitle>
+        <DialogContent className="max-w-md overflow-hidden rounded-[2rem] border-0 p-0 shadow-2xl">
+          <DialogHeader className="bg-primary px-6 py-5 text-primary-foreground">
+            <DialogTitle className="text-2xl">{t('yieldVaults.addCapital')}</DialogTitle>
+            <p className="text-sm text-primary-foreground/75">{topupTarget?.name}</p>
           </DialogHeader>
-          <div className="grid gap-4 py-2">
+          <div className="grid gap-5 px-6 py-5">
+            {topupTarget && (
+              <div className="rounded-3xl border border-primary/15 bg-primary/5 p-4">
+                <div className="text-xs text-muted-foreground">{t('yieldVaults.currentValue')}</div>
+                <div className="font-display text-2xl font-bold">{formatMoney(Number(topupTarget.current_value || 0), topupTarget.currency)}</div>
+              </div>
+            )}
             <WalletSelector
               label={t('yieldVaults.sourceWallet')}
               value={topupWalletId}
@@ -445,12 +478,12 @@ const YieldVaultHub = () => {
             />
             <div className="space-y-2">
               <Label>{t('common.amount')}</Label>
-              <Input type="number" value={topupAmount} onChange={(e) => setTopupAmount(e.target.value)} />
+              <Input className="h-12 rounded-2xl text-lg font-semibold" type="number" value={topupAmount} onChange={(e) => setTopupAmount(e.target.value)} />
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setOpenTopup(false)}>{t('common.cancel')}</Button>
-            <Button onClick={submitTopup} disabled={contributing} className="bg-gradient-brand shadow-brand">
+          <DialogFooter className="border-t bg-background px-6 py-4">
+            <Button variant="outline" className="h-12 rounded-2xl px-6" onClick={() => setOpenTopup(false)}>{t('common.cancel')}</Button>
+            <Button onClick={submitTopup} disabled={contributing} className="h-12 rounded-2xl bg-primary px-6 shadow-brand hover:bg-primary/90">
               {contributing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               {t('yieldVaults.addCapital')}
             </Button>
@@ -464,4 +497,3 @@ const YieldVaultHub = () => {
 };
 
 export default YieldVaultHub;
-

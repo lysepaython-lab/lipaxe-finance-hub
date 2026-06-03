@@ -40,7 +40,9 @@
     "yieldVaults": "Yield Vaults",
     "account": "Compte",
     "profile": "Profil",
-    "affiliation": "Affiliation"
+    "affiliation": "Affiliation",
+    "earn": "Gagnez (Lipaxe rallonge)",
+    "swap": "Conversion"
   },
   "landing": {
     "heroEyebrow": "Securite bancaire · 180+ pays",
@@ -138,7 +140,8 @@
     "authFeatureContactlessTitle": "Sans contact",
     "authFeatureContactlessDesc": "Paiements rapides, modernes et simples",
     "authFeatureMobileTitle": "Mobile first",
-    "authFeatureMobileDesc": "Gerez tout depuis votre mobile"
+    "authFeatureMobileDesc": "Gerez tout depuis votre mobile",
+    "secureLogin": "connexion Sécurisée"
   },
   "dashboard": {
     "greeting": "Ravi de vous revoir",
@@ -391,7 +394,6 @@
     "step5": "Revision",
     "dob": "Date de naissance",
     "nationality": "Nationalite",
-
     "phone": "Telephone",
     "gender": "Genre",
     "gender_male": "Homme",

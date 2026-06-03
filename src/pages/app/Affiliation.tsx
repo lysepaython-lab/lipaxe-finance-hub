@@ -40,118 +40,203 @@ const Affiliation = () => {
   ];
 
   return (
-    <div className="mx-auto max-w-6xl space-y-5 rounded-[2rem] bg-background p-3 text-foreground shadow-sm ring-1 ring-border sm:p-6 dark:bg-[#07110f] dark:text-slate-100 dark:shadow-2xl dark:ring-white/10">
+    <div className="mx-auto max-w-6xl space-y-4 sm:space-y-5 rounded-2xl sm:rounded-[2rem] bg-background p-3 sm:p-4 md:p-6 text-foreground shadow-sm ring-1 ring-border dark:bg-[#07110f] dark:text-slate-100 dark:shadow-2xl dark:ring-white/10">
+      
+      {/* En-tête responsive */}
       <div className="flex flex-col gap-3 border-b border-border pb-4 sm:flex-row sm:items-center sm:justify-between dark:border-emerald-300/20">
         <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary dark:bg-emerald-400/12 dark:text-emerald-300">
-            <Gift className="h-5 w-5" />
+          <div className="flex h-9 w-9 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary dark:bg-emerald-400/12 dark:text-emerald-300">
+            <Gift className="h-4 w-4 sm:h-5 sm:w-5" />
           </div>
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary dark:text-emerald-300">Referrals</p>
-            <h1 className="font-display text-2xl font-bold">Affiliate Dashboard</h1>
+            <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-[0.2em] sm:tracking-[0.24em] text-primary dark:text-emerald-300">
+              Referrals
+            </p>
+            {/* <h1 className="font-display text-xl sm:text-2xl font-bold">Affiliate Dashboard</h1> */}
           </div>
         </div>
-        <div className="w-fit rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-bold text-primary dark:border-emerald-300/20 dark:bg-emerald-400/10 dark:text-emerald-200">
+        <div className="w-fit rounded-full border border-primary/20 bg-primary/10 px-2.5 sm:px-3 py-1 text-[10px] sm:text-xs font-bold text-primary dark:border-emerald-300/20 dark:bg-emerald-400/10 dark:text-emerald-200">
           10% Commission
         </div>
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-2">
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="rounded-3xl border border-border bg-card p-4 sm:p-5 dark:border-white/10 dark:bg-white/[0.035]">
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      {/* Grille principale responsive */}
+      <div className="grid gap-4 sm:gap-5 lg:grid-cols-2">
+        
+        {/* Carte des statistiques */}
+        <motion.div 
+          initial={{ opacity: 0, y: 10 }} 
+          animate={{ opacity: 1, y: 0 }} 
+          className="rounded-2xl sm:rounded-3xl border border-border bg-card p-4 sm:p-5 dark:border-white/10 dark:bg-white/[0.035]"
+        >
+          {/* Grille des stats responsive: 2 colonnes sur mobile, 4 sur desktop */}
+          <div className="grid grid-cols-2 gap-2 sm:gap-3">
             {stats.map((item) => (
-              <div key={item.label} className="rounded-2xl bg-muted/60 p-3 text-center sm:p-4 dark:bg-black/20">
-                <div className="text-xs text-muted-foreground dark:text-slate-400">{item.label}</div>
-                <div className={`mt-2 font-display text-lg font-bold ${metricTone[item.tone]}`}>{item.value}</div>
+              <div key={item.label} className="rounded-xl sm:rounded-2xl bg-muted/60 p-2.5 sm:p-3 text-center dark:bg-black/20">
+                <div className="text-[10px] sm:text-xs text-muted-foreground dark:text-slate-400">{item.label}</div>
+                <div className={`mt-1 sm:mt-2 font-display text-base sm:text-lg font-bold truncate ${metricTone[item.tone]}`}>
+                  {item.value}
+                </div>
               </div>
             ))}
           </div>
-          <Button disabled className="mt-5 h-12 w-full rounded-2xl bg-primary/70 text-primary-foreground dark:bg-emerald-500/50 dark:text-white">
+          <Button disabled className="mt-4 sm:mt-5 h-10 sm:h-12 w-full rounded-xl sm:rounded-2xl bg-primary/70 text-primary-foreground text-sm sm:text-base dark:bg-emerald-500/50 dark:text-white">
             Request Payout
           </Button>
-          <p className="mt-2 text-center text-xs text-muted-foreground dark:text-slate-500">Minimum payout: $50</p>
+          <p className="mt-2 text-center text-[10px] sm:text-xs text-muted-foreground dark:text-slate-500">
+            Minimum payout: $50
+          </p>
         </motion.div>
 
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.04 }} className="rounded-3xl border border-border bg-card p-4 sm:p-5 dark:border-white/10 dark:bg-white/[0.035]">
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-xs text-muted-foreground dark:text-slate-400">Your Referral Code</label>
+        {/* Carte du code de parrainage */}
+        <motion.div 
+          initial={{ opacity: 0, y: 10 }} 
+          animate={{ opacity: 1, y: 0 }} 
+          transition={{ delay: 0.04 }} 
+          className="rounded-2xl sm:rounded-3xl border border-border bg-card p-4 sm:p-5 dark:border-white/10 dark:bg-white/[0.035]"
+        >
+          <div className="space-y-3 sm:space-y-4">
+            <div className="space-y-1.5 sm:space-y-2">
+              <label className="text-[10px] sm:text-xs text-muted-foreground dark:text-slate-400">Your Referral Code</label>
               <div className="flex gap-2">
-                <Input readOnly value={code} className="h-12 rounded-2xl dark:border-white/10 dark:bg-black/30 dark:text-white" />
-                <Button disabled className="h-12 rounded-2xl bg-primary/70 px-6 text-primary-foreground dark:bg-emerald-500/60 dark:text-white">Update</Button>
+                <Input 
+                  readOnly 
+                  value={code} 
+                  className="h-10 sm:h-12 rounded-xl sm:rounded-2xl text-sm dark:border-white/10 dark:bg-black/30 dark:text-white" 
+                />
+                <Button disabled className="h-10 sm:h-12 rounded-xl sm:rounded-2xl bg-primary/70 px-4 sm:px-6 text-sm text-primary-foreground dark:bg-emerald-500/60 dark:text-white">
+                  Update
+                </Button>
               </div>
             </div>
-            <div className="space-y-2">
-              <label className="text-xs text-muted-foreground dark:text-slate-400">Your Referral Link</label>
-              <div className="flex min-w-0 items-center gap-2 rounded-2xl border border-border bg-muted/50 px-4 py-3 dark:border-white/10 dark:bg-black/30">
-                <code className="min-w-0 flex-1 truncate text-sm text-foreground dark:text-slate-200">{link}</code>
-                <button onClick={() => copy(link)} className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-white">
-                  <Copy className="h-4 w-4" />
+            <div className="space-y-1.5 sm:space-y-2">
+              <label className="text-[10px] sm:text-xs text-muted-foreground dark:text-slate-400">Your Referral Link</label>
+              <div className="flex min-w-0 items-center gap-1.5 sm:gap-2 rounded-xl sm:rounded-2xl border border-border bg-muted/50 px-2 sm:px-4 py-2 sm:py-3 dark:border-white/10 dark:bg-black/30">
+                <code className="min-w-0 flex-1 truncate text-xs sm:text-sm text-foreground dark:text-slate-200">
+                  {link}
+                </code>
+                <button 
+                  onClick={() => copy(link)} 
+                  className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-white"
+                >
+                  <Copy className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 </button>
-                <button onClick={() => toast.success(t('affiliation.shared'))} className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-white">
-                  <Share2 className="h-4 w-4" />
+                <button 
+                  onClick={() => toast.success(t('affiliation.shared'))} 
+                  className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-white"
+                >
+                  <Share2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 </button>
               </div>
             </div>
           </div>
         </motion.div>
 
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }} className="rounded-3xl border border-border bg-card p-4 sm:p-5 dark:border-white/10 dark:bg-white/[0.035]">
-          <div className="mb-4 flex items-center gap-2 font-semibold">
-            <Wallet className="h-4 w-4 text-primary dark:text-emerald-300" />
-            Payout Wallet
+        {/* Carte du wallet de paiement */}
+        <motion.div 
+          initial={{ opacity: 0, y: 10 }} 
+          animate={{ opacity: 1, y: 0 }} 
+          transition={{ delay: 0.08 }} 
+          className="rounded-2xl sm:rounded-3xl border border-border bg-card p-4 sm:p-5 dark:border-white/10 dark:bg-white/[0.035]"
+        >
+          <div className="mb-3 sm:mb-4 flex items-center gap-2 font-semibold">
+            <Wallet className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary dark:text-emerald-300" />
+            <span className="text-sm sm:text-base">Payout Wallet</span>
           </div>
-          <div className="space-y-3">
-            <Input placeholder="Wallet ID" className="h-12 rounded-2xl dark:border-white/10 dark:bg-black/30 dark:text-white dark:placeholder:text-slate-500" />
-            <Input placeholder="your@email.com" className="h-12 rounded-2xl dark:border-white/10 dark:bg-black/30 dark:text-white dark:placeholder:text-slate-500" />
-            <Button disabled className="h-12 w-full rounded-2xl bg-primary/70 text-primary-foreground dark:bg-emerald-500/60 dark:text-white">Save</Button>
+          <div className="space-y-2.5 sm:space-y-3">
+            <Input 
+              placeholder="Wallet ID" 
+              className="h-10 sm:h-12 rounded-xl sm:rounded-2xl text-sm dark:border-white/10 dark:bg-black/30 dark:text-white dark:placeholder:text-slate-500" 
+            />
+            <Input 
+              placeholder="your@email.com" 
+              className="h-10 sm:h-12 rounded-xl sm:rounded-2xl text-sm dark:border-white/10 dark:bg-black/30 dark:text-white dark:placeholder:text-slate-500" 
+            />
+            <Button disabled className="h-10 sm:h-12 w-full rounded-xl sm:rounded-2xl bg-primary/70 text-sm text-primary-foreground dark:bg-emerald-500/60 dark:text-white">
+              Save
+            </Button>
           </div>
         </motion.div>
 
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }} className="rounded-3xl border border-border bg-card p-4 sm:p-5 dark:border-white/10 dark:bg-white/[0.035]">
-          <div className="mb-4 flex items-center justify-between">
+        {/* Carte des codes promo */}
+        <motion.div 
+          initial={{ opacity: 0, y: 10 }} 
+          animate={{ opacity: 1, y: 0 }} 
+          transition={{ delay: 0.12 }} 
+          className="rounded-2xl sm:rounded-3xl border border-border bg-card p-4 sm:p-5 dark:border-white/10 dark:bg-white/[0.035]"
+        >
+          <div className="mb-3 sm:mb-4 flex flex-col xs:flex-row items-start xs:items-center justify-between gap-2">
             <div className="flex items-center gap-2 font-semibold">
-              <Tag className="h-4 w-4 text-primary dark:text-emerald-300" />
-              Discount Codes
+              <Tag className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary dark:text-emerald-300" />
+              <span className="text-sm sm:text-base">Discount Codes</span>
             </div>
-            <Button disabled size="sm" className="rounded-xl bg-primary/20 text-primary dark:bg-emerald-500/30 dark:text-emerald-100">+ Create Code</Button>
+            <Button disabled size="sm" className="rounded-lg sm:rounded-xl bg-primary/20 text-primary text-xs sm:text-sm dark:bg-emerald-500/30 dark:text-emerald-100">
+              + Create Code
+            </Button>
           </div>
-          <div className="flex h-28 items-center justify-center rounded-2xl border border-dashed border-border text-sm text-muted-foreground dark:border-white/10 dark:text-slate-500">
+          <div className="flex h-24 sm:h-28 items-center justify-center rounded-xl sm:rounded-2xl border border-dashed border-border text-xs sm:text-sm text-muted-foreground dark:border-white/10 dark:text-slate-500">
             No discount codes yet.
           </div>
         </motion.div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {/* Cartes de métriques - responsive grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
         {[
           { icon: Users2, label: 'Signups', value: affiliate?.total_referrals || 0 },
           { icon: TrendingUp, label: 'Converted', value: paidCount },
           { icon: Users2, label: 'Direct Referrals', value: affiliate?.total_referrals || 0 },
           { icon: DollarSign, label: 'Total Sales', value: formatMoney(total, 'USD') },
         ].map((item) => (
-          <div key={item.label} className="rounded-3xl border border-border bg-card p-4 sm:p-5 dark:border-white/10 dark:bg-white/[0.035]">
-            <item.icon className="mb-3 h-4 w-4 text-muted-foreground dark:text-slate-500" />
-            <div className="text-xs text-muted-foreground dark:text-slate-500">{item.label}</div>
-            <div className="mt-1 font-display text-2xl font-bold">{item.value}</div>
+          <div key={item.label} className="rounded-xl sm:rounded-2xl md:rounded-3xl border border-border bg-card p-3 sm:p-4 dark:border-white/10 dark:bg-white/[0.035]">
+            <item.icon className="mb-2 sm:mb-3 h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground dark:text-slate-500" />
+            <div className="text-[10px] sm:text-xs text-muted-foreground dark:text-slate-500">{item.label}</div>
+            <div className="mt-0.5 sm:mt-1 font-display text-lg sm:text-2xl font-bold truncate">
+              {typeof item.value === 'number' ? item.value.toLocaleString() : item.value}
+            </div>
           </div>
         ))}
       </div>
 
-      <div className="overflow-hidden rounded-3xl border border-border bg-card dark:border-white/10 dark:bg-white/[0.035]">
-        <div className="border-b border-border px-5 py-4 font-semibold dark:border-white/10">Commission history</div>
+      {/* Tableau de l'historique des commissions - responsive */}
+      <div className="overflow-hidden rounded-xl sm:rounded-2xl md:rounded-3xl border border-border bg-card dark:border-white/10 dark:bg-white/[0.035]">
+        <div className="border-b border-border px-4 sm:px-5 py-3 sm:py-4 font-semibold text-sm sm:text-base dark:border-white/10">
+          Commission history
+        </div>
         {entries.map((entry, i) => (
-          <motion.div key={entry.id} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.04 }} className="flex flex-col gap-2 border-b border-border px-5 py-4 last:border-0 sm:flex-row sm:items-center sm:justify-between dark:border-white/10">
-            <div className="min-w-0">
-              <div className="truncate font-medium">{entry.from_user || 'Referral'}</div>
-              <div className="text-xs text-muted-foreground dark:text-slate-500">{new Date(entry.createdAt).toLocaleString()}</div>
+          <motion.div 
+            key={entry.id} 
+            initial={{ opacity: 0, x: -8 }} 
+            animate={{ opacity: 1, x: 0 }} 
+            transition={{ delay: i * 0.04 }} 
+            className="flex flex-col sm:flex-row gap-2 border-b border-border px-4 sm:px-5 py-3 sm:py-4 last:border-0 dark:border-white/10"
+          >
+            {/* Colonne gauche: info utilisateur (responsive) */}
+            <div className="min-w-0 flex-1">
+              <div className="truncate font-medium text-sm sm:text-base">
+                {entry.from_user || 'Referral'}
+              </div>
+              <div className="text-[10px] sm:text-xs text-muted-foreground dark:text-slate-500 mt-0.5">
+                {new Date(entry.createdAt).toLocaleString()}
+              </div>
             </div>
-            <div className="text-left sm:text-right">
-              <div className="font-display font-bold text-primary dark:text-emerald-300">+{formatMoney(entry.amount, entry.currency)}</div>
-              <div className="text-[11px] uppercase text-muted-foreground dark:text-slate-500">{entry.status}</div>
+            
+            {/* Colonne droite: montant et status (responsive) */}
+            <div className="flex flex-row sm:flex-col items-center justify-between sm:items-end gap-2 sm:gap-0">
+              <div className="font-display font-bold text-sm sm:text-base text-primary dark:text-emerald-300">
+                +{formatMoney(entry.amount, entry.currency)}
+              </div>
+              <div className="text-[9px] sm:text-[11px] uppercase text-muted-foreground dark:text-slate-500">
+                {entry.status}
+              </div>
             </div>
           </motion.div>
         ))}
-        {entries.length === 0 && <div className="px-5 py-8 text-center text-sm text-muted-foreground dark:text-slate-500">Aucune commission.</div>}
+        {entries.length === 0 && (
+          <div className="px-4 sm:px-5 py-8 text-center text-xs sm:text-sm text-muted-foreground dark:text-slate-500">
+            Aucune commission.
+          </div>
+        )}
       </div>
     </div>
   );

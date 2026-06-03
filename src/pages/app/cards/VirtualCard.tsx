@@ -18,13 +18,16 @@ import { formatMoney } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
+// Gestion des erreurs API avec fallback
 const apiMessage = (error: unknown, fallback: string) => {
   const data = (error as { data?: { detail?: string; message?: string; error?: string } })?.data;
   return data?.message || data?.detail || data?.error || fallback;
 };
 
+// Composant d'affichage du logo de la carte (Visa ou Mastercard)
 const CardBrandMark = ({ brand }: { brand: 'Visa' | 'Mastercard' }) => {
   if (brand === 'Visa') return <span className="font-display text-3xl font-bold italic text-[#1a4f9c]">VISA</span>;
+  // Logo Mastercard avec les deux cercles rouges et orange
   return (
     <span className="relative block h-12 w-20">
       <span className="absolute left-4 top-1 h-10 w-10 rounded-full bg-[#eb001b]" />
@@ -33,6 +36,7 @@ const CardBrandMark = ({ brand }: { brand: 'Visa' | 'Mastercard' }) => {
   );
 };
 
+// État visuel pour les fonctionnalités (activé/désactivé)
 const CheckState = ({ enabled }: { enabled?: boolean }) =>
   enabled ? (
     <span className="mx-auto flex h-5 w-5 items-center justify-center rounded-full border border-emerald-400 text-emerald-500">
@@ -44,6 +48,7 @@ const CheckState = ({ enabled }: { enabled?: boolean }) =>
     </span>
   );
 
+// Labels des offres selon le type ou l'index
 const offerLabel = (offer: CardOffer, index: number) => {
   const type = offer.card_type?.toLowerCase() || '';
   if (type.includes('credit')) return 'Credit card';
@@ -51,6 +56,7 @@ const offerLabel = (offer: CardOffer, index: number) => {
   return index === 2 ? 'Credit card' : index === 1 ? 'Debit card' : 'Prepaid card';
 };
 
+// Descriptions des offres
 const offerDescription = (offer: CardOffer, index: number) =>
   offer.description ||
   [
@@ -60,13 +66,15 @@ const offerDescription = (offer: CardOffer, index: number) =>
   ][index] ||
   'Virtual card for secure online payments';
 
+// Formatage des montants
 const money = (amount?: number, currency = 'USD') => formatMoney(Number(amount || 0), currency);
 
+// Composant de carte d'offre (responsive)
 const OfferCard = ({ offer, index, onCreate }: { offer: CardOffer; index: number; onCreate: (offer: CardOffer) => void }) => (
-  <div className="flex min-h-[410px] flex-col items-center border-border/70 px-8 py-9 text-center lg:border-l first:lg:border-l-0">
+  <div className="flex min-h-[410px] flex-col items-center border-border/70 px-4 sm:px-6 md:px-8 py-6 sm:py-9 text-center border-b last:border-b-0 md:border-b-0 lg:border-l first:lg:border-l-0">
     <Badge
       className={cn(
-        'mb-4 rounded-full px-4 py-1 text-[11px] font-semibold',
+        'mb-4 rounded-full px-3 sm:px-4 py-1 text-[10px] sm:text-[11px] font-semibold',
         index === 0 && 'bg-primary text-primary-foreground',
         index === 1 && 'bg-slate-800 text-white',
         index >= 2 && 'bg-amber-800 text-white',
@@ -74,46 +82,53 @@ const OfferCard = ({ offer, index, onCreate }: { offer: CardOffer; index: number
     >
       {offerLabel(offer, index)}
     </Badge>
-    <div className="mb-5 flex h-20 w-28 items-center justify-center rounded-2xl bg-muted/70">
+    <div className="mb-5 flex h-16 w-24 sm:h-20 sm:w-28 items-center justify-center rounded-2xl bg-muted/70">
       <CardBrandMark brand={offer.brand} />
     </div>
-    <h3 className="font-display text-xl font-bold tracking-tight">{offer.name}</h3>
-    <p className="mt-2 min-h-10 max-w-xs text-sm text-muted-foreground">{offerDescription(offer, index)}</p>
-    <div className="my-7">
-      <div className="flex items-start justify-center font-display text-5xl font-bold tracking-tight">
-        <span className="mt-2 text-2xl text-primary">$</span>
+    <h3 className="font-display text-lg sm:text-xl font-bold tracking-tight text-center px-2">{offer.name}</h3>
+    <p className="mt-2 min-h-10 max-w-xs text-xs sm:text-sm text-muted-foreground text-center px-2">
+      {offerDescription(offer, index)}
+    </p>
+    <div className="my-5 sm:my-7">
+      <div className="flex items-start justify-center font-display text-3xl sm:text-5xl font-bold tracking-tight">
+        <span className="mt-1 sm:mt-2 text-xl sm:text-2xl text-primary">$</span>
         {Number(offer.creation_fixed_fee || offer.price || 0).toFixed(0)}
       </div>
-      <Badge className="mt-2 bg-primary px-4 py-1 text-primary-foreground">{offer.currency}</Badge>
+      <Badge className="mt-2 bg-primary px-3 sm:px-4 py-1 text-primary-foreground text-[10px] sm:text-xs">
+        {offer.currency}
+      </Badge>
     </div>
-    <div className="mb-6 flex flex-wrap justify-center gap-2">
+    <div className="mb-6 flex flex-wrap justify-center gap-1.5 sm:gap-2">
       {offer.supports_3ds && (
-        <Badge variant="secondary" className="gap-1.5 rounded-lg px-3 py-1">
-          <Shield className="h-3.5 w-3.5" /> 3D Secure
+        <Badge variant="secondary" className="gap-1 rounded-lg px-2 sm:px-3 py-1 text-[10px] sm:text-xs">
+          <Shield className="h-3 w-3 sm:h-3.5 sm:w-3.5" /> 3D Secure
         </Badge>
       )}
       {offer.supports_apple_pay && (
-        <Badge variant="secondary" className="gap-1.5 rounded-lg px-3 py-1">
-          <Apple className="h-3.5 w-3.5" /> Apple Pay
+        <Badge variant="secondary" className="gap-1 rounded-lg px-2 sm:px-3 py-1 bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400">
+          <Check className="h-2.5 w-2.5 sm:h-3 sm:w-3" /> <Apple className="h-3 w-3 sm:h-3.5 sm:w-3.5" /> Apple Pay
         </Badge>
       )}
       {offer.supports_google_pay && (
-        <Badge variant="secondary" className="gap-1.5 rounded-lg px-3 py-1">
-          <FaGoogle className="h-3.5 w-3.5" /> Google Pay
+        <Badge variant="secondary" className="gap-1 rounded-lg px-2 sm:px-3 py-1 bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400">
+          <Check className="h-2.5 w-2.5 sm:h-3 sm:w-3" /> <FaGoogle className="h-3 w-3 sm:h-3.5 sm:w-3.5" /> Google Pay
         </Badge>
       )}
     </div>
-    <Button onClick={() => onCreate(offer)} className="mt-auto h-12 w-full rounded-2xl bg-primary text-primary-foreground shadow-brand hover:bg-primary/90">
-      Create <Plus className="ml-2 h-4 w-4" />
+    <Button onClick={() => onCreate(offer)} className="mt-auto h-11 sm:h-12 w-full rounded-xl sm:rounded-2xl bg-primary text-primary-foreground shadow-brand hover:bg-primary/90">
+      Create <Plus className="ml-2 h-3.5 w-3.5 sm:h-4 sm:w-4" />
     </Button>
   </div>
 );
 
+// Ligne de comparaison responsive avec défilement horizontal
 const CompareRow = ({ label, values }: { label: string; values: React.ReactNode[] }) => (
-  <div className="grid min-w-[760px] grid-cols-[240px_repeat(3,minmax(160px,1fr))] border-t border-border/70">
-    <div className="bg-muted/35 px-6 py-5 text-sm font-bold text-muted-foreground">{label}</div>
+  <div className="grid min-w-[600px] md:min-w-[700px] lg:min-w-[760px] grid-cols-[140px_repeat(3,minmax(120px,1fr))] sm:grid-cols-[180px_repeat(3,minmax(140px,1fr))] lg:grid-cols-[240px_repeat(3,minmax(160px,1fr))] border-t border-border/70">
+    <div className="bg-muted/35 px-3 sm:px-4 lg:px-6 py-3 sm:py-4 lg:py-5 text-xs sm:text-sm font-bold text-muted-foreground break-words">
+      {label}
+    </div>
     {values.slice(0, 3).map((value, index) => (
-      <div key={index} className="border-l border-border/70 px-6 py-5 text-center text-sm font-bold">
+      <div key={index} className="border-l border-border/70 px-2 sm:px-3 lg:px-6 py-3 sm:py-4 lg:py-5 text-center text-xs sm:text-sm font-bold">
         {value}
       </div>
     ))}
@@ -126,13 +141,18 @@ const VirtualCard = () => {
   const { data: offers, isLoading } = useCardOffersQuery();
   const [orderCard, { isLoading: ordering }] = useOrderCardMutation();
   const pin = usePinGate();
+  
+  // États du formulaire de création de carte
   const [orderOpen, setOrderOpen] = useState(false);
   const [selectedOffer, setSelectedOffer] = useState<CardOffer | null>(null);
   const [walletId, setWalletId] = useState<string>();
   const [funding, setFunding] = useState('5');
   const [nameOnCard, setNameOnCard] = useState((user ? `${user.firstName} ${user.lastName}` : '').toUpperCase());
 
+  // 3 premières offres uniquement
   const visibleOffers = useMemo(() => (offers || []).slice(0, 3), [offers]);
+  
+  // Calculs des frais pour le récapitulatif
   const issuanceFee = Number(selectedOffer?.creation_fixed_fee || selectedOffer?.price || 0);
   const initialBalance = Number(funding || 0);
   const providerFundingFee = Number(selectedOffer?.funding_fixed_fee || 0)
@@ -141,15 +161,17 @@ const VirtualCard = () => {
   const totalFundingFee = providerFundingFee + lipaxeFundingFee;
   const orderTotal = issuanceFee + initialBalance + totalFundingFee;
 
+  // Ouvre le modal de création avec l'offre sélectionnée
   const openCreate = (offer: CardOffer) => {
     setSelectedOffer(offer);
     setFunding(String(offer.min_funding || 5));
     setOrderOpen(true);
   };
 
+  // Soumet la commande de carte avec vérification PIN
   const submitOrder = () => {
     if (!selectedOffer || !walletId) {
-      toast.error('Selectionnez une offre et un wallet');
+      toast.error('Sélectionnez une offre et un wallet');
       return;
     }
     pin.guard(async () => {
@@ -163,7 +185,7 @@ const VirtualCard = () => {
         }).unwrap();
         const raw = result as { status?: string; message?: string; detail?: string; reference?: string };
         raw.status === 'pending'
-          ? toast.warning(raw.message || `Operation en verification fournisseur. Reference: ${raw.reference || '-'}`)
+          ? toast.warning(raw.message || `Opération en vérification fournisseur. Référence: ${raw.reference || '-'}`)
           : toast.success(raw.message || raw.detail || t('cards.virtualCreated'));
         setOrderOpen(false);
       } catch (error) {
@@ -173,21 +195,23 @@ const VirtualCard = () => {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-4 sm:space-y-6 md:space-y-8 px-3 sm:px-4 md:px-0">
+      {/* En-tête de la page */}
       <PageHeader
         title={t('nav.virtualCard')}
         subtitle=""
-        icon={<CreditCard className="h-6 w-6" />}
+        icon={<CreditCard className="h-5 w-5 sm:h-6 sm:w-6" />}
         actions={
           visibleOffers[0] && (
-            <Button onClick={() => openCreate(visibleOffers[0])} className="bg-primary text-primary-foreground shadow-brand hover:bg-primary/90">
-              <Plus className="mr-2 h-4 w-4" /> {t('cards.create')}
+            <Button onClick={() => openCreate(visibleOffers[0])} className="bg-primary text-primary-foreground shadow-brand hover:bg-primary/90 text-sm sm:text-base">
+              <Plus className="mr-1 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4" /> {t('cards.create')}
             </Button>
           )
         }
       />
 
-      <div className="grid gap-2 sm:grid-cols-3">
+      {/* Liens de navigation secondaires */}
+      <div className="grid grid-cols-2 gap-2 sm:gap-3">
         {[
           { to: '/app/cards/my', label: t('nav.myCards'), icon: Wallet },
           { to: '/app/cards/gift', label: t('nav.giftCards'), icon: Gift },
@@ -195,31 +219,33 @@ const VirtualCard = () => {
           <Link
             key={item.to}
             to={item.to}
-            className="flex items-center gap-2 rounded-2xl border border-border/70 bg-card px-4 py-3 text-sm font-semibold shadow-sm transition-colors hover:border-primary/30 hover:bg-primary/5 hover:text-primary"
+            className="flex items-center justify-center sm:justify-start gap-2 rounded-xl sm:rounded-2xl border border-border/70 bg-card px-3 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm font-semibold shadow-sm transition-colors hover:border-primary/30 hover:bg-primary/5 hover:text-primary"
           >
-            <item.icon className="h-4 w-4" />
-            {item.label}
+            <item.icon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            <span className="truncate">{item.label}</span>
           </Link>
         ))}
       </div>
 
-      <section className="overflow-hidden rounded-[2rem] border border-border/70 bg-card shadow-elegant">
-        <div className="grid lg:grid-cols-[250px_1fr]">
-          <div className="flex flex-col justify-center border-b border-border/70 bg-muted/35 p-8 lg:border-b-0 lg:border-r">
-            <h2 className="font-display text-2xl font-bold">Compare cards</h2>
-            <p className="mt-2 text-sm text-muted-foreground">Fees, limits, security.</p>
+      {/* Section de comparaison des offres */}
+      <section className="overflow-hidden rounded-xl sm:rounded-2xl md:rounded-[2rem] border border-border/70 bg-card shadow-elegant">
+        <div className="flex flex-col lg:flex-row">
+          <div className="border-b lg:border-b-0 lg:border-r border-border/70 bg-muted/35 p-4 sm:p-6 md:p-8">
+            <h2 className="font-display text-xl sm:text-2xl font-bold">Compare cards</h2>
+            <p className="mt-1 sm:mt-2 text-xs sm:text-sm text-muted-foreground">Fees, limits, security.</p>
           </div>
-          <div className="grid md:grid-cols-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3">
             {isLoading
-              ? Array.from({ length: 3 }).map((_, index) => <Skeleton key={index} className="m-6 h-[360px] rounded-3xl" />)
+              ? Array.from({ length: 3 }).map((_, index) => <Skeleton key={index} className="m-4 sm:m-6 h-[380px] rounded-2xl" />)
               : visibleOffers.map((offer, index) => <OfferCard key={offer.id} offer={offer} index={index} onCreate={openCreate} />)}
           </div>
         </div>
       </section>
 
+      {/* Tableau comparatif des prix et frais - Scroll horizontal sur mobile */}
       {visibleOffers.length > 0 && (
-        <section className="overflow-x-auto rounded-[1.75rem] border border-border/70 bg-card shadow-sm">
-          <div className="min-w-[760px] border-b border-border/70 bg-muted/35 px-6 py-4 text-sm font-semibold text-muted-foreground">
+        <section className="overflow-x-auto rounded-xl sm:rounded-2xl md:rounded-[1.75rem] border border-border/70 bg-card shadow-sm">
+          <div className="min-w-[600px] md:min-w-[700px] lg:min-w-[760px] border-b border-border/70 bg-muted/35 px-3 sm:px-4 lg:px-6 py-3 sm:py-4 text-xs sm:text-sm font-semibold text-muted-foreground">
             Pricing & fees
           </div>
           <CompareRow label="Card issuance fee" values={visibleOffers.map((o) => money(o.creation_fixed_fee || o.price, o.currency))} />
@@ -232,112 +258,172 @@ const VirtualCard = () => {
               return `${fixed ? `${money(fixed, o.currency)} + ` : ''}${provider + lipaxe}%`;
             })}
           />
-          <CompareRow label="Settlement fee" values={visibleOffers.map((o) => (Number(o.settlement_fee || 0) === 0 ? <Badge className="bg-emerald-100 text-emerald-700">Free</Badge> : money(o.settlement_fee, o.currency)))} />
-          <CompareRow label="Authorization fee" values={visibleOffers.map((o) => (o.authorization_fee ? money(o.authorization_fee, o.currency) : <Minus className="mx-auto h-4 w-4 text-muted-foreground" />))} />
+          <CompareRow label="Settlement fee" values={visibleOffers.map((o) => (Number(o.settlement_fee || 0) === 0 ? <Badge className="bg-emerald-100 text-emerald-700 text-[10px] sm:text-xs">Free</Badge> : money(o.settlement_fee, o.currency)))} />
+          <CompareRow label="Authorization fee" values={visibleOffers.map((o) => (o.authorization_fee ? money(o.authorization_fee, o.currency) : <Minus className="mx-auto h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />))} />
           <CompareRow label="Cross-border fee" values={visibleOffers.map((o) => `${o.cross_border_fee_percent || 2.5}%`)} />
           <CompareRow label="Maintenance fee" values={visibleOffers.map((o) => `${money(o.monthly_fee || 1, o.currency)}/mo`)} />
           <CompareRow label="Withdrawal fee" values={visibleOffers.map((o) => `${o.withdrawal_fee_percent || 1.5}%`)} />
 
-          <div className="min-w-[760px] border-y border-border/70 bg-muted/35 px-6 py-4 text-sm font-semibold text-muted-foreground">
+          {/* Section sécurité et paiements */}
+          <div className="min-w-[600px] md:min-w-[700px] lg:min-w-[760px] border-y border-border/70 bg-muted/35 px-3 sm:px-4 lg:px-6 py-3 sm:py-4 text-xs sm:text-sm font-semibold text-muted-foreground">
             Security & payments
           </div>
           <CompareRow label="3D Secure (3DS)" values={visibleOffers.map((o) => <CheckState enabled={o.supports_3ds} />)} />
-          <CompareRow label="Apple Pay" values={visibleOffers.map((o) => <CheckState enabled={o.supports_apple_pay} />)} />
-          <CompareRow label="Google Pay" values={visibleOffers.map((o) => <CheckState enabled={o.supports_google_pay} />)} />
-          <CompareRow label="Authentication" values={visibleOffers.map((o) => <Badge variant="secondary">{o.authentication || 'OTP'}</Badge>)} />
+          {/* Apple Pay avec icône de check */}
+           <CompareRow  label="Apple Pay"   values={visibleOffers.map((o) => <CheckState enabled={o.supports_3ds} />)} />
+         
+          {/* <CompareRow 
+            label="Apple Pay" 
+            values={visibleOffers.map((o) => (
+              <div className="flex items-center justify-center gap-1.5">
+                {o.supports_apple_pay ? (
+                  <>
+                    <Check className="h-3.5 w-3.5 text-emerald-500" />
+                    <Apple className="h-3.5 w-3.5" />
+                    <span className="text-xs">Yes</span>
+                  </>
+                ) : (
+                  <Minus className="h-3.5 w-3.5 text-muted-foreground" />
+                )}
+              </div>
+            ))} 
+          /> */}
+          {/* Google Pay avec icône de check */}
+            <CompareRow label="Google Pay"  values={visibleOffers.map((o) => <CheckState enabled={o.supports_3ds} />)} />
+         
+          {/* <CompareRow 
+            label="Google Pay" 
+            values={visibleOffers.map((o) => (
+              <div className="flex items-center justify-center gap-1.5">
+                {o.supports_google_pay ? (
+                  <>
+                    <Check className="h-3.5 w-3.5 text-emerald-500" />
+                    <FaGoogle className="h-3.5 w-3.5" />
+                    <span className="text-xs">Yes</span>
+                  </>
+                ) : (
+                  <Minus className="h-3.5 w-3.5 text-muted-foreground" />
+                )}
+              </div>
+            ))} 
+          /> */}
+          <CompareRow label="Authentication" values={visibleOffers.map((o) => <Badge variant="secondary" className="text-[10px] sm:text-xs">{o.authentication || 'OTP'}</Badge>)} />
 
-          <div className="min-w-[760px] border-y border-border/70 bg-muted/35 px-6 py-4 text-sm font-semibold text-muted-foreground">
+          {/* Section limites et utilisation */}
+          <div className="min-w-[600px] md:min-w-[700px] lg:min-w-[760px] border-y border-border/70 bg-muted/35 px-3 sm:px-4 lg:px-6 py-3 sm:py-4 text-xs sm:text-sm font-semibold text-muted-foreground">
             Limits & usage
           </div>
           <CompareRow label="Daily limit" values={visibleOffers.map((o) => money(o.daily_limit || 500, o.currency))} />
           <CompareRow label="Monthly limit" values={visibleOffers.map((o) => money(o.monthly_limit || 5000, o.currency))} />
-          <CompareRow label="Verdict" values={['Ads & online', 'Subscriptions', 'Premium usage'].map((label) => <Badge variant="secondary">{label}</Badge>)} />
+          <CompareRow label="Verdict" values={['Ads & online', 'Subscriptions', 'Premium usage'].map((label) => <Badge variant="secondary" className="text-[10px] sm:text-xs">{label}</Badge>)} />
         </section>
       )}
 
-      <section className="rounded-[1.75rem] border border-border/70 bg-card p-5 shadow-sm">
-        <h2 className="font-display text-xl font-bold">Works great with</h2>
-        <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      {/* Section partenaires */}
+      <section className="rounded-xl sm:rounded-2xl md:rounded-[1.75rem] border border-border/70 bg-card p-4 sm:p-5 shadow-sm">
+        <h2 className="font-display text-lg sm:text-xl font-bold">Works great with</h2>
+        <div className="mt-4 sm:mt-5 grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
           {[
             ['Meta Ads', FaMeta],
             ['Google', FaGoogle],
             ['TikTok', FaTiktok],
             ['Apple Pay', Apple],
           ].map(([label, Icon]) => (
-            <div key={String(label)} className="flex items-center gap-2 rounded-2xl border border-border/70 bg-background p-3 text-sm font-bold">
-              <Icon className="h-5 w-5 text-primary" />
-              {String(label)}
+            <div key={String(label)} className="flex items-center justify-center sm:justify-start gap-2 rounded-xl sm:rounded-2xl border border-border/70 bg-background p-2.5 sm:p-3 text-xs sm:text-sm font-bold">
+              <Icon className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
+              <span className="truncate">{String(label)}</span>
             </div>
           ))}
         </div>
       </section>
 
+      {/* Modal de création de carte */}
       <Dialog open={orderOpen} onOpenChange={setOrderOpen}>
-        <DialogContent className="max-h-[92vh] max-w-2xl overflow-hidden p-0">
-          <DialogHeader className="flex-row items-center justify-between bg-primary px-7 py-5 text-primary-foreground">
-            <DialogTitle className="flex items-center gap-3 font-display text-2xl">
-              <CreditCard className="h-6 w-6" /> Create Card
+        <DialogContent className="max-h-[92vh] max-w-[95vw] sm:max-w-2xl overflow-hidden p-0 rounded-2xl sm:rounded-3xl">
+          <DialogHeader className="flex-row items-center justify-between bg-primary px-4 sm:px-7 py-4 sm:py-5 text-primary-foreground">
+            <DialogTitle className="flex items-center gap-2 sm:gap-3 font-display text-xl sm:text-2xl">
+              <CreditCard className="h-5 w-5 sm:h-6 sm:w-6" /> Create Card
             </DialogTitle>
             <button onClick={() => setOrderOpen(false)} className="rounded-full p-1 text-primary-foreground/70 hover:text-primary-foreground">
-              <X className="h-5 w-5" />
+              <X className="h-4 w-4 sm:h-5 sm:w-5" />
             </button>
           </DialogHeader>
-          <div className="max-h-[calc(92vh-80px)] overflow-y-auto p-7">
+          <div className="max-h-[calc(92vh-80px)] overflow-y-auto p-4 sm:p-7">
             {selectedOffer && (
-              <div className="mb-7 text-center">
-                <div className="mx-auto mb-4 flex h-20 w-28 items-center justify-center rounded-2xl bg-muted">
+              <div className="mb-5 sm:mb-7 text-center">
+                <div className="mx-auto mb-3 sm:mb-4 flex h-16 w-24 sm:h-20 sm:w-28 items-center justify-center rounded-xl sm:rounded-2xl bg-muted">
                   <CardBrandMark brand={selectedOffer.brand} />
                 </div>
-                <h3 className="font-display text-2xl font-bold">{selectedOffer.name}</h3>
-                <p className="mt-1 font-semibold text-muted-foreground">{selectedOffer.currency}</p>
+                <h3 className="font-display text-xl sm:text-2xl font-bold">{selectedOffer.name}</h3>
+                <p className="mt-1 text-xs sm:text-sm font-semibold text-muted-foreground">{selectedOffer.currency}</p>
               </div>
             )}
-            <div className="space-y-5">
+            <div className="space-y-4 sm:space-y-5">
+              {/* Champ nom sur la carte */}
               <div className="space-y-2">
-                <Label>Name on Card *</Label>
-                <Input value={nameOnCard} onChange={(event) => setNameOnCard(event.target.value.toUpperCase())} maxLength={23} className="h-14 rounded-2xl text-base font-semibold" />
-                <p className="text-sm text-muted-foreground">Latin letters only, 4-23 characters</p>
+                <Label className="text-sm sm:text-base">Name on Card *</Label>
+                <Input 
+                  value={nameOnCard} 
+                  onChange={(event) => setNameOnCard(event.target.value.toUpperCase())} 
+                  maxLength={23} 
+                  className="h-12 sm:h-14 rounded-xl sm:rounded-2xl text-sm sm:text-base font-semibold" 
+                />
+                <p className="text-xs sm:text-sm text-muted-foreground">Latin letters only, 4-23 characters</p>
               </div>
+              
+              {/* Champ solde initial */}
               <div className="space-y-2">
-                <Label>Initial Balance *</Label>
-                <div className="flex overflow-hidden rounded-2xl border border-input">
-                  <span className="flex w-14 items-center justify-center border-r border-input text-xl font-bold">$</span>
-                  <Input type="number" min={selectedOffer?.min_funding || 0} value={funding} onChange={(event) => setFunding(event.target.value)} className="h-14 border-0 text-base font-semibold focus-visible:ring-0" />
+                <Label className="text-sm sm:text-base">Initial Balance *</Label>
+                <div className="flex overflow-hidden rounded-xl sm:rounded-2xl border border-input">
+                  <span className="flex w-12 sm:w-14 items-center justify-center border-r border-input text-lg sm:text-xl font-bold">$</span>
+                  <Input 
+                    type="number" 
+                    min={selectedOffer?.min_funding || 0} 
+                    value={funding} 
+                    onChange={(event) => setFunding(event.target.value)} 
+                    className="h-12 sm:h-14 border-0 text-sm sm:text-base font-semibold focus-visible:ring-0" 
+                  />
                 </div>
               </div>
+              
+              {/* Sélecteur de wallet */}
               <WalletSelector label="Funding wallet" value={walletId} onChange={(id) => setWalletId(id)} />
-              <div className="rounded-2xl bg-muted/50 p-5">
-                <div className="flex justify-between py-1 text-muted-foreground">
+              
+              {/* Récapitulatif des frais */}
+              <div className="rounded-xl sm:rounded-2xl bg-muted/50 p-4 sm:p-5">
+                <div className="flex justify-between py-1 text-xs sm:text-sm text-muted-foreground">
                   <span>Card Issuance Fee</span>
                   <span className="font-bold text-foreground">{money(issuanceFee, selectedOffer?.currency)}</span>
                 </div>
-                <div className="flex justify-between py-1 text-muted-foreground">
+                <div className="flex justify-between py-1 text-xs sm:text-sm text-muted-foreground">
                   <span>Initial Balance</span>
                   <span className="font-bold text-foreground">{money(initialBalance, selectedOffer?.currency)}</span>
                 </div>
-                <div className="flex justify-between py-1 text-muted-foreground">
+                <div className="flex justify-between py-1 text-xs sm:text-sm text-muted-foreground">
                   <span>Lipaxe Fee</span>
                   <span className="font-bold text-foreground">{money(lipaxeFundingFee, selectedOffer?.currency)}</span>
                 </div>
-                <div className="flex justify-between py-1 text-muted-foreground">
+                <div className="flex justify-between py-1 text-xs sm:text-sm text-muted-foreground">
                   <span>Provider Fee</span>
                   <span className="font-bold text-foreground">{money(providerFundingFee, selectedOffer?.currency)}</span>
                 </div>
-                <div className="flex justify-between py-1 text-muted-foreground">
+                <div className="flex justify-between py-1 text-xs sm:text-sm text-muted-foreground">
                   <span>Total Fees</span>
                   <span className="font-bold text-foreground">{money(totalFundingFee, selectedOffer?.currency)}</span>
                 </div>
-                <div className="mt-3 flex justify-between border-t border-border pt-4 font-display text-2xl font-bold">
+                <div className="mt-3 sm:mt-4 flex justify-between border-t border-border pt-3 sm:pt-4 font-display text-xl sm:text-2xl font-bold">
                   <span>Total</span>
                   <span className="text-primary">{money(orderTotal, selectedOffer?.currency)}</span>
                 </div>
               </div>
-              <div className="flex justify-end gap-3 border-t border-border pt-5">
-                <Button variant="outline" size="lg" onClick={() => setOrderOpen(false)} className="min-w-32 rounded-2xl">
+              
+              {/* Boutons d'action */}
+              <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3 border-t border-border pt-4 sm:pt-5">
+                <Button variant="outline" size="lg" onClick={() => setOrderOpen(false)} className="min-w-full sm:min-w-32 rounded-xl sm:rounded-2xl">
                   Cancel
                 </Button>
-                <Button onClick={submitOrder} disabled={ordering} size="lg" className="min-w-48 rounded-2xl bg-primary text-primary-foreground hover:bg-primary/90">
-                  {ordering ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
+                <Button onClick={submitOrder} disabled={ordering} size="lg" className="min-w-full sm:min-w-48 rounded-xl sm:rounded-2xl bg-primary text-primary-foreground hover:bg-primary/90">
+                  {ordering ? <Loader2 className="mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4 animate-spin" /> : <Check className="mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4" />}
                   Confirm & Create
                 </Button>
               </div>
@@ -346,6 +432,7 @@ const VirtualCard = () => {
         </DialogContent>
       </Dialog>
 
+      {/* Modal PIN pour sécuriser la transaction */}
       <PinModal open={pin.open} onOpenChange={pin.setOpen} onSuccess={pin.onSuccess} />
     </div>
   );

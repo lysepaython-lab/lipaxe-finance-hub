@@ -1,4 +1,4 @@
-import { CreditCard, LayoutDashboard, LogOut, Repeat, Send, Settings, User as UserIcon, Users2 } from 'lucide-react';
+import { CreditCard, LayoutDashboard, LogOut, Repeat, Send, Settings, User as UserIcon, Users, Users2 } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { logout } from '@/store/slices/authSlice';
 import { Button } from './ui/button';
@@ -20,7 +20,7 @@ const mainNav = [
   { to: '/app/transfer', key: 'transfer', icon: Send, match: ['/app/transfer'] },
   { to: '/app/payments/payall', key: 'payAll', icon: Users2, match: ['/app/payments', '/app/savings', '/app/strone/business'] },
   { to: '/app/strone/exchange', key: 'lipaxeExchange', icon: Repeat, match: ['/app/strone/exchange', '/app/strone/cryptos', '/app/strone/vaults'] },
-  { to: '/app/settings', key: 'settings', icon: Settings, match: ['/app/settings'] },
+  { to: '/app/affiliation', key: 'affiliation', icon: Users2, match: ['/app/affiliation'] },
 ];
 
 export const Topbar = () => {

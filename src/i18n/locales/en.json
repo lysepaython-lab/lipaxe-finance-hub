@@ -40,7 +40,9 @@
     "yieldVaults": "Yield Vaults",
     "account": "Account",
     "profile": "Profile",
-    "affiliation": "Affiliation"
+    "affiliation": "Affiliation",
+    "earn": "Earn ",
+    "swap": "Swap"
   },
   "landing": {
     "heroEyebrow": "Bank-grade security · 180+ countries",
@@ -138,7 +140,8 @@
     "authFeatureContactlessTitle": "Contactless",
     "authFeatureContactlessDesc": "Fast, modern and simple payments",
     "authFeatureMobileTitle": "Mobile first",
-    "authFeatureMobileDesc": "Manage everything from your phone"
+    "authFeatureMobileDesc": "Manage everything from your phone",
+    "secureLogin": "Secure authentication"
   },
   "dashboard": {
     "greeting": "Good to see you",

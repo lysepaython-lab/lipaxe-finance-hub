@@ -11,7 +11,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useFxQuoteMutation, useTransferMutation, useLookupRecipientMutation, type RecipientLookup } from '@/store/api/walletApi';
-import { usePaymentMethodsInternationalQuery, type WalletV2 } from '@/store/api/platformApi';
+import { usePaymentMethodsDepositQuery, usePaymentMethodsInternationalQuery, type WalletV2 } from '@/store/api/platformApi';
 import { Loader2, Check, ArrowDown, Search, ShieldCheck, Globe2, QrCode } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatMoney } from '@/lib/format';
@@ -94,7 +94,8 @@ const CurrencyFlagMark = ({ currency }: { currency?: string }) => {
 const Transfer = () => {
   const { t } = useTranslation();
   const [params] = useSearchParams();
-  const { data: intlMethods } = usePaymentMethodsInternationalQuery();
+  const { data: internationalMethods } = usePaymentMethodsInternationalQuery();
+  const { data: depositMethods } = usePaymentMethodsDepositQuery();
   const pin = usePinGate();
 
   const [kind, setKind] = useState<'internal' | 'international'>(params.get('intl') ? 'international' : 'internal');
@@ -116,8 +117,13 @@ const Transfer = () => {
   const [transfer, { isLoading }] = useTransferMutation();
   const [lookup, { isLoading: looking }] = useLookupRecipientMutation();
 
+  const intlMethods = useMemo(() => {
+    if (internationalMethods?.length) return internationalMethods;
+    return (depositMethods || []).filter((method) => method.is_international !== false && method.type !== 'crypto');
+  }, [internationalMethods, depositMethods]);
+
   const intlMethodsForCountry = useMemo(() => {
-    return (intlMethods || []).filter((method) => methodSupportsCountry(method, countryTo));
+    return intlMethods.filter((method) => methodSupportsCountry(method, countryTo));
   }, [intlMethods, countryTo]);
 
   // Reset recipient info when input changes

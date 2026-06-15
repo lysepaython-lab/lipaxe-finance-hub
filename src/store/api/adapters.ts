@@ -169,6 +169,10 @@ export const normalizePaymentMethod = (payload: unknown) => {
     name: asString(raw.name),
     provider: asString(raw.provider),
     correspondent: asString(raw.correspondent),
+    is_international:
+      raw.is_international === undefined && raw.isInternational === undefined
+        ? undefined
+        : Boolean(raw.is_international ?? raw.isInternational),
     type,
     payment_type: { name: canonicalPaymentTypeName },
     icon: asString(raw.logo),

@@ -80,8 +80,7 @@ const OfferCard = ({ offer, index, onCreate }: { offer: CardOffer; index: number
         className="shadow-sm"
       />
     </div>
-    <h3 className="font-display text-lg sm:text-xl font-bold tracking-tight text-center px-2">{offer.name}</h3>
-    <p className="mt-2 min-h-10 max-w-xs text-xs sm:text-sm text-muted-foreground text-center px-2">
+    <p className="min-h-8 max-w-xs text-xs sm:text-sm text-muted-foreground text-center px-2">
       {offerDescription(offer, index)}
     </p>
     <div className="my-5 sm:my-7">

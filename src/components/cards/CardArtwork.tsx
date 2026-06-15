@@ -48,14 +48,6 @@ export const CardArtwork = ({
     return (
       <div className={cn('relative aspect-[1.58/1] overflow-hidden rounded-[1.65rem] bg-muted shadow-brand', muted && 'grayscale', className)}>
         <img src={imageSrc} alt={name} className="h-full w-full object-cover" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-black/10" />
-        <div className="absolute bottom-4 left-4 right-4 flex items-end justify-between text-white">
-          <div className="min-w-0">
-            <div className="truncate text-xs font-semibold uppercase tracking-[0.18em] opacity-80">Lipaxe</div>
-            <div className="truncate font-display text-lg font-bold">{name}</div>
-          </div>
-          <BrandMark brand={brand} />
-        </div>
       </div>
     );
   }

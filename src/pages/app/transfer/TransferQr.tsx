@@ -74,9 +74,9 @@ const TransferQr = () => {
 
   const finalizeValidate = async (otp?: string) => {
     if (!scanToken || !payWallet) return;
-    pin.guard(async () => {
+    pin.guard(async (pinCode) => {
       try {
-        await validate({ token: scanToken, wallet_id: payWallet, otp }).unwrap();
+        await validate({ token: scanToken, wallet_id: payWallet, otp, pin: pinCode }).unwrap();
         toast.success('Paiement validé');
         setScanToken(null);
         params.delete('token');

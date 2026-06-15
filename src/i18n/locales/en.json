@@ -636,8 +636,12 @@
   },
   "strone": {
     "exchangeSubtitle": "Convert between currencies at real exchange rates",
+    "exchangeMode": "Exchange",
+    "swapMode": "Crypto swap",
     "exchangeNow": "Exchange",
+    "swapNow": "Swap",
     "exchangeDone": "Exchange completed",
+    "swapDone": "Swap completed",
     "exchangeMissingFields": "Select a source wallet, target currency and valid amount.",
     "exchangeNeedsWallets": "You need at least two active wallets to exchange.",
     "exchangePreviewHint": "Request a quote to see the rate, fees and received amount.",

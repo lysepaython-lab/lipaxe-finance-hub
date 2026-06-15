@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { WalletSelector } from '@/components/security/WalletSelector';
 import { PinModal, usePinGate } from '@/components/security/PinModal';
+import { CardArtwork } from '@/components/cards/CardArtwork';
 import { useAppSelector } from '@/store/hooks';
 import { type CardOffer, useCardOffersQuery, useOrderCardMutation } from '@/store/api/cardApi';
 import { formatMoney } from '@/lib/format';
@@ -22,18 +23,6 @@ import { toast } from 'sonner';
 const apiMessage = (error: unknown, fallback: string) => {
   const data = (error as { data?: { detail?: string; message?: string; error?: string } })?.data;
   return data?.message || data?.detail || data?.error || fallback;
-};
-
-// Composant d'affichage du logo de la carte (Visa ou Mastercard)
-const CardBrandMark = ({ brand }: { brand: 'Visa' | 'Mastercard' }) => {
-  if (brand === 'Visa') return <span className="font-display text-3xl font-bold italic text-[#1a4f9c]">VISA</span>;
-  // Logo Mastercard avec les deux cercles rouges et orange
-  return (
-    <span className="relative block h-12 w-20">
-      <span className="absolute left-4 top-1 h-10 w-10 rounded-full bg-[#eb001b]" />
-      <span className="absolute left-9 top-1 h-10 w-10 rounded-full bg-[#f79e1b] mix-blend-multiply" />
-    </span>
-  );
 };
 
 // État visuel pour les fonctionnalités (activé/désactivé)
@@ -82,8 +71,14 @@ const OfferCard = ({ offer, index, onCreate }: { offer: CardOffer; index: number
     >
       {offerLabel(offer, index)}
     </Badge>
-    <div className="mb-5 flex h-16 w-24 sm:h-20 sm:w-28 items-center justify-center rounded-2xl bg-muted/70">
-      <CardBrandMark brand={offer.brand} />
+    <div className="mb-5 w-full max-w-[260px]">
+      <CardArtwork
+        image={offer.image}
+        brand={offer.brand}
+        name={offer.name}
+        masked="LIPAXE VIRTUAL"
+        className="shadow-sm"
+      />
     </div>
     <h3 className="font-display text-lg sm:text-xl font-bold tracking-tight text-center px-2">{offer.name}</h3>
     <p className="mt-2 min-h-10 max-w-xs text-xs sm:text-sm text-muted-foreground text-center px-2">
@@ -351,8 +346,13 @@ const VirtualCard = () => {
           <div className="max-h-[calc(92vh-80px)] overflow-y-auto p-4 sm:p-7">
             {selectedOffer && (
               <div className="mb-5 sm:mb-7 text-center">
-                <div className="mx-auto mb-3 sm:mb-4 flex h-16 w-24 sm:h-20 sm:w-28 items-center justify-center rounded-xl sm:rounded-2xl bg-muted">
-                  <CardBrandMark brand={selectedOffer.brand} />
+                <div className="mx-auto mb-3 w-full max-w-[280px] sm:mb-4">
+                  <CardArtwork
+                    image={selectedOffer.image}
+                    brand={selectedOffer.brand}
+                    name={selectedOffer.name}
+                    masked="LIPAXE VIRTUAL"
+                  />
                 </div>
                 <h3 className="font-display text-xl sm:text-2xl font-bold">{selectedOffer.name}</h3>
                 <p className="mt-1 text-xs sm:text-sm font-semibold text-muted-foreground">{selectedOffer.currency}</p>

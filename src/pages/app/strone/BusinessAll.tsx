@@ -26,6 +26,13 @@ const selectionLabel: Record<'random' | 'ordered' | 'credit_score', string> = {
   credit_score: 'Score crédit',
 };
 
+const tontineSteps = [
+  { title: '1. Creer le groupe', text: 'Nom, devise, contribution, frequence et regles.' },
+  { title: '2. Inviter les membres', text: 'Email ou numero de compte Lipaxe, puis acceptation.' },
+  { title: '3. Contribuer', text: 'Chaque membre paie avec PIN depuis son wallet.' },
+  { title: '4. Distribuer', text: 'Le beneficiaire recoit selon l ordre ou le score.' },
+];
+
 const BusinessAll = () => {
   const { t } = useTranslation();
   const { data: tontines, isLoading } = useTontinesQuery();
@@ -239,6 +246,39 @@ const BusinessAll = () => {
         icon={<Briefcase className="h-6 w-6" />}
         actions={<Button onClick={openCreateDialog} className="bg-gradient-brand shadow-brand"><Plus className="mr-2 h-4 w-4" />Nouvelle tontine</Button>}
       />
+
+      <section className="mb-6 overflow-hidden rounded-[2rem] border border-border/60 bg-gradient-to-br from-primary/10 via-background to-emerald-400/10 p-4 shadow-elegant sm:p-6">
+        <div className="grid gap-5 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
+          <div className="space-y-3">
+            <Badge className="rounded-full bg-primary/12 text-primary hover:bg-primary/12">Tontine guidee</Badge>
+            <h2 className="font-display text-2xl font-bold sm:text-3xl">Montez un groupe, collectez, puis distribuez sans chaos.</h2>
+            <p className="max-w-xl text-sm text-muted-foreground">
+              Invitations, wallets, PIN, eligibilite KYC et rappels automatiques gardent le groupe clair.
+            </p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {tontineSteps.map((step, index) => (
+              <motion.div
+                key={step.title}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.06 }}
+                className="rounded-3xl border border-border/70 bg-card/80 p-4 shadow-sm"
+              >
+                <svg viewBox="0 0 120 54" className="mb-3 h-12 w-full text-primary" fill="none" aria-hidden="true">
+                  <circle cx="22" cy="27" r="14" className="fill-primary/15" />
+                  <circle cx="60" cy="27" r="14" className="fill-emerald-400/20" />
+                  <circle cx="98" cy="27" r="14" className="fill-primary/15" />
+                  <path d="M36 27h10M74 27h10" className="stroke-primary" strokeWidth="3" strokeLinecap="round" />
+                  <path d="M18 27l4 4 8-10M56 27l4 4 8-10M94 27l4 4 8-10" className="stroke-primary" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                <div className="font-semibold">{step.title}</div>
+                <p className="mt-1 text-xs text-muted-foreground">{step.text}</p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
 
       {isLoading ? (
         <div className="grid gap-4 md:grid-cols-2"><Skeleton className="h-48" /><Skeleton className="h-48" /></div>

@@ -17,11 +17,14 @@ import { formatMoney } from '@/lib/format';
 import {
   useWalletExchangeExecuteMutation,
   useWalletExchangeQuoteMutation,
+  useWalletSwapExecuteMutation,
+  useWalletSwapQuoteMutation,
   useWalletsQuery,
   type WalletSwapQuote,
 } from '@/store/api/walletApi';
 
 const CRYPTO_CURRENCIES = new Set(['BTC', 'USDT', 'USDC']);
+type ConversionMode = 'exchange' | 'swap';
 
 const parseAmount = (value: string) => {
   const parsed = Number(value);
@@ -50,18 +53,25 @@ const Exchange = () => {
   const { data: wallets = [], isLoading: walletsLoading } = useWalletsQuery();
   const [quoteExchange, { isLoading: quoteLoading }] = useWalletExchangeQuoteMutation();
   const [executeExchange, { isLoading: executeLoading }] = useWalletExchangeExecuteMutation();
+  const [quoteSwap, { isLoading: swapQuoteLoading }] = useWalletSwapQuoteMutation();
+  const [executeSwap, { isLoading: swapExecuteLoading }] = useWalletSwapExecuteMutation();
   const pin = usePinGate();
 
   const [fromWalletId, setFromWalletId] = useState('');
   const [toCurrency, setToCurrency] = useState('');
   const [amount, setAmount] = useState('100');
   const [quote, setQuote] = useState<WalletSwapQuote | null>(null);
+  const [mode, setMode] = useState<ConversionMode>('exchange');
 
   const fromWallet = wallets.find((wallet) => wallet.id === fromWalletId);
   const targetCurrencies = Array.from(
     new Set(wallets.map((wallet) => wallet.currency).filter((currency) => currency !== fromWallet?.currency)),
   );
   const amountNumber = parseAmount(amount);
+  const isCryptoPair = Boolean(fromWallet && (CRYPTO_CURRENCIES.has(fromWallet.currency) || CRYPTO_CURRENCIES.has(toCurrency)));
+  const activeMode: ConversionMode = mode === 'swap' && isCryptoPair ? 'swap' : 'exchange';
+  const quoteLoadingAny = quoteLoading || swapQuoteLoading;
+  const executeLoadingAny = executeLoading || swapExecuteLoading;
   const canRequestQuote = Boolean(fromWalletId && toCurrency && amountNumber > 0);
   const insufficient = fromWallet ? amountNumber > fromWallet.available : false;
 
@@ -80,6 +90,12 @@ const Exchange = () => {
   useEffect(() => {
     setQuote(null);
   }, [fromWalletId, toCurrency, amount]);
+
+  useEffect(() => {
+    if (!isCryptoPair && mode === 'swap') {
+      setMode('exchange');
+    }
+  }, [isCryptoPair, mode]);
 
   const handleSwapDirection = () => {
     if (!fromWallet || !toCurrency) return;
@@ -100,7 +116,8 @@ const Exchange = () => {
     }
 
     try {
-      const response = await quoteExchange({
+      const quoteMutation = activeMode === 'swap' ? quoteSwap : quoteExchange;
+      const response = await quoteMutation({
         from_wallet_id: fromWalletId,
         to_currency: toCurrency,
         amount: amountNumber,
@@ -125,13 +142,14 @@ const Exchange = () => {
 
     pin.guard(async () => {
       try {
-        const response = await executeExchange({
+        const executeMutation = activeMode === 'swap' ? executeSwap : executeExchange;
+        const response = await executeMutation({
           from_wallet_id: fromWalletId,
           to_currency: toCurrency,
           amount: amountNumber,
         }).unwrap();
         setQuote(response.quote);
-        toast.success(t('strone.exchangeDone'));
+        toast.success(t(activeMode === 'swap' ? 'strone.swapDone' : 'strone.exchangeDone'));
       } catch (error) {
         toast.error(extractApiError(error, t('common.error')));
       }
@@ -172,6 +190,31 @@ const Exchange = () => {
             </div>
           ) : (
             <>
+              <div className="grid gap-2 rounded-2xl border border-border/70 bg-muted/30 p-1 sm:grid-cols-2">
+                {(['exchange', 'swap'] as ConversionMode[]).map((item) => {
+                  const disabled = item === 'swap' && !isCryptoPair;
+                  const active = activeMode === item;
+                  return (
+                    <button
+                      key={item}
+                      type="button"
+                      disabled={disabled}
+                      onClick={() => {
+                        setMode(item);
+                        setQuote(null);
+                      }}
+                      className={[
+                        'rounded-xl px-4 py-3 text-sm font-semibold transition',
+                        active ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:bg-background',
+                        disabled ? 'cursor-not-allowed opacity-45' : '',
+                      ].join(' ')}
+                    >
+                      {t(item === 'swap' ? 'strone.swapMode' : 'strone.exchangeMode')}
+                    </button>
+                  );
+                })}
+              </div>
+
               <div className="grid gap-3 md:grid-cols-3">
                 <div className="space-y-2 md:col-span-2">
                   <Label>{t('common.from')}</Label>
@@ -269,20 +312,20 @@ const Exchange = () => {
               <div className="grid gap-3 sm:grid-cols-2">
                 <Button
                   onClick={handleQuote}
-                  disabled={!canRequestQuote || quoteLoading || insufficient}
+                  disabled={!canRequestQuote || quoteLoadingAny || insufficient}
                   variant="outline"
                   className="h-11 rounded-xl"
                 >
-                  {quoteLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {quoteLoadingAny && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   {t('strone.getQuote')}
                 </Button>
                 <Button
                   onClick={handleExecute}
-                  disabled={!canRequestQuote || quoteLoading || executeLoading || insufficient}
+                  disabled={!canRequestQuote || quoteLoadingAny || executeLoadingAny || insufficient}
                   className="h-11 rounded-xl bg-gradient-brand shadow-brand"
                 >
-                  {executeLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  {t('strone.exchangeNow')}
+                  {executeLoadingAny && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {t(activeMode === 'swap' ? 'strone.swapNow' : 'strone.exchangeNow')}
                 </Button>
               </div>
             </>

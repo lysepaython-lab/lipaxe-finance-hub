@@ -30,16 +30,23 @@ export interface CardOffer {
   supports_apple_pay?: boolean;
   supports_google_pay?: boolean;
   authentication?: string;
+  image?: string;
 }
 export interface UserCard {
   id: string;
   brand: 'Visa' | 'Mastercard';
+  card_number?: string;
   number_masked: string;
   name_on_card: string;
   exp: string;
+  cvv?: string;
+  billing?: string;
+  first_six?: string;
+  last_four?: string;
   balance: number;
   currency: string;
   status: 'active' | 'frozen' | 'inactive' | 'pending';
+  image?: string;
 }
 export interface CardTx {
   id: string;

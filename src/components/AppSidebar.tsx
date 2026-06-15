@@ -12,7 +12,6 @@ import {
   Landmark,
   LayoutDashboard,
   Menu,
-  Nfc,
   PartyPopper,
   PiggyBank,
   QrCode,
@@ -52,7 +51,6 @@ const groups: Group[] = [
       { to: '/app/cards/virtual', key: 'virtualCard', icon: CreditCard },
       { to: '/app/cards/my', key: 'myCards', icon: Wallet },
       { to: '/app/cards/gift', key: 'giftCards', icon: Gift },
-      { to: '/app/cards/nfc', key: 'nfcCards', icon: Nfc },
     ],
   },
   {
@@ -61,7 +59,6 @@ const groups: Group[] = [
       { to: '/app/transfer', key: 'internalTransfer', icon: Send },
       { to: '/app/transfer/international', key: 'internationalTransfer', icon: Globe2 },
       { to: '/app/transfer/qr', key: 'transferQr', icon: QrCode },
-      { to: '/app/transfer/nfc', key: 'transferNfc', icon: Nfc },
     ],
   },
   {

@@ -1,15 +1,18 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { useTransactionsQuery } from '@/store/api/walletApi';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
-import { Search, ArrowDownLeft, ArrowUpRight, Download } from 'lucide-react';
+import { Search, Download } from 'lucide-react';
 import { formatMoney, formatDate } from '@/lib/format';
 import { StatusPill } from '@/components/StatusPill';
 import { Button } from '@/components/ui/button';
 import { downloadReceipt } from '@/lib/receipt';
+import { TransactionListItem } from '@/components/transactions/TransactionListItem';
+import { PaymentMethodMark } from '@/lib/moneyVisuals';
 
 const Transactions = () => {
   const { t } = useTranslation();
@@ -25,7 +28,7 @@ const Transactions = () => {
     <div className="space-y-6">
       <div>
         <h1 className="font-display text-3xl font-bold">{t('nav.transactions')}</h1>
-        <p className="text-muted-foreground mt-1">All your money movements in one place.</p>
+        <p className="mt-1 text-sm text-muted-foreground">{t('dashboard.recentTransactions')}</p>
       </div>
 
       <Card className="shadow-elegant border-border/60">
@@ -47,7 +50,21 @@ const Transactions = () => {
           {isLoading ? (
             <div className="p-4 space-y-2">{Array.from({length:8}).map((_,i)=><Skeleton key={i} className="h-14"/>)}</div>
           ) : (
-            <div className="overflow-x-auto">
+            <>
+            <div className="divide-y divide-border md:hidden">
+              {items.map((tx) => (
+                <div key={tx.id} className="flex items-center gap-1">
+                  <TransactionListItem tx={tx} className="flex-1 px-4" />
+                  <Button variant="ghost" size="icon" onClick={() => downloadReceipt(tx)} title={t('tx.downloadReceipt')} className="mr-2 shrink-0">
+                    <Download className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+              {items.length === 0 && (
+                <div className="py-12 text-center text-muted-foreground">{t('dashboard.noTransactions')}</div>
+              )}
+            </div>
+            <div className="hidden overflow-x-auto md:block">
               <table className="w-full text-sm">
                 <thead className="border-b border-border bg-muted/30 text-xs uppercase text-muted-foreground">
                   <tr>
@@ -63,15 +80,19 @@ const Transactions = () => {
                   {items.map(tx => (
                     <tr key={tx.id} className="transition-smooth hover:bg-muted/30">
                       <td className="px-5 py-3">
-                        <div className="flex items-center gap-3">
-                          <div className={`h-9 w-9 rounded-full flex items-center justify-center ${tx.direction==='in' ? 'bg-success/10 text-success' : 'bg-brand-100 text-brand-700 dark:bg-brand-900/40 dark:text-brand-300'}`}>
-                            {tx.direction === 'in' ? <ArrowDownLeft className="h-4 w-4"/> : <ArrowUpRight className="h-4 w-4"/>}
-                          </div>
+                        <Link to={`/app/transactions/${tx.id}`} className="flex items-center gap-3">
+                          <PaymentMethodMark
+                            logo={tx.paymentMethodLogo}
+                            name={[tx.paymentMethodName, tx.provider, tx.description].filter(Boolean).join(' ')}
+                            currency={tx.currency}
+                            direction={tx.direction}
+                            className="h-9 w-9"
+                          />
                           <div>
                             <div className="font-medium">{tx.description}</div>
                             <div className="text-xs text-muted-foreground">{tx.counterparty}</div>
                           </div>
-                        </div>
+                        </Link>
                       </td>
                       <td className="px-5 py-3 text-muted-foreground tabular">{tx.reference}</td>
                       <td className="px-5 py-3 text-muted-foreground">{formatDate(tx.createdAt)}</td>
@@ -92,6 +113,7 @@ const Transactions = () => {
                 </tbody>
               </table>
             </div>
+            </>
           )}
         </CardContent>
       </Card>

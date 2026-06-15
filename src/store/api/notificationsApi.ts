@@ -10,6 +10,8 @@ export interface AppNotification {
   read: boolean;
   createdAt: string;
   link?: string;
+  logo?: string;
+  kind?: string;
 }
 
 export const notificationsApi = api.injectEndpoints({

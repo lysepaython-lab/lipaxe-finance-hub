@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 interface PinModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSuccess: () => void;
+  onSuccess: (pin: string) => void;
   title?: string;
   description?: string;
 }
@@ -69,7 +69,7 @@ export const PinModal = ({ open, onOpenChange, onSuccess, title, description }: 
       await verify({ pin }).unwrap();
       throttle.reset();
       onOpenChange(false);
-      onSuccess();
+      onSuccess(pin);
     } catch (e) {
       const detail = (e as { data?: { detail?: string } })?.data?.detail || 'PIN incorrect';
       setError(detail);
@@ -135,16 +135,16 @@ export const PinModal = ({ open, onOpenChange, onSuccess, title, description }: 
  * Hook helper: open PIN modal then run an action only if PIN was validated.
  */
 export const usePinGate = () => {
-  const [pending, setPending] = useState<null | (() => void)>(null);
+  const [pending, setPending] = useState<null | ((pin: string) => void)>(null);
   const [open, setOpen] = useState(false);
 
-  const guard = (action: () => void, _reason?: string) => {
+  const guard = (action: (pin?: string) => void, _reason?: string) => {
     setPending(() => action);
     setOpen(true);
   };
 
-  const onSuccess = () => {
-    pending?.();
+  const onSuccess = (pin: string) => {
+    pending?.(pin);
     setPending(null);
     toast.success('PIN vérifié');
   };

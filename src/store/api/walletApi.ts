@@ -3,10 +3,10 @@ import { normalizeTransaction, normalizeWallet, unwrapData } from './adapters';
 
 export interface Wallet { id: string; currency: string; symbol: string; balance: number; available: number; pending: number; }
 export interface Transaction {
-  id: string; type: 'deposit' | 'withdrawal' | 'transfer'; direction: 'in' | 'out';
+  id: string; type: 'deposit' | 'withdrawal' | 'transfer'; rawType?: string; direction: 'in' | 'out';
   amount: number; currency: string; status: 'completed' | 'pending' | 'failed' | 'processing';
   description: string; counterparty: string; reference: string; createdAt: string; fee?: number;
-  wallet_id?: string;
+  wallet_id?: string; paymentMethodName?: string; paymentMethodLogo?: string; provider?: string;
 }
 export interface FxQuote { from: string; to: string; amount: number; rate: number; fee: number; receive: number; }
 export interface WalletSwapQuote {
@@ -35,6 +35,35 @@ export interface DepositInitiation {
   detail?: string;
   otp_confirm?: boolean;
   transaction_id?: string;
+}
+export interface NfcP2PAcceptPayload {
+  signed_token: {
+    payload: {
+      payer_wallet_id?: string;
+      wallet_id?: string;
+      receiver_wallet_id?: string;
+      card_uid: string;
+      amount: string | number;
+      currency: string;
+      nonce: string;
+      expires_at: string;
+      device_id?: string;
+    };
+    signature: string;
+  };
+  pin: string;
+  receiver_wallet_id?: string;
+}
+export interface NfcP2PAcceptResult {
+  status: 'APPROVED';
+  message: string;
+  amount: string;
+  fees: string;
+  currency: string;
+  sender_transaction_id: string;
+  receiver_transaction_id: string;
+  nfc_transaction_id: string;
+  balance_remaining: string;
 }
 
 const QR_CACHE_KEY = 'lipaxe-qr-links';
@@ -310,6 +339,10 @@ export const walletApi = api.injectEndpoints({
       },
       invalidatesTags: ['Wallet', 'Transactions'],
     }),
+    acceptNfcP2P: b.mutation<NfcP2PAcceptResult, NfcP2PAcceptPayload>({
+      query: (body) => ({ url: '/transactions/nfc/p2p/accept/', method: 'POST', body }),
+      invalidatesTags: ['Wallet', 'Transactions'],
+    }),
     lookupRecipient: b.mutation<RecipientLookup, { account_no: string }>({
       query: (body) => ({
         url: '/transactions/lookup/',
@@ -330,7 +363,7 @@ export const {
   useWalletExchangeQuoteMutation, useWalletExchangeExecuteMutation,
   useDepositMutation, useAfripayDepositMutation, useAfripayDepositConfirmMutation, useCardDepositMutation, useElectronicDepositMutation, useCryptoDepositMutation,
   useWithdrawMutation, useTransferMutation,
-  useTransferQrLinkMutation, useValidateQrMutation, useQrInfoQuery,
+  useTransferQrLinkMutation, useValidateQrMutation, useQrInfoQuery, useAcceptNfcP2PMutation,
   useLookupRecipientMutation,
   useActivityQuery,
 } = walletApi;

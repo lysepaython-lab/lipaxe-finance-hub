@@ -23,15 +23,14 @@ import ResetPassword from "./pages/auth/ResetPassword";
 import VerifyEmail from "./pages/auth/VerifyEmail";
 import Dashboard from "./pages/app/Dashboard";
 import Transactions from "./pages/app/Transactions";
+import TransactionDetail from "./pages/app/TransactionDetail";
 import Deposit from "./pages/app/Deposit";
 import Withdraw from "./pages/app/Withdraw";
 import Transfer from "./pages/app/Transfer";
 import TransferQr from "./pages/app/transfer/TransferQr";
-import TransferNfc from "./pages/app/transfer/TransferNfc";
 import VirtualCard from "./pages/app/cards/VirtualCard";
 import MyCards from "./pages/app/cards/MyCards";
 import GiftCards from "./pages/app/cards/GiftCards";
-import NfcCards from "./pages/app/cards/NfcCards";
 import PayAll from "./pages/app/payments/PayAll";
 import FestiPay from "./pages/app/payments/FestiPay";
 import Exchange from "./pages/app/strone/Exchange";
@@ -87,6 +86,7 @@ const AppRoutes = () => (
     <Route path="/app" element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
       <Route index element={<Dashboard />} />
       <Route path="transactions" element={<Transactions />} />
+      <Route path="transactions/:id" element={<TransactionDetail />} />
       <Route path="savings" element={<SavingsHub />} />
       <Route path="savings/:id" element={<SavingsDetail />} />
       <Route path="deposit" element={<Deposit />} />
@@ -94,11 +94,11 @@ const AppRoutes = () => (
       <Route path="transfer" element={<Transfer />} />
       <Route path="transfer/international" element={<Transfer />} />
       <Route path="transfer/qr" element={<TransferQr />} />
-      <Route path="transfer/nfc" element={<TransferNfc />} />
+      <Route path="transfer/nfc" element={<Navigate to="/app/transfer" replace />} />
       <Route path="cards/virtual" element={<VirtualCard />} />
       <Route path="cards/my" element={<MyCards />} />
       <Route path="cards/gift" element={<GiftCards />} />
-      <Route path="cards/nfc" element={<NfcCards />} />
+      <Route path="cards/nfc" element={<Navigate to="/app/cards/virtual" replace />} />
       <Route path="payments/payall" element={<PayAll />} />
       <Route path="payments/festipay" element={<FestiPay />} />
       <Route path="strone/exchange" element={<Exchange />} />

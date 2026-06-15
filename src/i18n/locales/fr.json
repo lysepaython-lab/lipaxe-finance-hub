@@ -634,8 +634,12 @@
   },
   "strone": {
     "exchangeSubtitle": "Convertissez entre devises au taux reel",
+    "exchangeMode": "Exchange",
+    "swapMode": "Swap crypto",
     "exchangeNow": "Convertir",
+    "swapNow": "Swapper",
     "exchangeDone": "Conversion effectuee",
+    "swapDone": "Swap effectue",
     "exchangeMissingFields": "Selectionnez un wallet, une devise cible et un montant valide.",
     "exchangeNeedsWallets": "Vous avez besoin d'au moins deux wallets actifs pour convertir.",
     "exchangePreviewHint": "Demandez un devis pour voir le taux, les frais et le montant recu.",

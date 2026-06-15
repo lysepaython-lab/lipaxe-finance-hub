@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Nfc, Radio, Send } from 'lucide-react';
+import { Nfc, Radio, Send, Smartphone } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { PageHeader } from '@/components/PageHeader';
 import { Card, CardContent } from '@/components/ui/card';
@@ -15,6 +15,10 @@ const TransferNfc = () => {
   const [amount, setAmount] = useState<number | ''>('');
   const [phase, setPhase] = useState<'idle' | 'scanning' | 'detected' | 'sent'>('idle');
   const [target, setTarget] = useState<string>('');
+  const isMobileDevice = useMemo(() => {
+    if (typeof window === 'undefined') return false;
+    return window.matchMedia('(pointer: coarse)').matches && window.innerWidth < 900;
+  }, []);
 
   const start = () => {
     if (!amount || Number(amount) <= 0) {
@@ -41,6 +45,26 @@ const TransferNfc = () => {
   return (
     <div>
       <PageHeader title={t('nav.transferNfc')} subtitle={t('transfer.nfcSubtitle')} icon={<Nfc className="h-6 w-6" />} />
+
+      {!isMobileDevice ? (
+        <Card className="mx-auto max-w-2xl overflow-hidden border-border/60 bg-gradient-card shadow-elegant">
+          <CardContent className="space-y-5 p-8 text-center">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl bg-primary/10 text-primary">
+              <Smartphone className="h-8 w-8" />
+            </div>
+            <div>
+              <h2 className="font-display text-2xl font-bold">NFC disponible sur mobile</h2>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Pour proteger la transaction, le transfert NFC utilise le materiel du telephone et la validation PIN/biometrie dans l'app Lipaxe.
+              </p>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="rounded-2xl border border-border bg-background p-4 font-semibold">App Store</div>
+              <div className="rounded-2xl border border-border bg-background p-4 font-semibold">Google Play</div>
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card className="bg-gradient-card">
@@ -105,6 +129,7 @@ const TransferNfc = () => {
           </CardContent>
         </Card>
       </div>
+      )}
     </div>
   );
 };

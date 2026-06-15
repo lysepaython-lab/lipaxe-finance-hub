@@ -68,13 +68,18 @@ export const normalizeWallet = (payload: unknown) => {
 
 export const normalizeTransaction = (payload: unknown) => {
   const raw = (payload ?? {}) as UnknownRecord;
-  const txType = asString(raw.transaction_type ?? raw.type, 'transfer');
+  const txType = asString(raw.transaction_type ?? raw.type, 'transfer').toLowerCase();
   const status = asString(raw.status, 'pending').toLowerCase();
-  const direction = (txType === 'deposit' || txType === 'receive' ? 'in' : 'out') as 'in' | 'out';
+  const paymentMethod = (raw.payment_method ?? raw.paymentMethod ?? {}) as UnknownRecord;
+  const direction = (
+    ['deposit', 'receive', 'reception', 'credit', 'in'].includes(txType)
+      ? 'in'
+      : 'out'
+  ) as 'in' | 'out';
   const type = (
-    txType === 'withdrawal'
+    txType === 'withdrawal' || txType === 'withdraw'
       ? 'withdrawal'
-      : txType === 'deposit' || txType === 'receive'
+      : txType === 'deposit' || txType === 'receive' || txType === 'reception'
         ? 'deposit'
         : 'transfer'
   ) as 'deposit' | 'withdrawal' | 'transfer';
@@ -86,19 +91,45 @@ export const normalizeTransaction = (payload: unknown) => {
         : 'pending'
   ) as 'completed' | 'failed' | 'pending';
 
+  const paymentMethodName = firstText(
+    paymentMethod.name,
+    raw.payment_method_name,
+    raw.paymentMethodName,
+    raw.correspondent,
+    raw.provider,
+  );
+  const amount = asNumber(
+    raw.amount ??
+    raw.montant ??
+    raw.total_amount ??
+    raw.total_to_debit ??
+    raw.net_amount,
+  );
+  const providerFees = asNumber(raw.provider_fees ?? raw.provider_fee);
+  const lipaxeFees = asNumber(raw.fees ?? raw.fee);
+
   return {
     id: asString(raw.id),
     type,
+    rawType: txType,
     direction,
-    amount: asNumber(raw.amount),
-    currency: asString(raw.currency ?? raw.payment_method_currency, 'USD'),
+    amount,
+    currency: asString(
+      raw.currency ??
+      raw.payment_method_currency ??
+      paymentMethod.currency,
+      'USD',
+    ),
     status: normalizedStatus,
-    description: asString(raw.remark ?? raw.description ?? raw.transaction_type, 'Transaction'),
-    counterparty: asString(raw.to_account ?? raw.from_account, ''),
+    description: firstText(raw.remark, raw.description, raw.label, raw.transaction_type, raw.type) || 'Transaction',
+    counterparty: firstText(raw.to_account, raw.from_account, raw.to_user, raw.from_user, raw.phone, paymentMethodName),
     reference: asString(raw.reference),
     createdAt: asString(raw.timestamp ?? raw.created_at ?? raw.createdAt),
-    fee: asNumber(raw.fees),
+    fee: lipaxeFees + providerFees,
     wallet_id: asString(raw.from_wallet ?? raw.wallet_id),
+    paymentMethodName,
+    paymentMethodLogo: firstText(raw.payment_method_logo, raw.logo, paymentMethod.logo, paymentMethod.icon),
+    provider: firstText(raw.provider, paymentMethod.provider, raw.correspondent, paymentMethod.correspondent),
   };
 };
 
@@ -177,7 +208,16 @@ export const normalizePaymentMethod = (payload: unknown) => {
 export const normalizeNotification = (payload: unknown) => {
   const raw = (payload ?? {}) as UnknownRecord;
   const priority = asString(raw.priority, 'normal');
-  const level = (priority === 'high' ? 'warning' : 'info') as 'info' | 'warning';
+  const text = `${raw.title ?? ''} ${raw.message ?? raw.body ?? ''}`.toLowerCase();
+  const level = (
+    priority === 'high'
+      ? 'warning'
+      : text.includes('failed') || text.includes('echec') || text.includes('rejete')
+        ? 'error'
+        : text.includes('success') || text.includes('complet') || text.includes('verifie')
+          ? 'success'
+          : 'info'
+  ) as 'info' | 'success' | 'warning' | 'error';
   const normalizedPriority = (priority === 'high' ? 'high' : 'normal') as 'high' | 'normal';
 
   return {
@@ -189,6 +229,8 @@ export const normalizeNotification = (payload: unknown) => {
     read: Boolean(raw.is_read ?? raw.read),
     createdAt: asString(raw.created_at ?? raw.createdAt),
     link: asString(raw.link, ''),
+    logo: firstText(raw.logo, raw.icon, raw.payment_method_logo),
+    kind: firstText(raw.kind, raw.notification_key, raw.type),
   };
 };
 
@@ -224,6 +266,7 @@ export const normalizeCardOffer = (payload: unknown) => {
     supports_apple_pay: Boolean(raw.supports_apple_pay ?? raw.apple_pay),
     supports_google_pay: Boolean(raw.supports_google_pay ?? raw.google_pay),
     authentication: asString(raw.authentication, brand === 'Visa' ? 'OTP' : '3DS'),
+    image: firstText(raw.image, raw.card_image, raw.design_image, raw.preview_image, raw.logo),
   };
 };
 
@@ -246,12 +289,18 @@ export const normalizeUserCard = (payload: unknown) => {
   return {
     id: asString(raw.card_id ?? raw.id),
     brand,
+    card_number: asString(raw.card_number ?? raw.number),
     number_masked: asString(raw.masked_number ?? raw.last_four, '****'),
     name_on_card: asString(raw.name ?? raw.card_holder_name, 'LIPAXE USER'),
     exp: asString(raw.expiry ?? raw.exp, '--/--'),
+    cvv: asString(raw.cvv ?? raw.ccv),
+    billing: asString(raw.billing),
+    first_six: asString(raw.first_six),
+    last_four: asString(raw.last_four),
     balance: asNumber(raw.balance),
     currency: asString(raw.currency, 'USD'),
     status,
+    image: firstText(raw.image, raw.card_image, raw.design_image, raw.preview_image),
   };
 };
 

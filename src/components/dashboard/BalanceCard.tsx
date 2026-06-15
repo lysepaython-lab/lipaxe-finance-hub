@@ -8,16 +8,9 @@ import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { buildNetChangeStats } from '@/lib/dashboardStats';
 import { cn } from '@/lib/utils';
+import { CurrencyMark } from '@/lib/moneyVisuals';
 
 const currencyTone = ['bg-primary', 'bg-emerald-400', 'bg-sky-400', 'bg-amber-400', 'bg-rose-400'];
-
-// Mapping des drapeaux par currency
-const flagMap = {
-  BIF: '/flags/burundi.png',
-  EUR: '/flags/france.png',
-  GBP: '/flags/united-kingdom.png',
-  USD: '/flags/united-states.png',
-};
 
 // Composant Select Custom avec drapeaux (responsive)
 const CurrencySelect = ({ wallets, selected, onChange }) => {
@@ -45,13 +38,7 @@ const CurrencySelect = ({ wallets, selected, onChange }) => {
         onClick={() => setIsOpen(!isOpen)}
         className="flex h-8 sm:h-9 items-center gap-1.5 sm:gap-2 rounded-lg sm:rounded-xl border border-border bg-background px-2 sm:px-3 text-xs sm:text-sm font-semibold outline-none ring-primary/20 transition-smooth hover:bg-muted focus:ring-2"
       >
-        {selectedWallet && flagMap[selectedWallet.currency] && (
-          <img
-            src={flagMap[selectedWallet.currency]}
-            alt={selectedWallet.currency}
-            className="h-4 w-4 sm:h-5 sm:w-5 rounded-full object-cover"
-          />
-        )}
+        {selectedWallet && <CurrencyMark currency={selectedWallet.currency} className="h-5 w-5 text-[9px]" />}
         <span className="hidden xs:inline">{selected}</span>
         <span className="xs:hidden">{selected}</span>
         <ChevronDown
@@ -86,13 +73,7 @@ const CurrencySelect = ({ wallets, selected, onChange }) => {
                   selected === wallet.currency && 'bg-primary/8 font-semibold text-primary',
                 )}
               >
-                {flagMap[wallet.currency] && (
-                  <img
-                    src={flagMap[wallet.currency]}
-                    alt={wallet.currency}
-                    className="h-4 w-4 sm:h-5 sm:w-5 rounded-full object-cover"
-                  />
-                )}
+                <CurrencyMark currency={wallet.currency} className="h-5 w-5 text-[9px]" />
                 <span className="flex-1 text-left">{wallet.currency}</span>
                 {selected === wallet.currency && (
                   <Check size={12} className="text-primary sm:h-4 sm:w-4" />

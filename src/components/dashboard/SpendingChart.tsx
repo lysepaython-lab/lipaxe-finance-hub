@@ -3,13 +3,15 @@ import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianG
 import { useTranslation } from 'react-i18next';
 import { useTransactionsQuery, useWalletsQuery } from '@/store/api/walletApi';
 import { buildMonthlyFlowFromTransactions } from '@/lib/dashboardStats';
+import { WalletCards } from 'lucide-react';
 
 export const SpendingChart = () => {
   const { t, i18n } = useTranslation();
   const { data: transactions } = useTransactionsQuery();
   const { data: wallets } = useWalletsQuery();
-  const currency = wallets?.[0]?.currency;
+  const currency = wallets?.[0]?.currency || transactions?.[0]?.currency;
   const data = buildMonthlyFlowFromTransactions(transactions, { currency, locale: i18n.language });
+  const hasRealData = data.some((point) => point.inflow > 0 || point.outflow > 0);
 
   return (
     <Card className="shadow-elegant border-border/60">
@@ -22,6 +24,15 @@ export const SpendingChart = () => {
       </CardHeader>
       <CardContent>
         <div className="h-[280px]">
+          {!hasRealData ? (
+            <div className="flex h-full flex-col items-center justify-center rounded-3xl border border-dashed border-border bg-muted/20 text-center">
+              <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                <WalletCards className="h-5 w-5" />
+              </div>
+              <div className="font-semibold">{t('dashboard.noTransactions')}</div>
+              <p className="mt-1 max-w-xs text-sm text-muted-foreground">Les flux reels s'afficheront apres vos premieres transactions.</p>
+            </div>
+          ) : (
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={data} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
               <defs>
@@ -50,6 +61,7 @@ export const SpendingChart = () => {
               <Area type="monotone" dataKey="outflow" stroke="hsl(var(--brand-300))" strokeWidth={2.5} fill="url(#gOut)" />
             </AreaChart>
           </ResponsiveContainer>
+          )}
         </div>
       </CardContent>
     </Card>

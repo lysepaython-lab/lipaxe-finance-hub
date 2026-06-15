@@ -40,7 +40,7 @@ const Affiliation = () => {
   ];
 
   return (
-    <div className="mx-auto max-w-6xl space-y-4 sm:space-y-5 rounded-2xl sm:rounded-[2rem] bg-background p-3 sm:p-4 md:p-6 text-foreground shadow-sm ring-1 ring-border dark:bg-[#07110f] dark:text-slate-100 dark:shadow-2xl dark:ring-white/10">
+    <div className="mx-auto w-full min-w-0 max-w-6xl overflow-hidden space-y-4 sm:space-y-5 rounded-2xl sm:rounded-[2rem] bg-background p-2.5 sm:p-4 md:p-6 text-foreground shadow-sm ring-1 ring-border dark:bg-[#07110f] dark:text-slate-100 dark:shadow-2xl dark:ring-white/10">
       
       {/* En-tête responsive */}
       <div className="flex flex-col gap-3 border-b border-border pb-4 sm:flex-row sm:items-center sm:justify-between dark:border-emerald-300/20">
@@ -61,18 +61,18 @@ const Affiliation = () => {
       </div>
 
       {/* Grille principale responsive */}
-      <div className="grid gap-4 sm:gap-5 lg:grid-cols-2">
+      <div className="grid min-w-0 gap-4 sm:gap-5 lg:grid-cols-2">
         
         {/* Carte des statistiques */}
         <motion.div 
           initial={{ opacity: 0, y: 10 }} 
           animate={{ opacity: 1, y: 0 }} 
-          className="rounded-2xl sm:rounded-3xl border border-border bg-card p-4 sm:p-5 dark:border-white/10 dark:bg-white/[0.035]"
+          className="min-w-0 rounded-2xl sm:rounded-3xl border border-border bg-card p-3 sm:p-5 dark:border-white/10 dark:bg-white/[0.035]"
         >
           {/* Grille des stats responsive: 2 colonnes sur mobile, 4 sur desktop */}
-          <div className="grid grid-cols-2 gap-2 sm:gap-3">
+          <div className="grid min-w-0 grid-cols-2 gap-2 sm:gap-3">
             {stats.map((item) => (
-              <div key={item.label} className="rounded-xl sm:rounded-2xl bg-muted/60 p-2.5 sm:p-3 text-center dark:bg-black/20">
+              <div key={item.label} className="min-w-0 rounded-xl sm:rounded-2xl bg-muted/60 p-2.5 sm:p-3 text-center dark:bg-black/20">
                 <div className="text-[10px] sm:text-xs text-muted-foreground dark:text-slate-400">{item.label}</div>
                 <div className={`mt-1 sm:mt-2 font-display text-base sm:text-lg font-bold truncate ${metricTone[item.tone]}`}>
                   {item.value}
@@ -93,16 +93,16 @@ const Affiliation = () => {
           initial={{ opacity: 0, y: 10 }} 
           animate={{ opacity: 1, y: 0 }} 
           transition={{ delay: 0.04 }} 
-          className="rounded-2xl sm:rounded-3xl border border-border bg-card p-4 sm:p-5 dark:border-white/10 dark:bg-white/[0.035]"
+          className="min-w-0 rounded-2xl sm:rounded-3xl border border-border bg-card p-3 sm:p-5 dark:border-white/10 dark:bg-white/[0.035]"
         >
           <div className="space-y-3 sm:space-y-4">
             <div className="space-y-1.5 sm:space-y-2">
               <label className="text-[10px] sm:text-xs text-muted-foreground dark:text-slate-400">Your Referral Code</label>
-              <div className="flex gap-2">
+              <div className="flex min-w-0 gap-2">
                 <Input 
                   readOnly 
                   value={code} 
-                  className="h-10 sm:h-12 rounded-xl sm:rounded-2xl text-sm dark:border-white/10 dark:bg-black/30 dark:text-white" 
+                  className="min-w-0 h-10 sm:h-12 rounded-xl sm:rounded-2xl text-sm dark:border-white/10 dark:bg-black/30 dark:text-white" 
                 />
                 <Button disabled className="h-10 sm:h-12 rounded-xl sm:rounded-2xl bg-primary/70 px-4 sm:px-6 text-sm text-primary-foreground dark:bg-emerald-500/60 dark:text-white">
                   Update
@@ -137,7 +137,7 @@ const Affiliation = () => {
           initial={{ opacity: 0, y: 10 }} 
           animate={{ opacity: 1, y: 0 }} 
           transition={{ delay: 0.08 }} 
-          className="rounded-2xl sm:rounded-3xl border border-border bg-card p-4 sm:p-5 dark:border-white/10 dark:bg-white/[0.035]"
+          className="min-w-0 rounded-2xl sm:rounded-3xl border border-border bg-card p-3 sm:p-5 dark:border-white/10 dark:bg-white/[0.035]"
         >
           <div className="mb-3 sm:mb-4 flex items-center gap-2 font-semibold">
             <Wallet className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary dark:text-emerald-300" />
@@ -163,7 +163,7 @@ const Affiliation = () => {
           initial={{ opacity: 0, y: 10 }} 
           animate={{ opacity: 1, y: 0 }} 
           transition={{ delay: 0.12 }} 
-          className="rounded-2xl sm:rounded-3xl border border-border bg-card p-4 sm:p-5 dark:border-white/10 dark:bg-white/[0.035]"
+          className="min-w-0 rounded-2xl sm:rounded-3xl border border-border bg-card p-3 sm:p-5 dark:border-white/10 dark:bg-white/[0.035]"
         >
           <div className="mb-3 sm:mb-4 flex flex-col xs:flex-row items-start xs:items-center justify-between gap-2">
             <div className="flex items-center gap-2 font-semibold">
@@ -181,14 +181,14 @@ const Affiliation = () => {
       </div>
 
       {/* Cartes de métriques - responsive grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
+      <div className="grid min-w-0 grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
         {[
           { icon: Users2, label: 'Signups', value: affiliate?.total_referrals || 0 },
           { icon: TrendingUp, label: 'Converted', value: paidCount },
           { icon: Users2, label: 'Direct Referrals', value: affiliate?.total_referrals || 0 },
           { icon: DollarSign, label: 'Total Sales', value: formatMoney(total, 'USD') },
         ].map((item) => (
-          <div key={item.label} className="rounded-xl sm:rounded-2xl md:rounded-3xl border border-border bg-card p-3 sm:p-4 dark:border-white/10 dark:bg-white/[0.035]">
+          <div key={item.label} className="min-w-0 rounded-xl sm:rounded-2xl md:rounded-3xl border border-border bg-card p-3 sm:p-4 dark:border-white/10 dark:bg-white/[0.035]">
             <item.icon className="mb-2 sm:mb-3 h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground dark:text-slate-500" />
             <div className="text-[10px] sm:text-xs text-muted-foreground dark:text-slate-500">{item.label}</div>
             <div className="mt-0.5 sm:mt-1 font-display text-lg sm:text-2xl font-bold truncate">
@@ -199,7 +199,7 @@ const Affiliation = () => {
       </div>
 
       {/* Tableau de l'historique des commissions - responsive */}
-      <div className="overflow-hidden rounded-xl sm:rounded-2xl md:rounded-3xl border border-border bg-card dark:border-white/10 dark:bg-white/[0.035]">
+      <div className="min-w-0 overflow-hidden rounded-xl sm:rounded-2xl md:rounded-3xl border border-border bg-card dark:border-white/10 dark:bg-white/[0.035]">
         <div className="border-b border-border px-4 sm:px-5 py-3 sm:py-4 font-semibold text-sm sm:text-base dark:border-white/10">
           Commission history
         </div>

@@ -14,6 +14,12 @@ import { downloadReceipt } from '@/lib/receipt';
 import { TransactionListItem } from '@/components/transactions/TransactionListItem';
 import { PaymentMethodMark } from '@/lib/moneyVisuals';
 
+const shortRef = (value?: string) => {
+  const text = String(value || '').trim();
+  if (text.length <= 18) return text;
+  return `${text.slice(0, 14)}...`;
+};
+
 const Transactions = () => {
   const { t } = useTranslation();
   const { data, isLoading } = useTransactionsQuery();
@@ -94,7 +100,9 @@ const Transactions = () => {
                           </div>
                         </Link>
                       </td>
-                      <td className="px-5 py-3 text-muted-foreground tabular">{tx.reference}</td>
+                      <td className="max-w-[160px] truncate px-5 py-3 text-muted-foreground tabular" title={tx.reference}>
+                        {shortRef(tx.reference)}
+                      </td>
                       <td className="px-5 py-3 text-muted-foreground">{formatDate(tx.createdAt)}</td>
                       <td className="px-5 py-3"><StatusPill status={tx.status} /></td>
                       <td className={`px-5 py-3 text-right font-semibold tabular ${tx.direction==='in' ? 'text-success' : ''}`}>

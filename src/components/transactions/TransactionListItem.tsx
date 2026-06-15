@@ -6,11 +6,17 @@ import { formatMoney, relativeTime } from '@/lib/format';
 import { StatusPill } from '@/components/StatusPill';
 import { cn } from '@/lib/utils';
 
-const describeCounterparty = (tx: Transaction) =>
-  [tx.reference, tx.counterparty, tx.paymentMethodName || tx.provider]
+const shorten = (value?: string, max = 18) => {
+  const text = String(value || '').trim();
+  if (text.length <= max) return text;
+  return `${text.slice(0, Math.max(6, max - 4))}...`;
+};
+
+const describeCounterparty = (tx: Transaction, compact = false) =>
+  [shorten(tx.reference, compact ? 14 : 18), shorten(tx.counterparty, compact ? 18 : 24), tx.paymentMethodName || tx.provider]
     .filter(Boolean)
     .slice(0, 2)
-    .join(' · ');
+    .join(' - ');
 
 export const TransactionListItem = ({
   tx,
@@ -40,17 +46,17 @@ export const TransactionListItem = ({
         className={compact ? 'h-10 w-10' : undefined}
       />
 
-      <div className="min-w-0 flex-1">
+      <div className="min-w-0 flex-1 overflow-hidden">
         <div className="truncate text-sm font-semibold text-foreground sm:text-[15px]">
           {tx.description}
         </div>
         <div className="mt-0.5 truncate text-xs text-muted-foreground">
-          {describeCounterparty(tx) || tx.paymentMethodName || tx.provider || tx.currency}
-          {tx.createdAt ? ` · ${relativeTime(tx.createdAt)}` : ''}
+          {describeCounterparty(tx, compact) || tx.paymentMethodName || tx.provider || tx.currency}
+          {tx.createdAt ? ` - ${relativeTime(tx.createdAt)}` : ''}
         </div>
       </div>
 
-      <div className="min-w-[92px] shrink-0 text-right sm:min-w-[124px]">
+      <div className="min-w-[82px] shrink-0 text-right sm:min-w-[124px]">
         <div className={cn('truncate text-sm font-bold tabular sm:text-base', tx.direction === 'in' && 'text-success')}>
           {sign} {formatMoney(tx.amount, tx.currency)}
         </div>

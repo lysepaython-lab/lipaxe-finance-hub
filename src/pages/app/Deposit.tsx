@@ -27,12 +27,13 @@ import { useTransactionPolling } from '@/hooks/useTransactionPolling';
 import { sanitizeText, Throttle } from '@/lib/security';
 import { amountSchema } from '@/lib/validation';
 import { cn } from '@/lib/utils';
+import { resolveMediaUrl } from '@/lib/moneyVisuals';
 
 const submitThrottle = new Throttle(8, 60_000);
 
 const paymentMethodLogo = (method: PaymentMethod) => {
   if (!method.icon) return null;
-  return method.icon.startsWith('http') ? method.icon : `${import.meta.env.VITE_API_URL}${method.icon}`;
+  return resolveMediaUrl(method.icon);
 };
 
 /**

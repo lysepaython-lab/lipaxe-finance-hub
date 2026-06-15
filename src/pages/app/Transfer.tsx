@@ -19,6 +19,7 @@ import { WalletSelector } from '@/components/security/WalletSelector';
 import { CountryPicker } from '@/components/security/CountryPicker';
 import { PinModal, usePinGate } from '@/components/security/PinModal';
 import { AsyncStatusPill } from '@/components/security/AsyncStatus';
+import { PaymentMethodMark } from '@/lib/moneyVisuals';
 import { useSubmitOnce } from '@/hooks/useSubmitOnce';
 import { useTransactionPolling } from '@/hooks/useTransactionPolling';
 import { sanitizeText, Throttle } from '@/lib/security';
@@ -326,11 +327,12 @@ const Transfer = () => {
                         className={`rounded-xl border-2 p-3 text-left text-sm transition-colors ${methodId === m.id ? 'border-primary bg-primary/5' : 'border-input hover:border-primary/40'}`}
                       >
                         <div className="flex items-center gap-3">
-                          {m.icon ? (
-                            <img src={m.icon} alt="" className="h-8 w-8 rounded-full object-cover" />
-                          ) : (
-                            <CurrencyFlagMark currency={wallet?.currency} />
-                          )}
+                          <PaymentMethodMark
+                            logo={m.icon}
+                            name={[m.name, m.provider, m.correspondent].filter(Boolean).join(' ')}
+                            currency={wallet?.currency}
+                            className="h-8 w-8"
+                          />
                           <div>
                             <div className="font-semibold">{m.name}</div>
                             <div className="text-xs text-muted-foreground capitalize">{m.type}</div>

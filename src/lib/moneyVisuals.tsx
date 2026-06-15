@@ -20,6 +20,14 @@ const fiatMeta: Record<string, { label: string; className: string }> = {
   TZS: { label: 'TZ', className: 'bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-200' },
 };
 
+export const resolveMediaUrl = (value?: string) => {
+  if (!value) return '';
+  if (/^(https?:|data:|blob:)/i.test(value)) return value;
+  const apiRoot = String(import.meta.env.VITE_API_URL || '').replace(/\/api\/v\d+\/?$/i, '').replace(/\/+$/, '');
+  if (value.startsWith('/')) return apiRoot ? `${apiRoot}${value}` : value;
+  return apiRoot ? `${apiRoot}/${value.replace(/^\/+/, '')}` : value;
+};
+
 export const currencyVisual = (currency?: string) => {
   const code = (currency || 'USD').toUpperCase();
   return cryptoMeta[code] || fiatMeta[code] || { label: code.slice(0, 2), className: 'bg-muted text-foreground' };
@@ -67,11 +75,12 @@ export const PaymentMethodMark = ({
   className?: string;
 }) => {
   const provider = providerVisual(name);
+  const logoSrc = resolveMediaUrl(logo);
 
-  if (logo) {
+  if (logoSrc) {
     return (
       <span className={cn('inline-flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted ring-1 ring-border', className)}>
-        <img src={logo} alt={name || currency || 'payment method'} className="h-full w-full object-cover" />
+        <img src={logoSrc} alt={name || currency || 'payment method'} className="h-full w-full object-cover" />
       </span>
     );
   }

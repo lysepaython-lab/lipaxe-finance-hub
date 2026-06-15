@@ -30,6 +30,7 @@ import Transfer from "./pages/app/Transfer";
 import TransferQr from "./pages/app/transfer/TransferQr";
 import VirtualCard from "./pages/app/cards/VirtualCard";
 import MyCards from "./pages/app/cards/MyCards";
+import CardDetail from "./pages/app/cards/CardDetail";
 import GiftCards from "./pages/app/cards/GiftCards";
 import PayAll from "./pages/app/payments/PayAll";
 import FestiPay from "./pages/app/payments/FestiPay";
@@ -97,6 +98,7 @@ const AppRoutes = () => (
       <Route path="transfer/nfc" element={<Navigate to="/app/transfer" replace />} />
       <Route path="cards/virtual" element={<VirtualCard />} />
       <Route path="cards/my" element={<MyCards />} />
+      <Route path="cards/my/:id" element={<CardDetail />} />
       <Route path="cards/gift" element={<GiftCards />} />
       <Route path="cards/nfc" element={<Navigate to="/app/cards/virtual" replace />} />
       <Route path="payments/payall" element={<PayAll />} />

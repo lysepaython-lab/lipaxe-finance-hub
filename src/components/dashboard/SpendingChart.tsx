@@ -10,7 +10,9 @@ export const SpendingChart = () => {
   const { data: transactions } = useTransactionsQuery();
   const { data: wallets } = useWalletsQuery();
   const currency = wallets?.[0]?.currency || transactions?.[0]?.currency;
-  const data = buildMonthlyFlowFromTransactions(transactions, { currency, locale: i18n.language });
+  const currencyData = buildMonthlyFlowFromTransactions(transactions, { currency, locale: i18n.language });
+  const allData = buildMonthlyFlowFromTransactions(transactions, { locale: i18n.language });
+  const data = currencyData.some((point) => point.inflow > 0 || point.outflow > 0) ? currencyData : allData;
   const hasRealData = data.some((point) => point.inflow > 0 || point.outflow > 0);
 
   return (

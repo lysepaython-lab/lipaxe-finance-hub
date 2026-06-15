@@ -10,6 +10,7 @@ export interface PaymentMethod {
   name: string;
   provider?: string;
   correspondent?: string;
+  is_international?: boolean;
   type: 'mobile' | 'card' | 'bank' | 'electronic' | 'crypto';
   payment_type?: { name: PaymentTypeName };
   icon?: string;

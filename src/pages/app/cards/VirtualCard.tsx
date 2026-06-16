@@ -194,14 +194,14 @@ const VirtualCard = () => {
       <PageHeader
         title={t('nav.virtualCard')}
         subtitle=""
-        icon={<CreditCard className="h-5 w-5 sm:h-6 sm:w-6" />}
-        actions={
-          visibleOffers[0] && (
-            <Button onClick={() => openCreate(visibleOffers[0])} className="bg-primary text-primary-foreground shadow-brand hover:bg-primary/90 text-sm sm:text-base">
-              <Plus className="mr-1 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4" /> {t('cards.create')}
-            </Button>
-          )
-        }
+        // icon={<CreditCard className="h-5 w-5 sm:h-6 sm:w-6" />}
+        // actions={
+        //   visibleOffers[0] && (
+        //     <Button onClick={() => openCreate(visibleOffers[0])} className="bg-primary text-primary-foreground shadow-brand hover:bg-primary/90 text-sm sm:text-base">
+        //       <Plus className="mr-1 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4" /> {t('cards.create')}
+        //     </Button>
+        //   )
+        // }
       />
 
       {visibleOffers[0] && (

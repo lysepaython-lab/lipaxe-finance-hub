@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { useFxQuoteMutation, useTransferMutation, useLookupRecipientMutation, type RecipientLookup } from '@/store/api/walletApi';
+import { useFxQuoteMutation, useLookupRecipientMutation, useTransactionsQuery, useTransferMutation, type RecipientLookup } from '@/store/api/walletApi';
 import { usePaymentMethodsDepositQuery, usePaymentMethodsInternationalQuery, type WalletV2 } from '@/store/api/platformApi';
 import { Loader2, Check, ArrowDown, Search, ShieldCheck, Globe2, QrCode } from 'lucide-react';
 import { toast } from 'sonner';
@@ -141,6 +141,7 @@ const Transfer = () => {
   const [params] = useSearchParams();
   const { data: internationalMethods } = usePaymentMethodsInternationalQuery();
   const { data: depositMethods } = usePaymentMethodsDepositQuery();
+  const { data: transactions = [] } = useTransactionsQuery();
   const pin = usePinGate();
 
   const [kind, setKind] = useState<'internal' | 'international'>(params.get('intl') ? 'international' : 'internal');
@@ -171,6 +172,19 @@ const Transfer = () => {
     return intlMethods.filter((method) => methodSupportsCountry(method, countryTo));
   }, [intlMethods, countryTo]);
 
+  const recentRecipients = useMemo(() => {
+    const seen = new Set<string>();
+    return transactions
+      .filter((tx) => tx.type === 'transfer' && tx.direction === 'out' && tx.counterparty?.trim())
+      .filter((tx) => {
+        const key = tx.counterparty.trim().toLowerCase();
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .slice(0, 6);
+  }, [transactions]);
+
   // Reset recipient info when input changes
   useEffect(() => { setRecipientInfo(null); }, [recipient, kind]);
 
@@ -196,15 +210,22 @@ const Transfer = () => {
   const total = (parseFloat(amount) || 0) + fee;
   const insufficient = wallet ? total > wallet.available : false;
 
-  const doLookup = async () => {
-    if (!recipient.trim()) { toast.error(t('transfer.amountRequired')); return; }
+  const doLookup = async (recipientValue = recipient) => {
+    const normalizedRecipient = recipientValue.trim();
+    if (!normalizedRecipient) { toast.error(t('transfer.amountRequired')); return; }
     try {
-      const info = await lookup({ account_no: sanitizeText(recipient) }).unwrap();
+      const info = await lookup({ account_no: sanitizeText(normalizedRecipient) }).unwrap();
       setRecipientInfo(info);
       toast.success(t('transfer.recipientFound'));
     } catch {
       toast.error(t('transfer.recipientNotFound'));
     }
+  };
+
+  const applyRecentRecipient = async (value: string) => {
+    setRecipient(value);
+    setRecipientInfo(null);
+    await doLookup(value);
   };
 
   const doTransfer = async () => {
@@ -349,6 +370,28 @@ const Transfer = () => {
                   </Button>
                 )}
               </div>
+              {recentRecipients.length > 0 && (
+                <div className="space-y-2 rounded-2xl border border-border/60 bg-muted/20 p-3">
+                  <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                    {t('transfer.recentRecipients')}
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {recentRecipients.map((tx) => (
+                      <button
+                        key={tx.id}
+                        type="button"
+                        onClick={() => applyRecentRecipient(tx.counterparty)}
+                        className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-3 py-2 text-left text-sm font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-primary/5"
+                      >
+                        <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-[11px] font-bold text-primary">
+                          {tx.counterparty.slice(0, 2).toUpperCase()}
+                        </span>
+                        <span className="max-w-[180px] truncate">{tx.counterparty}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
               <AnimatePresence>
                 {recipientInfo && (
                   <motion.div

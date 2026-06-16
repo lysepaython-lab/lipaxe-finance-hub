@@ -401,7 +401,8 @@
     "insufficientBalance": "Insufficient balance",
     "lookupRecipient": "Check recipient",
     "recipientFound": "Recipient found",
-    "recipientNotFound": "No user found with that number"
+    "recipientNotFound": "No user found with that number",
+    "recentRecipients": "Recent recipients"
   },
   "kyc": {
     "title": "Identity verification",

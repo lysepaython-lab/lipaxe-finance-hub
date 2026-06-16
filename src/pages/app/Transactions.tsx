@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { downloadReceipt } from '@/lib/receipt';
 import { TransactionListItem } from '@/components/transactions/TransactionListItem';
 import { PaymentMethodMark } from '@/lib/moneyVisuals';
+import { getTransactionSubtitle, getTransactionTitle } from '@/lib/transactionPresentation';
 
 const shortRef = (value?: string) => {
   const text = String(value || '').trim();
@@ -28,7 +29,23 @@ const Transactions = () => {
 
   const items = (data || [])
     .filter(tx => filter === 'all' || tx.type === filter)
-    .filter(tx => !q || (tx.description + tx.reference + tx.counterparty).toLowerCase().includes(q.toLowerCase()));
+    .filter(tx => {
+      if (!q) return true;
+      const query = q.toLowerCase();
+      const searchable = [
+        getTransactionTitle(tx, t),
+        getTransactionSubtitle(tx, t),
+        tx.description,
+        tx.reference,
+        tx.counterparty,
+        tx.paymentMethodName,
+        tx.provider,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+      return searchable.includes(query);
+    });
 
   return (
     <div className="space-y-6">
@@ -95,8 +112,8 @@ const Transactions = () => {
                             className="h-9 w-9"
                           />
                           <div>
-                            <div className="font-medium">{tx.description}</div>
-                            <div className="text-xs text-muted-foreground">{tx.counterparty}</div>
+                            <div className="font-medium">{getTransactionTitle(tx, t)}</div>
+                            <div className="text-xs text-muted-foreground">{getTransactionSubtitle(tx, t)}</div>
                           </div>
                         </Link>
                       </td>

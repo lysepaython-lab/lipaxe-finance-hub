@@ -401,7 +401,8 @@
     "insufficientBalance": "Solde insuffisant",
     "lookupRecipient": "Verifier le destinataire",
     "recipientFound": "Destinataire trouve",
-    "recipientNotFound": "Aucun utilisateur avec ce numero"
+    "recipientNotFound": "Aucun utilisateur avec ce numero",
+    "recentRecipients": "Destinataires recents"
   },
   "kyc": {
     "title": "Verification d'identite",

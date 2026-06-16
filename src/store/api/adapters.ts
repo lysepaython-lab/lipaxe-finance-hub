@@ -132,7 +132,7 @@ export const normalizeTransaction = (payload: unknown) => {
     providerFee: providerFees,
     wallet_id: asString(raw.from_wallet ?? raw.wallet_id),
     paymentMethodName,
-    paymentMethodLogo: firstText(raw.payment_method_logo, raw.logo, paymentMethod.logo, paymentMethod.icon),
+    paymentMethodLogo: firstText(raw.payment_method_logo, raw.image, raw.logo, paymentMethod.logo, paymentMethod.icon),
     provider: firstText(raw.provider, paymentMethod.provider, raw.correspondent, paymentMethod.correspondent),
   };
 };

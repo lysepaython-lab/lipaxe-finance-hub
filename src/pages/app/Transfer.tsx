@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useFxQuoteMutation, useLookupRecipientMutation, useTransactionsQuery, useTransferMutation, type RecipientLookup } from '@/store/api/walletApi';
 import { usePaymentMethodsDepositQuery, usePaymentMethodsInternationalQuery, type WalletV2 } from '@/store/api/platformApi';
 import { Loader2, Check, ArrowDown, Search, ShieldCheck, Globe2, QrCode } from 'lucide-react';
@@ -136,6 +136,19 @@ const normalizeGlobalPhone = (countryCode: string, value: string) => {
   return { ok: true, value: digits, message: '' };
 };
 
+const inferCountryFromPhone = (value: string) => {
+  const digits = String(value || '').replace(/\D/g, '').replace(/^00/, '');
+  return Object.entries(countryPhoneRules).find(([, rule]) => digits.startsWith(rule.dial))?.[0] || '';
+};
+
+type RecentRecipientSuggestion = {
+  id: string;
+  account_no: string;
+  name: string;
+  avatar?: string;
+  verified?: boolean;
+};
+
 const Transfer = () => {
   const { t } = useTranslation();
   const [params] = useSearchParams();
@@ -157,6 +170,7 @@ const Transfer = () => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [done, setDone] = useState(false);
   const [txId, setTxId] = useState<string | null>(null);
+  const [recipientSuggestions, setRecipientSuggestions] = useState<RecentRecipientSuggestion[]>([]);
   const status = useTransactionPolling(txId);
 
   const [getQuote, { data: quote, isLoading: quoting }] = useFxQuoteMutation();
@@ -172,10 +186,25 @@ const Transfer = () => {
     return intlMethods.filter((method) => methodSupportsCountry(method, countryTo));
   }, [intlMethods, countryTo]);
 
-  const recentRecipients = useMemo(() => {
+  const recentInternalRecipients = useMemo(() => {
     const seen = new Set<string>();
     return transactions
       .filter((tx) => tx.type === 'transfer' && tx.direction === 'out' && tx.counterparty?.trim())
+      .filter((tx) => !/\d{6,}/.test(tx.counterparty))
+      .filter((tx) => {
+        const key = tx.counterparty.trim().toLowerCase();
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .slice(0, 6);
+  }, [transactions]);
+
+  const recentInternationalRecipients = useMemo(() => {
+    const seen = new Set<string>();
+    return transactions
+      .filter((tx) => tx.type === 'transfer' && tx.direction === 'out' && tx.counterparty?.trim())
+      .filter((tx) => /\d{6,}/.test(tx.counterparty))
       .filter((tx) => {
         const key = tx.counterparty.trim().toLowerCase();
         if (seen.has(key)) return false;
@@ -187,6 +216,51 @@ const Transfer = () => {
 
   // Reset recipient info when input changes
   useEffect(() => { setRecipientInfo(null); }, [recipient, kind]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const hydrateSuggestions = async () => {
+      if (!recentInternalRecipients.length) {
+        setRecipientSuggestions([]);
+        return;
+      }
+
+      const suggestions = await Promise.all(
+        recentInternalRecipients.map(async (tx) => {
+          const accountNo = sanitizeText(tx.counterparty);
+          try {
+            const info = await lookup({ account_no: accountNo }).unwrap();
+            return {
+              id: tx.id,
+              account_no: info.account_no || accountNo,
+              name: info.name || tx.counterparty,
+              avatar: info.avatar,
+              verified: info.verified,
+            } satisfies RecentRecipientSuggestion;
+          } catch {
+            return {
+              id: tx.id,
+              account_no: accountNo,
+              name: tx.counterparty,
+              avatar: undefined,
+              verified: false,
+            } satisfies RecentRecipientSuggestion;
+          }
+        }),
+      );
+
+      if (!cancelled) {
+        setRecipientSuggestions(suggestions);
+      }
+    };
+
+    void hydrateSuggestions();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [lookup, recentInternalRecipients]);
 
   useEffect(() => {
     setRecipient('');
@@ -226,6 +300,17 @@ const Transfer = () => {
     setRecipient(value);
     setRecipientInfo(null);
     await doLookup(value);
+  };
+
+  const applyRecentInternationalRecipient = (value: string) => {
+    const detectedCountry = inferCountryFromPhone(value);
+    if (detectedCountry) {
+      setCountryTo(detectedCountry);
+      setCountryToName('');
+      setMethodId('');
+    }
+    setRecipient(value);
+    setErrors((current) => ({ ...current, recipient: '' }));
   };
 
   const doTransfer = async () => {
@@ -370,23 +455,30 @@ const Transfer = () => {
                   </Button>
                 )}
               </div>
-              {recentRecipients.length > 0 && (
+              {recipientSuggestions.length > 0 && (
                 <div className="space-y-2 rounded-2xl border border-border/60 bg-muted/20 p-3">
                   <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                     {t('transfer.recentRecipients')}
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    {recentRecipients.map((tx) => (
+                    {recipientSuggestions.map((entry) => (
                       <button
-                        key={tx.id}
+                        key={entry.id}
                         type="button"
-                        onClick={() => applyRecentRecipient(tx.counterparty)}
-                        className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-3 py-2 text-left text-sm font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-primary/5"
+                        onClick={() => applyRecentRecipient(entry.account_no)}
+                        className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-2.5 py-2 text-left text-sm font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-primary/5"
                       >
-                        <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-[11px] font-bold text-primary">
-                          {tx.counterparty.slice(0, 2).toUpperCase()}
+                        <Avatar className="h-8 w-8 ring-1 ring-border">
+                          <AvatarImage src={entry.avatar} alt={entry.name} />
+                          <AvatarFallback className="bg-primary/10 text-[11px] font-bold text-primary">
+                            {entry.name.slice(0, 2).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="flex min-w-0 flex-col leading-tight">
+                          <span className="max-w-[140px] truncate">{entry.name}</span>
+                          <span className="max-w-[140px] truncate text-[11px] text-muted-foreground">{entry.account_no}</span>
                         </span>
-                        <span className="max-w-[180px] truncate">{tx.counterparty}</span>
+                        {entry.verified ? <Check className="h-3.5 w-3.5 shrink-0 text-success" /> : null}
                       </button>
                     ))}
                   </div>
@@ -443,6 +535,29 @@ const Transfer = () => {
                   </p>
                   {errors.recipient && <p className="text-xs text-destructive">{errors.recipient}</p>}
                 </div>
+
+                {recentInternationalRecipients.length > 0 && (
+                  <div className="space-y-2 rounded-2xl border border-border/60 bg-muted/20 p-3">
+                    <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                      {t('transfer.recentRecipients')}
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {recentInternationalRecipients.map((tx) => (
+                        <button
+                          key={tx.id}
+                          type="button"
+                          onClick={() => applyRecentInternationalRecipient(tx.counterparty)}
+                          className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-3 py-2 text-left text-sm font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-primary/5"
+                        >
+                          <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-[11px] font-bold text-primary">
+                            {tx.counterparty.replace(/\D/g, '').slice(-2) || 'P2'}
+                          </span>
+                          <span className="max-w-[220px] truncate">{tx.counterparty}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 <div className="space-y-2">
                   <Label>{t('deposit.selectMethod')}</Label>

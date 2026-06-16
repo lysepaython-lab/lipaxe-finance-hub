@@ -33,7 +33,7 @@ const SortableItem = ({ id, editing, children }: SortableItemProps) => {
     opacity: isDragging ? 0.55 : 1,
   };
   return (
-    <div ref={setNodeRef} style={style} className={cn('relative', editing && 'ring-2 ring-primary/30 ring-offset-2 ring-offset-background rounded-2xl')}>
+    <div ref={setNodeRef} style={style} className={cn('relative min-w-0', editing && 'ring-2 ring-primary/30 ring-offset-2 ring-offset-background rounded-2xl')}>
       {editing && (
         <button
           aria-label="Drag handle"
@@ -92,7 +92,7 @@ export const SortableDashboard = ({ widgets }: Props) => {
   const full = ordered.filter((w) => w.column === 'full');
 
   return (
-    <div className="space-y-4">
+    <div className="min-w-0 space-y-4 overflow-hidden">
       <div className="flex justify-end gap-2">
         {editing && (
           <Button variant="ghost" size="sm" onClick={() => setOrder(defaultOrder)}>
@@ -111,15 +111,15 @@ export const SortableDashboard = ({ widgets }: Props) => {
       </div>
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
         <SortableContext items={order} strategy={verticalListSortingStrategy}>
-          <div className="grid gap-6 lg:grid-cols-3">
-            <div className="lg:col-span-1 space-y-6">
+          <div className="grid min-w-0 gap-4 sm:gap-6 lg:grid-cols-3">
+            <div className="min-w-0 space-y-4 sm:space-y-6 lg:col-span-1">
               {side.map((w) => <SortableItem key={w.id} id={w.id} editing={editing}>{w.render()}</SortableItem>)}
             </div>
-            <div className="lg:col-span-2 space-y-6">
+            <div className="min-w-0 space-y-4 sm:space-y-6 lg:col-span-2">
               {main.map((w) => <SortableItem key={w.id} id={w.id} editing={editing}>{w.render()}</SortableItem>)}
             </div>
           </div>
-          <div className="space-y-6">
+          <div className="min-w-0 space-y-4 sm:space-y-6">
             {full.map((w) => <SortableItem key={w.id} id={w.id} editing={editing}>{w.render()}</SortableItem>)}
           </div>
         </SortableContext>

@@ -31,12 +31,12 @@ const CurrencySelect = ({ wallets, selected, onChange }) => {
   const selectedWallet = wallets.find((w) => w.currency === selected);
 
   return (
-    <div ref={ref} className="relative">
+    <div ref={ref} className="relative shrink-0">
       {/* Bouton déclencheur - responsive */}
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="flex h-8 sm:h-9 items-center gap-1.5 sm:gap-2 rounded-lg sm:rounded-xl border border-border bg-background px-2 sm:px-3 text-xs sm:text-sm font-semibold outline-none ring-primary/20 transition-smooth hover:bg-muted focus:ring-2"
+        className="flex h-8 items-center gap-1.5 rounded-lg border border-border bg-background px-2 text-xs font-semibold outline-none ring-primary/20 transition-smooth hover:bg-muted focus:ring-2 sm:h-9 sm:gap-2 sm:rounded-xl sm:px-3 sm:text-sm"
       >
         {selectedWallet && <CurrencyMark currency={selectedWallet.currency} className="h-5 w-5 text-[9px]" />}
         <span className="hidden xs:inline">{selected}</span>
@@ -105,18 +105,18 @@ export const BalanceCard = () => {
   const mask = (value) => (hidden ? value.replace(/\d/g, '*') : value);
 
   return (
-    <Card className="relative overflow-hidden border-border/60 bg-gradient-card shadow-elegant">
+    <Card className="relative w-full min-w-0 overflow-hidden border-border/60 bg-gradient-card shadow-elegant">
       <div className="absolute -right-24 -top-24 h-40 sm:h-56 w-40 sm:w-56 rounded-full bg-primary/12 blur-3xl" />
       <div className="absolute -bottom-28 -left-28 h-40 sm:h-60 w-40 sm:w-60 rounded-full bg-emerald-400/10 blur-3xl" />
 
-      <CardHeader className="relative flex flex-row items-center justify-between pb-2 px-4 sm:px-6 pt-4 sm:pt-6">
-        <div className="flex items-center gap-2 text-muted-foreground">
+      <CardHeader className="relative flex min-w-0 flex-row items-center justify-between gap-2 pb-2 px-4 sm:px-6 pt-4 sm:pt-6">
+        <div className="flex min-w-0 items-center gap-2 text-muted-foreground">
           <div className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg sm:rounded-xl bg-primary/12 text-primary">
             <WalletIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
           </div>
-          <span className="text-xs sm:text-sm font-semibold">{t('dashboard.totalBalance')}</span>
+          <span className="min-w-0 truncate text-xs sm:text-sm font-semibold">{t('dashboard.totalBalance')}</span>
         </div>
-        <div className="flex items-center gap-1.5 sm:gap-2">
+        <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
           {selected && (
             <CurrencySelect
               wallets={sortedWallets}
@@ -134,7 +134,7 @@ export const BalanceCard = () => {
         </div>
       </CardHeader>
 
-      <CardContent className="relative space-y-4 sm:space-y-5 pt-2 px-4 sm:px-6 pb-4 sm:pb-6">
+      <CardContent className="relative min-w-0 space-y-4 overflow-hidden sm:space-y-5 pt-2 px-4 sm:px-6 pb-4 sm:pb-6">
         {isLoading || !selected ? (
           <Skeleton className="h-12 sm:h-16 w-40 sm:w-60" />
         ) : (
@@ -142,32 +142,32 @@ export const BalanceCard = () => {
             key={`${hidden}-${selected.currency}`}
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
-            className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight tabular break-words"
+            className="min-w-0 truncate font-display text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight tabular"
           >
             {mask(formatMoney(selected.balance, selected.currency))}
           </motion.div>
         )}
 
-        <div className="grid grid-cols-1 xs:grid-cols-2 gap-2 sm:gap-3">
-          <div className="rounded-xl sm:rounded-2xl border border-border/70 bg-background/70 p-2.5 sm:p-3.5">
+        <div className="grid min-w-0 grid-cols-1 xs:grid-cols-2 gap-2 sm:gap-3">
+          <div className="min-w-0 rounded-xl sm:rounded-2xl border border-border/70 bg-background/70 p-2.5 sm:p-3.5">
             <div className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
               {t('dashboard.available')}
             </div>
-            <div className="mt-0.5 sm:mt-1 font-semibold tabular text-sm sm:text-base break-words">
+            <div className="mt-0.5 truncate sm:mt-1 font-semibold tabular text-sm sm:text-base">
               {selected ? mask(formatMoney(selected.available, selected.currency)) : '-'}
             </div>
           </div>
-          <div className="rounded-xl sm:rounded-2xl border border-border/70 bg-background/70 p-2.5 sm:p-3.5">
+          <div className="min-w-0 rounded-xl sm:rounded-2xl border border-border/70 bg-background/70 p-2.5 sm:p-3.5">
             <div className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
               {t('dashboard.pending')}
             </div>
-            <div className="mt-0.5 sm:mt-1 font-semibold tabular text-sm sm:text-base break-words">
+            <div className="mt-0.5 truncate sm:mt-1 font-semibold tabular text-sm sm:text-base">
               {selected ? mask(formatMoney(selected.pending, selected.currency)) : '-'}
             </div>
           </div>
         </div>
 
-        <div className="rounded-xl sm:rounded-2xl border border-border/70 bg-background/70 p-3 sm:p-3.5">
+        <div className="min-w-0 rounded-xl sm:rounded-2xl border border-border/70 bg-background/70 p-3 sm:p-3.5">
           <div className="mb-2 sm:mb-3 flex items-center justify-between">
             <span className="text-xs sm:text-sm font-semibold">Currency breakdown</span>
             <span className="text-[10px] sm:text-xs text-muted-foreground">Top 5</span>
@@ -184,16 +184,16 @@ export const BalanceCard = () => {
                       type="button"
                       onClick={() => setSelectedCurrency(wallet.currency)}
                       className={cn(
-                        'w-full rounded-lg sm:rounded-xl p-1.5 sm:p-2 text-left transition-smooth hover:bg-muted',
+                        'w-full min-w-0 rounded-lg sm:rounded-xl p-1.5 sm:p-2 text-left transition-smooth hover:bg-muted',
                         selected?.currency === wallet.currency && 'bg-primary/8 ring-1 ring-primary/20',
                       )}
                     >
-                      <div className="mb-1 flex flex-col xs:flex-row xs:items-center justify-between gap-1 xs:gap-3 text-xs">
-                        <span className="flex items-center gap-1.5 sm:gap-2 font-semibold">
+                      <div className="mb-1 flex min-w-0 flex-col xs:flex-row xs:items-center justify-between gap-1 xs:gap-3 text-xs">
+                        <span className="flex min-w-0 items-center gap-1.5 sm:gap-2 font-semibold">
                           <span className={cn('h-2 w-2 sm:h-2.5 sm:w-2.5 rounded-full', currencyTone[index] || 'bg-muted-foreground')} />
-                          <span className="text-xs sm:text-sm">{wallet.currency}</span>
+                          <span className="truncate text-xs sm:text-sm">{wallet.currency}</span>
                         </span>
-                        <span className="tabular text-[10px] xs:text-xs sm:text-sm break-words">
+                        <span className="max-w-full truncate tabular text-[10px] xs:text-xs sm:text-sm">
                           {mask(formatMoney(wallet.available, wallet.currency))}
                         </span>
                       </div>

@@ -204,6 +204,18 @@ const VirtualCard = () => {
         }
       />
 
+      {visibleOffers[0] && (
+        <div className="flex min-w-0 items-center justify-between gap-3 rounded-2xl border border-primary/15 bg-primary/8 p-3 shadow-sm sm:hidden">
+          <div className="min-w-0">
+            <p className="truncate text-sm font-bold">Create a virtual card</p>
+            <p className="truncate text-xs text-muted-foreground">{visibleOffers[0].name}</p>
+          </div>
+          <Button onClick={() => openCreate(visibleOffers[0])} size="sm" className="shrink-0 rounded-xl bg-primary text-primary-foreground">
+            <Plus className="mr-1 h-3.5 w-3.5" /> Create
+          </Button>
+        </div>
+      )}
+
       {/* Liens de navigation secondaires */}
       <div className="grid grid-cols-2 gap-2 sm:gap-3">
         {[

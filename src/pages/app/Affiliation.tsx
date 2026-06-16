@@ -1,11 +1,19 @@
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Copy, DollarSign, Gift, Share2, Tag, TrendingUp, Users2, Wallet } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { WalletSelector } from '@/components/security/WalletSelector';
 import { formatMoney } from '@/lib/format';
 import { toast } from 'sonner';
-import { useAffiliateCodeQuery, useCommissionsQuery } from '@/store/api/affiliationApi';
+import {
+  useAffiliateCodeQuery,
+  useAffiliateDiscountCodesQuery,
+  useAffiliatePayoutMutation,
+  useCommissionsQuery,
+  useCreateAffiliateDiscountCodeMutation,
+} from '@/store/api/affiliationApi';
 
 const metricTone = {
   green: 'text-emerald-600 dark:text-emerald-300',
@@ -14,16 +22,30 @@ const metricTone = {
   white: 'text-foreground dark:text-white',
 };
 
+const apiMessage = (error: unknown, fallback: string) => {
+  const data = (error as { data?: { detail?: string; message?: string; error?: string } })?.data;
+  return data?.message || data?.detail || data?.error || fallback;
+};
+
 const Affiliation = () => {
   const { t } = useTranslation();
   const { data: affiliate } = useAffiliateCodeQuery();
   const { data: commissions } = useCommissionsQuery();
+  const { data: discountCodes } = useAffiliateDiscountCodesQuery();
+  const [requestPayout, { isLoading: payoutLoading }] = useAffiliatePayoutMutation();
+  const [createDiscountCode, { isLoading: discountLoading }] = useCreateAffiliateDiscountCodeMutation();
+  const [payoutWallet, setPayoutWallet] = useState<string>();
+  const [payoutEmail, setPayoutEmail] = useState('');
+  const [discountCode, setDiscountCode] = useState('');
+  const [discountPercent, setDiscountPercent] = useState('5');
+  const [discountLimit, setDiscountLimit] = useState('0');
 
   const code = affiliate?.code || 'LIPAXE';
   const link = affiliate?.link || `${window.location.origin}/register?reference=${code}`;
   const entries = commissions || [];
-  const available = entries.filter((item) => item.status === 'paid').reduce((sum, item) => sum + item.amount, 0);
-  const pending = entries.filter((item) => item.status === 'pending').reduce((sum, item) => sum + item.amount, 0);
+  const available = entries.filter((item) => item.status === 'pending').reduce((sum, item) => sum + item.amount, 0);
+  const withdrawn = entries.filter((item) => item.status === 'paid').reduce((sum, item) => sum + item.amount, 0);
+  const pending = available;
   const total = entries.reduce((sum, item) => sum + item.amount, 0);
   const paidCount = entries.filter((item) => item.status === 'paid').length;
 
@@ -32,10 +54,49 @@ const Affiliation = () => {
     toast.success(t('affiliation.copied'));
   };
 
+  const submitPayout = async () => {
+    if (!payoutWallet) {
+      toast.error('Selectionnez un wallet');
+      return;
+    }
+    if (!payoutEmail.trim()) {
+      toast.error('Email requis');
+      return;
+    }
+    try {
+      const result = await requestPayout({ wallet_id: payoutWallet, email: payoutEmail.trim() }).unwrap();
+      toast.success(result.detail || `Payout envoye: ${result.wallet_amount} ${result.wallet_currency}`);
+      setPayoutEmail('');
+    } catch (error) {
+      toast.error(apiMessage(error, 'Impossible de demander le payout.'));
+    }
+  };
+
+  const submitDiscountCode = async () => {
+    const percent = Number(discountPercent);
+    if (!percent || percent <= 0 || percent > 10) {
+      toast.error('Le discount doit etre entre 0 et 10%.');
+      return;
+    }
+    try {
+      await createDiscountCode({
+        code: discountCode.trim() || undefined,
+        percent,
+        usage_limit: Number(discountLimit || 0),
+      }).unwrap();
+      toast.success('Code promo cree');
+      setDiscountCode('');
+      setDiscountPercent('5');
+      setDiscountLimit('0');
+    } catch (error) {
+      toast.error(apiMessage(error, 'Impossible de creer le code promo.'));
+    }
+  };
+
   const stats = [
     { label: 'Available', value: formatMoney(available, 'USD'), tone: 'green' as const },
     { label: 'Pending', value: formatMoney(pending, 'USD'), tone: 'amber' as const },
-    { label: 'Withdrawn', value: formatMoney(0, 'USD'), tone: 'blue' as const },
+    { label: 'Withdrawn', value: formatMoney(withdrawn, 'USD'), tone: 'blue' as const },
     { label: 'Total Earned', value: formatMoney(total, 'USD'), tone: 'white' as const },
   ];
 
@@ -80,7 +141,11 @@ const Affiliation = () => {
               </div>
             ))}
           </div>
-          <Button disabled className="mt-4 sm:mt-5 h-10 sm:h-12 w-full rounded-xl sm:rounded-2xl bg-primary/70 text-primary-foreground text-sm sm:text-base dark:bg-emerald-500/50 dark:text-white">
+          <Button
+            onClick={() => document.getElementById('affiliate-payout-card')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+            disabled={available <= 0}
+            className="mt-4 sm:mt-5 h-10 sm:h-12 w-full rounded-xl sm:rounded-2xl bg-primary text-primary-foreground text-sm sm:text-base dark:bg-emerald-500 dark:text-white"
+          >
             Request Payout
           </Button>
           <p className="mt-2 text-center text-[10px] sm:text-xs text-muted-foreground dark:text-slate-500">
@@ -134,6 +199,7 @@ const Affiliation = () => {
 
         {/* Carte du wallet de paiement */}
         <motion.div 
+          id="affiliate-payout-card"
           initial={{ opacity: 0, y: 10 }} 
           animate={{ opacity: 1, y: 0 }} 
           transition={{ delay: 0.08 }} 
@@ -144,16 +210,19 @@ const Affiliation = () => {
             <span className="text-sm sm:text-base">Payout Wallet</span>
           </div>
           <div className="space-y-2.5 sm:space-y-3">
-            <Input 
-              placeholder="Wallet ID" 
-              className="h-10 sm:h-12 rounded-xl sm:rounded-2xl text-sm dark:border-white/10 dark:bg-black/30 dark:text-white dark:placeholder:text-slate-500" 
-            />
+            <WalletSelector label="Payout wallet" value={payoutWallet} onChange={(walletId) => setPayoutWallet(walletId)} />
             <Input 
               placeholder="your@email.com" 
+              value={payoutEmail}
+              onChange={(event) => setPayoutEmail(event.target.value)}
               className="h-10 sm:h-12 rounded-xl sm:rounded-2xl text-sm dark:border-white/10 dark:bg-black/30 dark:text-white dark:placeholder:text-slate-500" 
             />
-            <Button disabled className="h-10 sm:h-12 w-full rounded-xl sm:rounded-2xl bg-primary/70 text-sm text-primary-foreground dark:bg-emerald-500/60 dark:text-white">
-              Save
+            <Button
+              onClick={submitPayout}
+              disabled={payoutLoading || available <= 0 || !payoutWallet || !payoutEmail.trim()}
+              className="h-10 sm:h-12 w-full rounded-xl sm:rounded-2xl bg-primary text-sm text-primary-foreground dark:bg-emerald-500 dark:text-white"
+            >
+              {payoutLoading ? 'Processing...' : 'Request payout'}
             </Button>
           </div>
         </motion.div>
@@ -170,12 +239,52 @@ const Affiliation = () => {
               <Tag className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary dark:text-emerald-300" />
               <span className="text-sm sm:text-base">Discount Codes</span>
             </div>
-            <Button disabled size="sm" className="rounded-lg sm:rounded-xl bg-primary/20 text-primary text-xs sm:text-sm dark:bg-emerald-500/30 dark:text-emerald-100">
-              + Create Code
+          </div>
+          <div className="grid gap-2 sm:grid-cols-[1fr_90px_90px_auto]">
+            <Input
+              placeholder="Code optionnel"
+              value={discountCode}
+              onChange={(event) => setDiscountCode(event.target.value.toUpperCase())}
+              className="h-10 rounded-xl text-sm dark:border-white/10 dark:bg-black/30 dark:text-white"
+            />
+            <Input
+              type="number"
+              min={1}
+              max={10}
+              placeholder="%"
+              value={discountPercent}
+              onChange={(event) => setDiscountPercent(event.target.value)}
+              className="h-10 rounded-xl text-sm dark:border-white/10 dark:bg-black/30 dark:text-white"
+            />
+            <Input
+              type="number"
+              min={0}
+              placeholder="Limit"
+              value={discountLimit}
+              onChange={(event) => setDiscountLimit(event.target.value)}
+              className="h-10 rounded-xl text-sm dark:border-white/10 dark:bg-black/30 dark:text-white"
+            />
+            <Button onClick={submitDiscountCode} disabled={discountLoading} size="sm" className="h-10 rounded-xl bg-primary text-primary-foreground dark:bg-emerald-500 dark:text-white">
+              {discountLoading ? '...' : '+ Create'}
             </Button>
           </div>
-          <div className="flex h-24 sm:h-28 items-center justify-center rounded-xl sm:rounded-2xl border border-dashed border-border text-xs sm:text-sm text-muted-foreground dark:border-white/10 dark:text-slate-500">
-            No discount codes yet.
+          <div className="mt-3 space-y-2">
+            {(discountCodes || []).map((item) => (
+              <div key={item.id} className="flex min-w-0 items-center justify-between gap-3 rounded-xl border border-border bg-muted/40 px-3 py-2 text-xs dark:border-white/10 dark:bg-black/25">
+                <div className="min-w-0">
+                  <div className="truncate font-bold">{item.code}</div>
+                  <div className="text-muted-foreground">{item.used_count}/{item.usage_limit || '∞'} uses</div>
+                </div>
+                <div className="shrink-0 rounded-full bg-primary/10 px-2 py-1 font-bold text-primary dark:bg-emerald-400/10 dark:text-emerald-200">
+                  {item.percent}%
+                </div>
+              </div>
+            ))}
+            {(discountCodes || []).length === 0 && (
+              <div className="flex h-20 items-center justify-center rounded-xl sm:rounded-2xl border border-dashed border-border text-xs sm:text-sm text-muted-foreground dark:border-white/10 dark:text-slate-500">
+                No discount codes yet.
+              </div>
+            )}
           </div>
         </motion.div>
       </div>

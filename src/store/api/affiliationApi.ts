@@ -14,6 +14,36 @@ export interface Commission {
   status: 'pending' | 'paid';
   createdAt: string;
 }
+export interface AffiliatePayoutResult {
+  detail: string;
+  amount: string;
+  currency: string;
+  wallet_amount: string;
+  wallet_currency: string;
+}
+export interface AffiliateDiscountCode {
+  id: string;
+  code: string;
+  percent: number;
+  usage_limit: number;
+  used_count: number;
+  is_active: boolean;
+  createdAt: string;
+}
+
+const normalizeDiscountCodes = (response: unknown): AffiliateDiscountCode[] => {
+  const source = (response as { data?: unknown })?.data ?? response;
+  if (!Array.isArray(source)) return [];
+  return source.map((item: any) => ({
+    id: String(item.id),
+    code: item.code || '',
+    percent: Number(item.percent || 0),
+    usage_limit: Number(item.usage_limit || 0),
+    used_count: Number(item.used_count || 0),
+    is_active: Boolean(item.is_active),
+    createdAt: item.created_at || item.createdAt || '',
+  }));
+};
 
 export const affiliationApi = api.injectEndpoints({
   endpoints: (b) => ({
@@ -27,7 +57,38 @@ export const affiliationApi = api.injectEndpoints({
       transformResponse: (response: unknown) => normalizeCommissions(response),
       providesTags: ['Affiliation'],
     }),
+    affiliatePayout: b.mutation<AffiliatePayoutResult, { wallet_id: string; email: string }>({
+      query: (body) => ({
+        url: '/affiliation/payout/',
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: ['Affiliation', 'Wallet'],
+    }),
+    affiliateDiscountCodes: b.query<AffiliateDiscountCode[], void>({
+      query: () => '/affiliation/discount-codes/',
+      transformResponse: normalizeDiscountCodes,
+      providesTags: ['Affiliation'],
+    }),
+    createAffiliateDiscountCode: b.mutation<AffiliateDiscountCode, { code?: string; percent: number; usage_limit?: number }>({
+      query: (body) => ({
+        url: '/affiliation/discount-codes/',
+        method: 'POST',
+        body,
+      }),
+      transformResponse: (response: unknown) => {
+        const source = (response as { data?: unknown })?.data ?? response;
+        return normalizeDiscountCodes([source])[0];
+      },
+      invalidatesTags: ['Affiliation'],
+    }),
   }),
 });
 
-export const { useAffiliateCodeQuery, useCommissionsQuery } = affiliationApi;
+export const {
+  useAffiliateCodeQuery,
+  useAffiliateDiscountCodesQuery,
+  useAffiliatePayoutMutation,
+  useCommissionsQuery,
+  useCreateAffiliateDiscountCodeMutation,
+} = affiliationApi;

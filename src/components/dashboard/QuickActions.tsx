@@ -31,12 +31,12 @@ export const QuickActions = () => {
   ];
 
   return (
-    <Card className="overflow-hidden border-border/60 shadow-elegant">
-      <CardHeader className="pb-2">
+    <Card className="w-full min-w-0 overflow-hidden border-border/60 shadow-elegant">
+      <CardHeader className="px-3 pb-2 pt-4 sm:px-6">
         <CardTitle className="font-display text-lg">{t('dashboard.quickActions')}</CardTitle>
       </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+      <CardContent className="min-w-0 overflow-hidden px-3 pb-4 sm:px-6">
+        <div className="grid min-w-0 grid-cols-1 gap-2 min-[390px]:grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
           {actions.map((action, index) => (
             <motion.button
               key={action.to}
@@ -49,13 +49,13 @@ export const QuickActions = () => {
                 if (needsPin) pin.guard(() => navigate(action.to));
                 else navigate(action.to);
               }}
-              className="group block min-w-0 w-full text-left"
+              className="group block w-full min-w-0 text-left"
             >
-              <div className={`relative flex min-w-0 items-center gap-2 overflow-hidden rounded-2xl bg-gradient-to-br ${action.tone} px-3 py-3 text-white shadow-sm transition-smooth hover:-translate-y-0.5 hover:shadow-brand`}>
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/14 ring-1 ring-white/15 sm:h-9 sm:w-9">
+              <div className={`relative flex min-w-0 items-center gap-2 overflow-hidden rounded-2xl bg-gradient-to-br ${action.tone} px-2.5 py-2.5 text-white shadow-sm transition-smooth hover:-translate-y-0.5 hover:shadow-brand sm:px-3 sm:py-3`}>
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/14 ring-1 ring-white/15">
                   <action.icon className="h-4 w-4" />
                 </span>
-                <span className="truncate text-xs font-semibold sm:text-sm">{action.label}</span>
+                <span className="min-w-0 truncate text-xs font-semibold sm:text-sm">{action.label}</span>
                 <span className="absolute -bottom-6 -right-5 h-16 w-16 rounded-full bg-white/15 blur-xl transition-smooth group-hover:bg-white/25" />
               </div>
             </motion.button>

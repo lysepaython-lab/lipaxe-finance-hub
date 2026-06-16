@@ -53,8 +53,18 @@ const CardDetail = () => {
   const [withdrawCard] = useWithdrawCardMutation();
   const [freezeCard] = useFreezeCardMutation();
   const pin = usePinGate();
+  const isFrozen = card?.status === 'frozen';
+  const canMoveFunds = card?.status === 'active';
 
   const openFund = (mode: 'recharge' | 'withdraw') => {
+    if (isFrozen) {
+      toast.error('Cette carte est gelee. Degeler la carte avant toute operation.');
+      return;
+    }
+    if (!canMoveFunds) {
+      toast.error('Cette carte ne peut pas encore recevoir cette operation.');
+      return;
+    }
     setFundMode(mode);
     setFundOpen(true);
   };
@@ -62,6 +72,10 @@ const CardDetail = () => {
   const submitFund = () => {
     if (!card || !fundWallet) {
       toast.error('Wallet requis');
+      return;
+    }
+    if (card.status !== 'active') {
+      toast.error('Cette carte doit etre active pour effectuer cette operation.');
       return;
     }
     pin.guard(async () => {
@@ -95,6 +109,14 @@ const CardDetail = () => {
         toast.error(apiMessage(error, t('common.error')));
       }
     });
+  };
+
+  const toggleReveal = () => {
+    if (reveal) {
+      setReveal(false);
+      return;
+    }
+    pin.guard(() => setReveal(true));
   };
 
   if (isLoading) {
@@ -171,15 +193,23 @@ const CardDetail = () => {
                 <Badge variant={card.status === 'active' ? 'default' : 'secondary'} className="capitalize">{card.status}</Badge>
               </div>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                <Button variant="outline" className="min-w-0" onClick={() => setReveal((value) => !value)}>
+                <Button variant="outline" className="min-w-0" onClick={toggleReveal}>
                   {reveal ? <EyeOff className="mr-2 h-4 w-4" /> : <Eye className="mr-2 h-4 w-4" />}
                   {reveal ? t('cards.hide') : t('cards.reveal')}
                 </Button>
                 <Button variant="outline" className="min-w-0" onClick={() => toggleFreeze(card)} disabled={card.status === 'pending' || card.status === 'inactive'}>
                   <Snowflake className="mr-2 h-4 w-4" /> {card.status === 'frozen' ? 'Unfreeze' : 'Freeze'}
                 </Button>
-                <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => openFund('recharge')}>Recharge</Button>
-                <Button variant="outline" onClick={() => openFund('withdraw')}>Withdrawal</Button>
+                <Button
+                  className="bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                  onClick={() => openFund('recharge')}
+                  disabled={!canMoveFunds}
+                >
+                  Recharge
+                </Button>
+                <Button variant="outline" onClick={() => openFund('withdraw')} disabled={!canMoveFunds}>
+                  Withdrawal
+                </Button>
               </div>
               <div className="flex items-center justify-between rounded-2xl bg-muted/45 px-3 py-2 text-sm">
                 <span className="flex items-center gap-2 text-muted-foreground"><Snowflake className="h-4 w-4" /> Freeze status</span>

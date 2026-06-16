@@ -64,6 +64,21 @@ const currencyForCountry: Record<string, string> = {
   US: 'USD',
 };
 
+const countryPhoneRules: Record<string, { dial: string; min: number; max: number; example: string }> = {
+  BI: { dial: '257', min: 11, max: 11, example: '+257 71 234 567' },
+  CD: { dial: '243', min: 12, max: 12, example: '+243 978 384 983' },
+  CG: { dial: '242', min: 12, max: 12, example: '+242 06 123 4567' },
+  RW: { dial: '250', min: 12, max: 12, example: '+250 78 123 4567' },
+  TZ: { dial: '255', min: 12, max: 12, example: '+255 712 345 678' },
+  UG: { dial: '256', min: 12, max: 12, example: '+256 712 345 678' },
+  KE: { dial: '254', min: 12, max: 12, example: '+254 712 345 678' },
+  SN: { dial: '221', min: 12, max: 12, example: '+221 77 123 45 67' },
+  CI: { dial: '225', min: 13, max: 13, example: '+225 07 12 34 56 78' },
+  CM: { dial: '237', min: 12, max: 12, example: '+237 6 71 23 45 67' },
+  GH: { dial: '233', min: 12, max: 12, example: '+233 24 123 4567' },
+  NG: { dial: '234', min: 13, max: 13, example: '+234 801 234 5678' },
+};
+
 const codeValue = (value?: string | null) => String(value || '').trim().toUpperCase();
 
 const methodSupportsCountry = (method: { countries?: { country?: { alpha_2?: string; isoCode?: string; name?: string } }[] }, countryCode: string) => {
@@ -90,6 +105,35 @@ const CurrencyFlagMark = ({ currency }: { currency?: string }) => {
   }
   if (!code) return <span className="inline-flex h-6 w-6 rounded-full bg-muted" />;
   return <CountryFlag currency={code} size="24" ratio="square" className="rounded-full shadow-sm" />;
+};
+
+const normalizeGlobalPhone = (countryCode: string, value: string) => {
+  const selectedAlpha2 = codeValue(countryCode);
+  const rule = countryPhoneRules[selectedAlpha2];
+  let digits = String(value || '').replace(/\D/g, '');
+
+  if (digits.startsWith('00')) digits = digits.slice(2);
+  if (rule && !digits.startsWith(rule.dial)) {
+    digits = `${rule.dial}${digits.replace(/^0+/, '')}`;
+  }
+
+  if (rule && (!digits.startsWith(rule.dial) || digits.length < rule.min || digits.length > rule.max)) {
+    return {
+      ok: false,
+      value: digits,
+      message: `Numero invalide pour ${selectedAlpha2}. Exemple: ${rule.example}`,
+    };
+  }
+
+  if (!rule && (digits.length < 10 || digits.length > 15)) {
+    return {
+      ok: false,
+      value: digits,
+      message: 'Numero de telephone invalide pour le pays selectionne.',
+    };
+  }
+
+  return { ok: true, value: digits, message: '' };
 };
 
 const Transfer = () => {
@@ -130,6 +174,12 @@ const Transfer = () => {
   // Reset recipient info when input changes
   useEffect(() => { setRecipientInfo(null); }, [recipient, kind]);
 
+  useEffect(() => {
+    setRecipient('');
+    setRecipientInfo(null);
+    setErrors({});
+  }, [kind, countryTo]);
+
   // Auto-quote international
   useEffect(() => {
     const amt = parseFloat(amount);
@@ -159,7 +209,13 @@ const Transfer = () => {
 
   const doTransfer = async () => {
     const fromAccount = wallet?.id || '';
-    const toAccount = kind === 'internal' ? sanitizeText(recipient) : sanitizeText(recipient || 'intl');
+    const globalPhone = kind === 'international' ? normalizeGlobalPhone(countryTo, recipient) : null;
+    if (globalPhone && !globalPhone.ok) {
+      setErrors({ recipient: globalPhone.message });
+      toast.error(globalPhone.message);
+      return;
+    }
+    const toAccount = kind === 'internal' ? sanitizeText(recipient) : globalPhone?.value || '';
     const payload = {
       amount: parseFloat(amount) || 0,
       from_account: fromAccount,
@@ -205,6 +261,14 @@ const Transfer = () => {
     if (!walletId) { toast.error(t('transfer.selectWallet')); return; }
     if (kind === 'internal' && !recipientInfo) { toast.error('Vérifiez le destinataire d’abord.'); return; }
     if (kind === 'international' && !methodId) { toast.error(t('deposit.selectMethod')); return; }
+    if (kind === 'international') {
+      const phone = normalizeGlobalPhone(countryTo, recipient);
+      if (!phone.ok) {
+        setErrors({ recipient: phone.message });
+        toast.error(phone.message);
+        return;
+      }
+    }
     pin.guard(submit);
   };
 
@@ -268,6 +332,7 @@ const Transfer = () => {
               onChange={(id, w) => { setWalletId(id); setWallet(w); }}
             />
 
+            {kind === 'internal' && (
             <div className="space-y-2">
               <Label>{t('transfer.recipient')}</Label>
               <div className="flex gap-2">
@@ -306,6 +371,7 @@ const Transfer = () => {
                 )}
               </AnimatePresence>
             </div>
+            )}
 
             {kind === 'international' && (
               <>
@@ -315,6 +381,25 @@ const Transfer = () => {
                   onChange={(c, name) => { setCountryTo(c); setCountryToName(name); setMethodId(''); }}
                   paymentMethods={intlMethods}
                 />
+
+                <div className="space-y-2">
+                  <Label>{t('transfer.globalRecipientPhone')}</Label>
+                  <Input
+                    inputMode="tel"
+                    placeholder={countryPhoneRules[codeValue(countryTo)]?.example || t('transfer.globalRecipientPhonePlaceholder')}
+                    value={recipient}
+                    onChange={(e) => {
+                      setRecipient(e.target.value);
+                      setErrors((current) => ({ ...current, recipient: '' }));
+                    }}
+                    className="h-11 rounded-xl"
+                    maxLength={24}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    {t('transfer.globalPhoneHint', { country: countryToName || countryTo })}
+                  </p>
+                  {errors.recipient && <p className="text-xs text-destructive">{errors.recipient}</p>}
+                </div>
 
                 <div className="space-y-2">
                   <Label>{t('deposit.selectMethod')}</Label>

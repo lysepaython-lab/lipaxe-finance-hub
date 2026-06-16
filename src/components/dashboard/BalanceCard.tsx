@@ -38,7 +38,7 @@ const CurrencySelect = ({ wallets, selected, onChange }) => {
         onClick={() => setIsOpen(!isOpen)}
         className="flex h-8 items-center gap-1.5 rounded-lg border border-border bg-background px-2 text-xs font-semibold outline-none ring-primary/20 transition-smooth hover:bg-muted focus:ring-2 sm:h-9 sm:gap-2 sm:rounded-xl sm:px-3 sm:text-sm"
       >
-        {selectedWallet && <CurrencyMark currency={selectedWallet.currency} className="h-5 w-5 text-[9px]" />}
+        {selectedWallet && <CurrencyMark currency={selectedWallet.currency} logo={selectedWallet.logoUrl || selectedWallet.logo} className="h-5 w-5 text-[9px]" />}
         <span className="hidden xs:inline">{selected}</span>
         <span className="xs:hidden">{selected}</span>
         <ChevronDown
@@ -73,7 +73,7 @@ const CurrencySelect = ({ wallets, selected, onChange }) => {
                   selected === wallet.currency && 'bg-primary/8 font-semibold text-primary',
                 )}
               >
-                <CurrencyMark currency={wallet.currency} className="h-5 w-5 text-[9px]" />
+                <CurrencyMark currency={wallet.currency} logo={wallet.logoUrl || wallet.logo} className="h-5 w-5 text-[9px]" />
                 <span className="flex-1 text-left">{wallet.currency}</span>
                 {selected === wallet.currency && (
                   <Check size={12} className="text-primary sm:h-4 sm:w-4" />

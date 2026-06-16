@@ -1,11 +1,12 @@
 import { api } from './baseApi';
 import { normalizeTransaction, normalizeWallet, unwrapData } from './adapters';
 
-export interface Wallet { id: string; currency: string; symbol: string; balance: number; available: number; pending: number; }
+export interface Wallet { id: string; currency: string; symbol: string; logo?: string; logoUrl?: string; balance: number; available: number; pending: number; }
 export interface Transaction {
   id: string; type: 'deposit' | 'withdrawal' | 'transfer'; rawType?: string; direction: 'in' | 'out';
   amount: number; currency: string; status: 'completed' | 'pending' | 'failed' | 'processing';
   description: string; counterparty: string; reference: string; createdAt: string; fee?: number;
+  lipaxeFee?: number; providerFee?: number;
   wallet_id?: string; paymentMethodName?: string; paymentMethodLogo?: string; provider?: string;
 }
 export interface FxQuote { from: string; to: string; amount: number; rate: number; fee: number; receive: number; }

@@ -4,6 +4,7 @@ import { useWalletsV2Query, type WalletV2 } from '@/store/api/platformApi';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatMoney } from '@/lib/format';
 import { cn } from '@/lib/utils';
+import { CurrencyMark } from '@/lib/moneyVisuals';
 
 interface WalletSelectorProps {
   value?: string;
@@ -12,17 +13,6 @@ interface WalletSelectorProps {
   excludeCurrencies?: string[];
   label?: string;
 }
-
-const walletLogoClass = (currency: string) => {
-  const code = currency.toUpperCase();
-  if (code === 'BTC') return 'bg-orange-500 text-white';
-  if (code === 'USDT') return 'bg-emerald-500 text-white';
-  if (code === 'USDC') return 'bg-blue-500 text-white';
-  if (code === 'BIF') return 'bg-red-500 text-white';
-  if (code === 'CDF') return 'bg-sky-600 text-white';
-  if (code === 'RWF') return 'bg-amber-500 text-white';
-  return 'bg-gradient-brand text-primary-foreground';
-};
 
 export const WalletSelector = ({ value, onChange, filterCurrency, excludeCurrencies = [], label }: WalletSelectorProps) => {
   const { data: wallets, isLoading } = useWalletsV2Query();
@@ -65,12 +55,7 @@ export const WalletSelector = ({ value, onChange, filterCurrency, excludeCurrenc
               )}
             >
               <div className="flex items-center gap-2">
-                <div className={cn(
-                  'h-9 w-9 rounded-full flex items-center justify-center font-display text-[11px] font-black shadow-sm ring-1 ring-black/5',
-                  walletLogoClass(w.currency),
-                )}>
-                  {w.currency.slice(0, 3)}
-                </div>
+                <CurrencyMark currency={w.currency} logo={w.logoUrl || w.logo} className="h-9 w-9 text-[11px] shadow-sm ring-1 ring-black/5" />
                 <div className="flex-1">
                   <div className="text-sm font-semibold flex items-center gap-1.5">
                     <WalletIcon className="h-3.5 w-3.5 text-muted-foreground" />

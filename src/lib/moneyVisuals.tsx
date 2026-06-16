@@ -48,11 +48,22 @@ export const providerVisual = (value?: string) => {
 
 export const CurrencyMark = ({
   currency,
+  logo,
   className,
 }: {
   currency?: string;
+  logo?: string;
   className?: string;
 }) => {
+  const logoSrc = resolveMediaUrl(logo);
+  if (logoSrc) {
+    return (
+      <span className={cn('inline-flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted ring-1 ring-border', className)}>
+        <img src={logoSrc} alt={currency || 'currency'} className="h-full w-full object-cover" />
+      </span>
+    );
+  }
+
   const meta = currencyVisual(currency);
   return (
     <span className={cn('inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-black', meta.className, className)}>

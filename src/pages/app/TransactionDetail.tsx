@@ -10,6 +10,7 @@ import { formatDate, formatMoney } from '@/lib/format';
 import { useTransactionQuery } from '@/store/api/walletApi';
 import { downloadReceipt } from '@/lib/receipt';
 import { toast } from 'sonner';
+import { getTransactionSubtitle, getTransactionTitle } from '@/lib/transactionPresentation';
 
 const Row = ({ label, value }: { label: string; value?: string | number }) => (
   <div className="flex items-center justify-between gap-4 border-b border-border/70 py-3 last:border-0">
@@ -47,6 +48,8 @@ const TransactionDetail = () => {
   }
 
   const markName = [tx.paymentMethodName, tx.provider, tx.description, tx.counterparty].filter(Boolean).join(' ');
+  const title = getTransactionTitle(tx, t);
+  const subtitle = getTransactionSubtitle(tx, t);
 
   return (
     <div className="mx-auto max-w-3xl space-y-5">
@@ -66,12 +69,12 @@ const TransactionDetail = () => {
             />
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
-                <h1 className="truncate font-display text-2xl font-bold">{tx.description}</h1>
+                <h1 className="truncate font-display text-2xl font-bold">{title}</h1>
                 <StatusPill status={tx.status} />
               </div>
               <div className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
                 <TransactionKindIcon type={tx.rawType || tx.type} />
-                <span className="truncate">{tx.paymentMethodName || tx.provider || tx.counterparty || tx.currency}</span>
+                <span className="truncate">{subtitle}</span>
               </div>
             </div>
           </div>
@@ -108,11 +111,14 @@ const TransactionDetail = () => {
               <CardTitle className="text-base">{t('tx.description')}</CardTitle>
             </CardHeader>
             <CardContent>
-              <Row label="Type" value={tx.rawType || tx.type} />
-              <Row label="Direction" value={tx.direction === 'in' ? 'Credit' : 'Debit'} />
-              <Row label="Counterparty" value={tx.counterparty} />
-              <Row label="Payment method" value={tx.paymentMethodName || tx.provider} />
-              <Row label="Wallet" value={tx.wallet_id} />
+              <Row label={t('tx.type')} value={tx.rawType || tx.type} />
+              <Row label={t('tx.direction')} value={tx.direction === 'in' ? t('tx.incoming') : t('tx.outgoing')} />
+              <Row label={t('tx.counterparty')} value={tx.counterparty} />
+              <Row label={t('tx.paymentMethod')} value={tx.paymentMethodName || tx.provider} />
+              <Row label={t('tx.wallet')} value={tx.wallet_id} />
+              <Row label={t('deposit.lipaxeFee')} value={formatMoney(tx.lipaxeFee || 0, tx.currency)} />
+              <Row label={t('deposit.providerFee')} value={formatMoney(tx.providerFee || 0, tx.currency)} />
+              <Row label={t('deposit.totalFees')} value={formatMoney(tx.fee || 0, tx.currency)} />
             </CardContent>
           </Card>
 

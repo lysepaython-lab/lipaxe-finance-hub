@@ -110,6 +110,8 @@ export interface BillProvider {
 export interface CryptoAsset {
   symbol: string;
   name: string;
+  logo?: string;
+  logo_url?: string;
   price_usd: number;
   change_24h: number;
   market_rate?: string;
@@ -121,6 +123,8 @@ export interface CryptoAsset {
 export interface CryptoNetwork {
   id: string;
   name: string;
+  logo?: string;
+  logo_url?: string;
   symbol?: string;
   family?: string;
   provider?: string;
@@ -339,9 +343,11 @@ export const businessApi = api.injectEndpoints({
         unwrapData<unknown[]>(response, []).map((item) => {
           const raw = (item ?? {}) as Record<string, unknown>;
           return {
-            symbol: String(raw.symbol ?? ''),
-            name: String(raw.name ?? ''),
-            price_usd: Number(raw.price_usd ?? raw.market_rate ?? 0),
+              symbol: String(raw.symbol ?? ''),
+              name: String(raw.name ?? ''),
+              logo: String(raw.logo_url ?? raw.logo ?? ''),
+              logo_url: String(raw.logo_url ?? raw.logo ?? ''),
+              price_usd: Number(raw.price_usd ?? raw.market_rate ?? 0),
             change_24h: Number(raw.change_24h ?? 0),
             market_rate: String(raw.market_rate ?? raw.price_usd ?? ''),
             buy_rate: String(raw.buy_rate ?? ''),

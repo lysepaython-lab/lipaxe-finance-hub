@@ -29,6 +29,8 @@ export interface WalletV2 {
   id: string;
   currency: string;
   symbol: string;
+  logo?: string;
+  logoUrl?: string;
   balance: number;
   available: number;
   pending: number;

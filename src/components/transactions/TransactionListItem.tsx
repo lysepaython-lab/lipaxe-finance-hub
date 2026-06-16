@@ -5,18 +5,14 @@ import { PaymentMethodMark } from '@/lib/moneyVisuals';
 import { formatMoney, relativeTime } from '@/lib/format';
 import { StatusPill } from '@/components/StatusPill';
 import { cn } from '@/lib/utils';
+import { getTransactionSubtitle, getTransactionTitle } from '@/lib/transactionPresentation';
+import { useTranslation } from 'react-i18next';
 
 const shorten = (value?: string, max = 18) => {
   const text = String(value || '').trim();
   if (text.length <= max) return text;
   return `${text.slice(0, Math.max(6, max - 4))}...`;
 };
-
-const describeCounterparty = (tx: Transaction, compact = false) =>
-  [shorten(tx.reference, compact ? 14 : 18), shorten(tx.counterparty, compact ? 18 : 24), tx.paymentMethodName || tx.provider]
-    .filter(Boolean)
-    .slice(0, 2)
-    .join(' - ');
 
 export const TransactionListItem = ({
   tx,
@@ -27,8 +23,11 @@ export const TransactionListItem = ({
   compact?: boolean;
   className?: string;
 }) => {
+  const { t } = useTranslation();
   const sign = tx.direction === 'in' ? '+' : '-';
   const markName = [tx.paymentMethodName, tx.provider, tx.description, tx.counterparty].filter(Boolean).join(' ');
+  const title = getTransactionTitle(tx, t);
+  const subtitle = getTransactionSubtitle(tx, t);
 
   return (
     <Link
@@ -48,10 +47,10 @@ export const TransactionListItem = ({
 
       <div className="min-w-0 flex-1 overflow-hidden">
         <div className="truncate text-sm font-semibold text-foreground sm:text-[15px]">
-          {tx.description}
+          {title}
         </div>
         <div className="mt-0.5 truncate text-xs text-muted-foreground">
-          {describeCounterparty(tx, compact) || tx.paymentMethodName || tx.provider || tx.currency}
+          {shorten(subtitle, compact ? 38 : 72) || tx.paymentMethodName || tx.provider || tx.currency}
           {tx.createdAt ? ` - ${relativeTime(tx.createdAt)}` : ''}
         </div>
       </div>

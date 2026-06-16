@@ -26,6 +26,7 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { formatMoney } from '@/lib/format';
+import { CurrencyMark, resolveMediaUrl } from '@/lib/moneyVisuals';
 import { cn } from '@/lib/utils';
 import {
   useCryptoAssetsQuery,
@@ -40,6 +41,22 @@ import {
 type CryptoMode = 'buy' | 'sell' | 'deposit' | 'withdraw';
 
 const CRYPTO_CURRENCIES = ['USDT', 'USDC', 'BTC'];
+
+const NetworkMark = ({ logo, name }: { logo?: string; name: string }) => {
+  const src = resolveMediaUrl(logo);
+  if (src) {
+    return (
+      <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted ring-1 ring-border">
+        <img src={src} alt={name} className="h-full w-full object-cover" />
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-black text-primary">
+      {name.slice(0, 2).toUpperCase()}
+    </span>
+  );
+};
 
 const modeTitle = (mode: CryptoMode, symbol: string) => {
   if (mode === 'buy') return `Acheter ${symbol}`;
@@ -180,9 +197,7 @@ const Cryptos = () => {
               <Card>
                 <CardContent className="flex flex-wrap items-center justify-between gap-4 p-5">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 font-display font-bold text-primary">
-                      {asset.symbol.slice(0, 1)}
-                    </div>
+                    <CurrencyMark currency={asset.symbol} logo={asset.logo_url || asset.logo} className="h-11 w-11 rounded-xl" />
                     <div>
                       <div className="font-semibold">{asset.name}</div>
                       <div className="text-xs text-muted-foreground">{asset.symbol}</div>
@@ -273,11 +288,12 @@ const Cryptos = () => {
                       type="button"
                       onClick={() => setNetwork(item.id)}
                       className={cn(
-                        'rounded-lg border-2 p-2 text-xs font-semibold transition-colors',
+                        'flex items-center gap-2 rounded-lg border-2 p-2 text-left text-xs font-semibold transition-colors',
                         network === item.id ? 'border-primary bg-primary/5' : 'border-input hover:border-primary/40',
                       )}
                     >
-                      {item.name}
+                      <NetworkMark logo={item.logo_url || item.logo} name={item.name} />
+                      <span className="min-w-0 truncate">{item.name}</span>
                     </button>
                   ))}
                 </div>

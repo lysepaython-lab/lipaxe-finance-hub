@@ -24,7 +24,7 @@ export const AccountsList = () => {
                 className="flex items-center justify-between rounded-2xl border border-border/60 bg-card p-3 transition-smooth hover:border-primary/40 hover:shadow-sm"
               >
                 <div className="flex min-w-0 items-center gap-3">
-                  <CurrencyMark currency={wallet.currency} className="h-10 w-10" />
+                  <CurrencyMark currency={wallet.currency} logo={wallet.logoUrl || wallet.logo} className="h-10 w-10" />
                   <div className="min-w-0">
                     <div className="font-semibold">{wallet.currency}</div>
                     <div className="text-xs text-muted-foreground">{t('dashboard.available')}</div>

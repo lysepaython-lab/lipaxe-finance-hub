@@ -124,15 +124,38 @@ export const normalizeTransaction = (payload: unknown) => {
     ),
     status: normalizedStatus,
     description: firstText(raw.remark, raw.description, raw.label, raw.transaction_type, raw.type) || 'Transaction',
-    counterparty: firstText(raw.to_account, raw.from_account, raw.to_user, raw.from_user, raw.phone, paymentMethodName),
+    counterparty: firstText(
+      raw.counterparty_name,
+      raw.to_account_name,
+      raw.from_account_name,
+      raw.to_user_name,
+      raw.from_user_name,
+      raw.to_user,
+      raw.from_user,
+      raw.phone,
+      raw.to_account,
+      raw.from_account,
+      paymentMethodName,
+    ),
     reference: asString(raw.reference),
     createdAt: asString(raw.timestamp ?? raw.created_at ?? raw.createdAt),
     fee: lipaxeFees + providerFees,
     lipaxeFee: lipaxeFees,
     providerFee: providerFees,
-    wallet_id: asString(raw.from_wallet ?? raw.wallet_id),
+    wallet_id: asString(raw.wallet_id ?? raw.from_wallet_id ?? raw.to_wallet_id ?? raw.from_wallet ?? raw.to_wallet ?? raw.walletId),
+    from_wallet_id: asString(raw.from_wallet_id ?? raw.from_wallet),
+    to_wallet_id: asString(raw.to_wallet_id ?? raw.to_wallet),
     paymentMethodName,
-    paymentMethodLogo: firstText(raw.payment_method_logo, raw.image, raw.logo, paymentMethod.logo, paymentMethod.icon),
+    paymentMethodLogo: firstText(
+      raw.payment_method_logo,
+      raw.paymentMethodLogo,
+      raw.image,
+      raw.logo,
+      paymentMethod.logo_url,
+      paymentMethod.logo,
+      paymentMethod.icon,
+      paymentMethod.image,
+    ),
     provider: firstText(raw.provider, paymentMethod.provider, raw.correspondent, paymentMethod.correspondent),
   };
 };
@@ -215,6 +238,7 @@ export const normalizePaymentMethod = (payload: unknown) => {
 
 export const normalizeNotification = (payload: unknown) => {
   const raw = (payload ?? {}) as UnknownRecord;
+  const paymentMethod = (raw.payment_method ?? raw.paymentMethod ?? {}) as UnknownRecord;
   const priority = asString(raw.priority, 'normal');
   const text = `${raw.title ?? ''} ${raw.message ?? raw.body ?? ''}`.toLowerCase();
   const level = (
@@ -237,8 +261,40 @@ export const normalizeNotification = (payload: unknown) => {
     read: Boolean(raw.is_read ?? raw.read),
     createdAt: asString(raw.created_at ?? raw.createdAt),
     link: asString(raw.link, ''),
-    logo: firstText(raw.logo, raw.icon, raw.payment_method_logo),
+    logo: firstText(
+      raw.logo,
+      raw.icon,
+      raw.payment_method_logo,
+      raw.paymentMethodLogo,
+      raw.image,
+      paymentMethod.logo_url,
+      paymentMethod.logo,
+      paymentMethod.icon,
+      paymentMethod.image,
+    ),
     kind: firstText(raw.kind, raw.notification_key, raw.type),
+    paymentMethodName: firstText(
+      raw.payment_method_name,
+      raw.paymentMethodName,
+      paymentMethod.name,
+      raw.correspondent,
+      raw.provider,
+    ),
+    paymentMethodLogo: firstText(
+      raw.payment_method_logo,
+      raw.paymentMethodLogo,
+      raw.logo,
+      raw.icon,
+      raw.image,
+      paymentMethod.logo_url,
+      paymentMethod.logo,
+      paymentMethod.icon,
+      paymentMethod.image,
+    ),
+    provider: firstText(raw.provider, paymentMethod.provider, raw.correspondent, paymentMethod.correspondent),
+    amount: asNumber(raw.amount, 0),
+    currency: firstText(raw.currency, paymentMethod.currency),
+    transactionId: firstText(raw.transaction_id, raw.transactionId),
   };
 };
 

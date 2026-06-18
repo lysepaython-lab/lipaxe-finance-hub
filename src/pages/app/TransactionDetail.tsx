@@ -11,8 +11,9 @@ import { useTransactionQuery } from '@/store/api/walletApi';
 import { downloadReceipt } from '@/lib/receipt';
 import { toast } from 'sonner';
 import { getTransactionSubtitle, getTransactionTitle } from '@/lib/transactionPresentation';
+import type { ReactNode } from 'react';
 
-const Row = ({ label, value }: { label: string; value?: string | number }) => (
+const Row = ({ label, value }: { label: string; value?: ReactNode }) => (
   <div className="flex items-center justify-between gap-4 border-b border-border/70 py-3 last:border-0">
     <span className="text-sm text-muted-foreground">{label}</span>
     <span className="min-w-0 truncate text-right text-sm font-semibold">{value || '-'}</span>
@@ -114,7 +115,23 @@ const TransactionDetail = () => {
               <Row label={t('tx.type')} value={tx.rawType || tx.type} />
               <Row label={t('tx.direction')} value={tx.direction === 'in' ? t('tx.incoming') : t('tx.outgoing')} />
               <Row label={t('tx.counterparty')} value={tx.counterparty} />
-              <Row label={t('tx.paymentMethod')} value={tx.paymentMethodName || tx.provider} />
+              <Row
+                label={t('tx.paymentMethod')}
+                value={
+                  tx.paymentMethodName || tx.provider ? (
+                    <span className="inline-flex min-w-0 items-center justify-end gap-2">
+                      <PaymentMethodMark
+                        logo={tx.paymentMethodLogo}
+                        name={markName}
+                        currency={tx.currency}
+                        direction={tx.direction}
+                        className="h-7 w-7"
+                      />
+                      <span className="truncate">{tx.paymentMethodName || tx.provider}</span>
+                    </span>
+                  ) : undefined
+                }
+              />
               <Row label={t('tx.wallet')} value={tx.wallet_id} />
               <Row label={t('deposit.lipaxeFee')} value={formatMoney(tx.lipaxeFee || 0, tx.currency)} />
               <Row label={t('deposit.providerFee')} value={formatMoney(tx.providerFee || 0, tx.currency)} />

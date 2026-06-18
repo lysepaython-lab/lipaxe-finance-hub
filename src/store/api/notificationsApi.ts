@@ -12,6 +12,12 @@ export interface AppNotification {
   link?: string;
   logo?: string;
   kind?: string;
+  paymentMethodName?: string;
+  paymentMethodLogo?: string;
+  provider?: string;
+  amount?: number;
+  currency?: string;
+  transactionId?: string;
 }
 
 export const notificationsApi = api.injectEndpoints({

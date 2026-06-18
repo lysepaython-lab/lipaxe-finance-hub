@@ -25,7 +25,7 @@ export const QuickActions = () => {
     { to: '/app/savings', label: t('nav.savings'), icon: Wallet, tone: 'from-brand-300 to-brand-600' },
     { to: '/app/strone/vaults', label: t('nav.yieldVaults'), icon: Vault, tone: 'from-brand-500 to-brand-900' },
     { to: '/app/strone/exchange', label: t('nav.swap'), icon: RefreshCw, tone: 'from-brand-400 to-brand-700' },
-    { to: '/app/strone/cryptos', label: t('nav.earn'), icon: Sprout, tone: 'from-brand-300 to-brand-600' },
+    { to: '/app/affiliation', label: t('nav.earn'), icon: Sprout, tone: 'from-brand-300 to-brand-600' },
 
 
   ];

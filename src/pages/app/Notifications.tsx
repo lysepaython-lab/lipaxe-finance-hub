@@ -49,7 +49,8 @@ const Notifications = () => {
                   n.level === 'error' ? 'bg-destructive/10 text-destructive' :
                   'bg-primary/10 text-primary';
                 const Wrapper = n.link ? Link : 'div';
-                const markName = `${n.kind || ''} ${n.title} ${n.body}`;
+                const markName = [n.paymentMethodName, n.provider, n.kind, n.title, n.body].filter(Boolean).join(' ');
+                const logo = n.paymentMethodLogo || n.logo;
 
                 return (
                   <li key={n.id} className={cn('transition-smooth hover:bg-muted/30', !n.read && 'bg-primary/5')}>
@@ -59,7 +60,7 @@ const Notifications = () => {
                       className="flex min-w-0 gap-3 p-4 sm:gap-4"
                     >
                       <div className="relative shrink-0">
-                        <PaymentMethodMark logo={n.logo} name={markName} className="h-11 w-11" />
+                        <PaymentMethodMark logo={logo} name={markName} className="h-11 w-11" />
                         <span className={cn('absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-card', tone)}>
                           <Icon className="h-3 w-3" />
                         </span>
@@ -70,6 +71,11 @@ const Notifications = () => {
                           <span className="shrink-0 text-xs text-muted-foreground">{relativeTime(n.createdAt)}</span>
                         </div>
                         <p className="mt-0.5 line-clamp-2 text-sm text-muted-foreground">{n.body}</p>
+                        {(n.paymentMethodName || n.provider) && (
+                          <p className="mt-1 truncate text-xs font-semibold text-primary">
+                            {n.paymentMethodName || n.provider}
+                          </p>
+                        )}
                         {n.priority === 'high' && (
                           <span className="mt-1 inline-block text-[10px] font-bold uppercase text-destructive">Priorite haute</span>
                         )}

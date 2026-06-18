@@ -7,7 +7,8 @@ export interface Transaction {
   amount: number; currency: string; status: 'completed' | 'pending' | 'failed' | 'processing';
   description: string; counterparty: string; reference: string; createdAt: string; fee?: number;
   lipaxeFee?: number; providerFee?: number;
-  wallet_id?: string; paymentMethodName?: string; paymentMethodLogo?: string; provider?: string;
+  wallet_id?: string; from_wallet_id?: string; to_wallet_id?: string;
+  paymentMethodName?: string; paymentMethodLogo?: string; provider?: string;
 }
 export interface FxQuote { from: string; to: string; amount: number; rate: number; fee: number; receive: number; }
 export interface WalletSwapQuote {

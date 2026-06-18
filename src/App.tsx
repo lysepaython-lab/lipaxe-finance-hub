@@ -24,6 +24,7 @@ import VerifyEmail from "./pages/auth/VerifyEmail";
 import Dashboard from "./pages/app/Dashboard";
 import Transactions from "./pages/app/Transactions";
 import TransactionDetail from "./pages/app/TransactionDetail";
+import WalletDetail from "./pages/app/WalletDetail";
 import Deposit from "./pages/app/Deposit";
 import Withdraw from "./pages/app/Withdraw";
 import Transfer from "./pages/app/Transfer";
@@ -86,6 +87,7 @@ const AppRoutes = () => (
 
     <Route path="/app" element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
       <Route index element={<Dashboard />} />
+      <Route path="wallets/:id" element={<WalletDetail />} />
       <Route path="transactions" element={<Transactions />} />
       <Route path="transactions/:id" element={<TransactionDetail />} />
       <Route path="savings" element={<SavingsHub />} />

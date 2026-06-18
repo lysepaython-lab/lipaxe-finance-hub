@@ -2,6 +2,19 @@ import type { TFunction } from 'i18next';
 import type { Transaction } from '@/store/api/walletApi';
 
 const normalizeText = (value?: string) => String(value || '').trim();
+const isRawIdentifier = (value: string) =>
+  /^LI\d{6,}$/i.test(value) ||
+  /^\+?\d{8,15}$/.test(value) ||
+  /^[0-9a-f]{8}-[0-9a-f-]{12,}$/i.test(value);
+
+const humanCounterparty = (value: string | undefined, t: TFunction) => {
+  const text = normalizeText(value);
+  if (!text) return '';
+  if (/^LI\d{6,}$/i.test(text)) return t('tx.lipaxeUser');
+  if (/^\+?\d{8,15}$/.test(text)) return t('tx.mobileNumber');
+  if (/^[0-9a-f]{8}-[0-9a-f-]{12,}$/i.test(text)) return '';
+  return text;
+};
 
 const isCardTransaction = (tx: Transaction) => {
   const haystack = `${tx.rawType || ''} ${tx.description || ''} ${tx.paymentMethodName || ''} ${tx.provider || ''}`.toLowerCase();
@@ -14,7 +27,8 @@ const isCryptoTransaction = (tx: Transaction) => {
 };
 
 export const getTransactionTitle = (tx: Transaction, t: TFunction) => {
-  const counterparty = normalizeText(tx.counterparty);
+  const counterparty = humanCounterparty(tx.counterparty, t);
+  const methodName = normalizeText(tx.paymentMethodName || tx.provider);
   const rawType = normalizeText(tx.rawType || tx.type).toLowerCase();
 
   if (isCardTransaction(tx) && rawType.includes('withdraw')) {
@@ -39,10 +53,12 @@ export const getTransactionTitle = (tx: Transaction, t: TFunction) => {
     return t('tx.cryptoSell');
   }
   if (rawType.includes('withdraw')) {
-    return counterparty ? t('tx.withdrawTo', { target: counterparty }) : t('tx.withdrawal');
+    const target = methodName || counterparty;
+    return target ? t('tx.withdrawTo', { target }) : t('tx.withdrawal');
   }
   if (rawType.includes('deposit')) {
-    return counterparty ? t('tx.depositVia', { target: counterparty }) : t('tx.deposit');
+    const target = methodName || counterparty;
+    return target ? t('tx.depositVia', { target }) : t('tx.deposit');
   }
   if (rawType.includes('transfer')) {
     if (tx.direction === 'out') {
@@ -58,7 +74,7 @@ export const getTransactionSubtitle = (tx: Transaction, t: TFunction) => {
   const bits = [
     normalizeText(tx.reference),
     normalizeText(tx.paymentMethodName || tx.provider),
-    normalizeText(tx.counterparty),
+    isRawIdentifier(normalizeText(tx.counterparty)) ? '' : normalizeText(tx.counterparty),
   ].filter(Boolean);
 
   if (bits.length > 0) return bits.join(' - ');

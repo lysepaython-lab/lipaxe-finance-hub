@@ -9,6 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useNotificationsQuery, useMarkReadMutation, useMarkAllReadMutation } from '@/store/api/notificationsApi';
 import { relativeTime } from '@/lib/format';
 import { cn } from '@/lib/utils';
+import { PaymentMethodMark } from '@/lib/moneyVisuals';
 
 const ICONS = {
   success: CheckCircle2,
@@ -76,6 +77,8 @@ export const NotificationsInbox = () => {
                   n.level === 'error' ? 'text-destructive bg-destructive/10' :
                   'text-primary bg-primary/10';
                 const Wrapper = n.link ? Link : 'div';
+                const markName = [n.paymentMethodName, n.provider, n.kind, n.title, n.body].filter(Boolean).join(' ');
+                const logo = n.paymentMethodLogo || n.logo;
                 return (
                   <li key={n.id} className={cn('relative', !n.read && 'bg-primary/5')}>
                     <Wrapper
@@ -83,8 +86,11 @@ export const NotificationsInbox = () => {
                       onClick={() => !n.read && markRead({ id: n.id })}
                       className="flex gap-3 p-3 hover:bg-muted/40 transition-colors"
                     >
-                      <div className={cn('h-9 w-9 rounded-full flex items-center justify-center shrink-0', tone, PRIORITY_RING[n.priority])}>
-                        <Icon className="h-4 w-4" />
+                      <div className={cn('relative h-9 w-9 shrink-0', PRIORITY_RING[n.priority])}>
+                        <PaymentMethodMark logo={logo} name={markName} className="h-9 w-9" />
+                        <span className={cn('absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full border border-card', tone)}>
+                          <Icon className="h-2.5 w-2.5" />
+                        </span>
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-2">
@@ -92,6 +98,11 @@ export const NotificationsInbox = () => {
                           <span className="text-[10px] text-muted-foreground shrink-0">{relativeTime(n.createdAt)}</span>
                         </div>
                         <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{n.body}</p>
+                        {(n.paymentMethodName || n.provider) && (
+                          <p className="mt-1 truncate text-[11px] font-semibold text-primary">
+                            {n.paymentMethodName || n.provider}
+                          </p>
+                        )}
                         {n.priority === 'high' && (
                           <span className="inline-block mt-1 text-[10px] uppercase font-bold text-destructive">Priorité haute</span>
                         )}

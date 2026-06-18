@@ -41,7 +41,7 @@
     "account": "Account",
     "profile": "Profile",
     "affiliation": "Affiliation",
-    "earn": "Earn ",
+    "earn": "Earn",
     "swap": "Swap"
   },
   "landing": {
@@ -180,8 +180,10 @@
     "withdrawal": "Withdrawal",
     "transfer": "Transfer",
     "transaction": "Transaction",
-    "depositVia": "You deposited via {{target}}",
-    "withdrawTo": "You withdrew to {{target}}",
+    "lipaxeUser": "a Lipaxe user",
+    "mobileNumber": "a mobile number",
+    "depositVia": "You deposited with {{target}}",
+    "withdrawTo": "You withdrew with {{target}}",
     "transferTo": "You transferred to {{target}}",
     "transferFrom": "You received from {{target}}",
     "cardPurchase": "You bought a virtual card",

@@ -14,6 +14,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatMoney } from '@/lib/format';
+import { CurrencyMark } from '@/lib/moneyVisuals';
 import {
   useWalletExchangeExecuteMutation,
   useWalletExchangeQuoteMutation,
@@ -235,7 +236,10 @@ const Exchange = () => {
                     <SelectContent>
                       {wallets.map((wallet) => (
                         <SelectItem key={wallet.id} value={wallet.id}>
-                    {wallet.currency} - {formatSwapAmount(wallet.available, wallet.currency)}
+                          <span className="flex items-center gap-2">
+                            <CurrencyMark currency={wallet.currency} logo={wallet.logoUrl || wallet.logo} className="h-6 w-6" />
+                            <span>{wallet.currency} - {formatSwapAmount(wallet.available, wallet.currency)}</span>
+                          </span>
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -265,11 +269,17 @@ const Exchange = () => {
                       <SelectValue placeholder={t('strone.targetCurrency')} />
                     </SelectTrigger>
                     <SelectContent>
-                      {targetCurrencies.map((currency) => (
+                      {targetCurrencies.map((currency) => {
+                        const wallet = wallets.find((item) => item.currency === currency);
+                        return (
                         <SelectItem key={currency} value={currency}>
-                          {currency}
+                          <span className="flex items-center gap-2">
+                            <CurrencyMark currency={currency} logo={wallet?.logoUrl || wallet?.logo} className="h-6 w-6" />
+                            <span>{currency}</span>
+                          </span>
                         </SelectItem>
-                      ))}
+                        );
+                      })}
                     </SelectContent>
                   </Select>
                 </div>
@@ -277,7 +287,7 @@ const Exchange = () => {
 
               {fromWallet && insufficient && (
                 <div className="rounded-2xl border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
-                  {t('transfer.insufficientBalance')} Disponible: {formatSwapAmount(fromWallet.available, fromWallet.currency)}.
+                  {t('transfer.insufficientBalance')} Disponible : {formatSwapAmount(fromWallet.available, fromWallet.currency)}.
                 </div>
               )}
 

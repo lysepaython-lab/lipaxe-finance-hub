@@ -4,6 +4,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { formatMoney } from '@/lib/format';
 import { useTranslation } from 'react-i18next';
 import { CurrencyMark } from '@/lib/moneyVisuals';
+import { Link } from 'react-router-dom';
 
 export const AccountsList = () => {
   const { data, isLoading } = useWalletsQuery();
@@ -19,8 +20,9 @@ export const AccountsList = () => {
         {isLoading
           ? Array.from({ length: 4 }).map((_, index) => <Skeleton key={index} className="h-14" />)
           : wallets.map((wallet) => (
-              <div
+              <Link
                 key={wallet.id || wallet.currency}
+                to={`/app/wallets/${wallet.id}`}
                 className="flex items-center justify-between rounded-2xl border border-border/60 bg-card p-3 transition-smooth hover:border-primary/40 hover:shadow-sm"
               >
                 <div className="flex min-w-0 items-center gap-3">
@@ -31,7 +33,7 @@ export const AccountsList = () => {
                   </div>
                 </div>
                 <div className="text-right font-semibold tabular">{formatMoney(wallet.available, wallet.currency)}</div>
-              </div>
+              </Link>
             ))}
       </CardContent>
     </Card>

@@ -84,7 +84,7 @@ const ForgotPassword = () => {
     const nextErrors: Record<string, string> = {};
     if (!z.string().email().safeParse(normalizedEmail).success) nextErrors.email = 'Email invalide';
     if (!new RegExp(`^\\d{${OTP_LENGTH}}$`).test(otp.trim())) nextErrors.otp = t('auth.otpIncomplete');
-    if (password.length < 8) nextErrors.password = 'Au moins 8 caracteres';
+    if (password.length < 8) nextErrors.password = 'Au moins 8 caractères';
     if (password !== confirm) nextErrors.confirm = t('auth.passwordsDontMatch');
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length) {
@@ -245,7 +245,7 @@ const ForgotPassword = () => {
                   type="button"
                   onClick={() => setShowPwd((value) => !value)}
                   className="rounded-lg p-2 text-muted-foreground transition-colors hover:text-foreground"
-                  aria-label="Toggle password visibility"
+                  aria-label={showPwd ? t('auth.hidePassword') : t('auth.showPassword')}
                 >
                   {showPwd ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>

@@ -18,7 +18,7 @@ const schema = z.object({
   firstName: z.string().trim().min(1, 'Requis').max(50),
   lastName: z.string().trim().min(1, 'Requis').max(50),
   email: z.string().trim().email('Email invalide').max(255),
-  password: z.string().min(8, 'Au moins 8 caractÃ¨res').max(100),
+  password: z.string().min(8, 'Au moins 8 caractères').max(100),
   reference: z.string().trim().max(64).optional().or(z.literal('')),
   terms: z.literal(true, { errorMap: () => ({ message: 'Requis' }) }),
 });
@@ -71,7 +71,7 @@ const Register = () => {
   };
 
   return (
-    <AuthLayout side={{ title: t('brand.tagline'), subtitle: t('landing.heroSubtitle') }}>
+    <AuthLayout side={{ title: t('auth.registerSideTitle'), subtitle: t('auth.registerSideSubtitle') }}>
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
@@ -116,7 +116,7 @@ const Register = () => {
           icon={<FaKey className="h-4 w-4" />}
           label={t('auth.password')}
           type={showPwd ? 'text' : 'password'}
-          placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
+          placeholder="••••••••"
           value={form.password}
           onChange={(e) => setForm({ ...form, password: e.target.value })}
           error={errors.password}
@@ -125,7 +125,7 @@ const Register = () => {
               type="button"
               onClick={() => setShowPwd((s) => !s)}
               className="rounded-lg p-2 text-muted-foreground hover:text-foreground transition-colors"
-              aria-label="Toggle password visibility"
+              aria-label={showPwd ? t('auth.hidePassword') : t('auth.showPassword')}
             >
               {showPwd ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>

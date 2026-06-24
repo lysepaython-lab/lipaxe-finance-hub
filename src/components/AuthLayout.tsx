@@ -7,10 +7,10 @@ import { LanguageSwitcher } from './LanguageSwitcher';
 import { AnimatedBackground } from './AnimatedBackground';
 
 const features = [
-  { Icon: FaLock, title: 'Paiements Sécurisés', desc: 'Protection maximale de vos transactions' },
-  { Icon: FaCreditCard, title: 'Multi-Cartes', desc: 'Compatible avec toutes vos cartes' },
-  { Icon: FaWifi, title: 'Sans Contact', desc: 'Paiements rapides et pratiques' },
-  { Icon: FaMobileAlt, title: 'Mobile First', desc: 'Gérez tout depuis votre mobile' },
+  { Icon: FaLock, title: 'Accès protégé', desc: 'PIN, session courte et contrôle de sécurité' },
+  { Icon: FaCreditCard, title: 'Compte vérifié', desc: 'Wallets, cartes et paiements liés à votre profil' },
+  { Icon: FaWifi, title: 'Alertes en temps réel', desc: 'Notifications utiles après chaque action sensible' },
+  { Icon: FaMobileAlt, title: 'Mobile et web', desc: 'Le même compte Lipaxe sur tous vos appareils' },
 ];
 
 const containerVariants = {
@@ -113,7 +113,7 @@ export const AuthLayout = ({
       {/* Footer */}
       <div className="relative z-10">
         <p className="text-xs text-primary-foreground/60">
-          &copy; {new Date().getFullYear()} Lipaxe &mdash; Security.
+          &copy; {new Date().getFullYear()} Lipaxe. Sécurité et conformité.
         </p>
       </div>
     </div>

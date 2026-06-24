@@ -11,7 +11,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useFxQuoteMutation, useLookupRecipientMutation, useTransactionsQuery, useTransferMutation, type RecipientLookup } from '@/store/api/walletApi';
-import { usePaymentMethodsDepositQuery, usePaymentMethodsInternationalQuery, type WalletV2 } from '@/store/api/platformApi';
+import { usePaymentMethodsDepositQuery, usePaymentMethodsInternationalQuery, usePaymentMethodsWithdrawalQuery, type WalletV2 } from '@/store/api/platformApi';
 import { Loader2, Check, ArrowDown, Search, ShieldCheck, Globe2, QrCode } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatMoney } from '@/lib/format';
@@ -121,7 +121,7 @@ const normalizeGlobalPhone = (countryCode: string, value: string) => {
     return {
       ok: false,
       value: digits,
-      message: `Numero invalide pour ${selectedAlpha2}. Exemple: ${rule.example}`,
+      message: `Numéro invalide pour ${selectedAlpha2}. Exemple : ${rule.example}`,
     };
   }
 
@@ -129,7 +129,7 @@ const normalizeGlobalPhone = (countryCode: string, value: string) => {
     return {
       ok: false,
       value: digits,
-      message: 'Numero de telephone invalide pour le pays selectionne.',
+      message: 'Numéro de téléphone invalide pour le pays sélectionné.',
     };
   }
 
@@ -154,6 +154,7 @@ const Transfer = () => {
   const [params] = useSearchParams();
   const { data: internationalMethods } = usePaymentMethodsInternationalQuery();
   const { data: depositMethods } = usePaymentMethodsDepositQuery();
+  const { data: withdrawalMethods } = usePaymentMethodsWithdrawalQuery();
   const { data: transactions = [] } = useTransactionsQuery();
   const pin = usePinGate();
 
@@ -179,8 +180,9 @@ const Transfer = () => {
 
   const intlMethods = useMemo(() => {
     if (internationalMethods?.length) return internationalMethods;
-    return (depositMethods || []).filter((method) => method.is_international !== false && method.type !== 'crypto');
-  }, [internationalMethods, depositMethods]);
+    const fallbackMethods = withdrawalMethods?.length ? withdrawalMethods : depositMethods || [];
+    return fallbackMethods.filter((method) => method.is_international !== false && method.type !== 'crypto');
+  }, [internationalMethods, withdrawalMethods, depositMethods]);
 
   const intlMethodsForCountry = useMemo(() => {
     return intlMethods.filter((method) => methodSupportsCountry(method, countryTo));
@@ -443,7 +445,7 @@ const Transfer = () => {
               <Label>{t('transfer.recipient')}</Label>
               <div className="flex gap-2">
                 <Input
-                  placeholder={kind === 'internal' ? '@username ou n° de compte' : t('transfer.recipientEmail')}
+                  placeholder="@username ou n° de compte"
                   value={recipient}
                   onChange={(e) => setRecipient(e.target.value)}
                   className="h-11 rounded-xl"
@@ -585,7 +587,7 @@ const Transfer = () => {
                     ))}
                     {intlMethodsForCountry.length === 0 && (
                       <div className="rounded-xl border border-dashed border-border bg-muted/30 p-4 text-sm text-muted-foreground sm:col-span-2">
-                        Aucune methode disponible pour ce pays.
+                        Aucune méthode disponible pour ce pays.
                       </div>
                     )}
                   </div>
@@ -625,7 +627,7 @@ const Transfer = () => {
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 maxLength={140}
-                placeholder="What's it for?"
+                placeholder={t('transfer.notePlaceholder')}
                 className="rounded-xl"
               />
             </div>

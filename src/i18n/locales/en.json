@@ -76,9 +76,9 @@
   },
   "auth": {
     "loginTitle": "Welcome back",
-    "loginSubtitle": "Sign in to your Lipaxe account",
+    "loginSubtitle": "Access your wallets, cards and transactions securely.",
     "registerTitle": "Create your account",
-    "registerSubtitle": "Start moving money in minutes",
+    "registerSubtitle": "Create your personal access before KYC verification.",
     "forgotTitle": "Reset your password",
     "forgotSubtitle": "We will send you a 5-digit code.",
     "forgotStepEmailTitle": "Enter your email",
@@ -141,7 +141,13 @@
     "authFeatureContactlessDesc": "Fast, modern and simple payments",
     "authFeatureMobileTitle": "Mobile first",
     "authFeatureMobileDesc": "Manage everything from your phone",
-    "secureLogin": "Secure authentication"
+    "secureLogin": "Secure authentication",
+    "loginSideTitle": "Secure access to Lipaxe",
+    "loginSideSubtitle": "Sign in with your Lipaxe credentials. Sensitive actions remain protected by PIN and device checks.",
+    "registerSideTitle": "Create a trusted Lipaxe profile",
+    "registerSideSubtitle": "Create your profile, verify your email, then unlock wallets and limits for your country.",
+    "hidePassword": "Hide password",
+    "showPassword": "Show password"
   },
   "dashboard": {
     "greeting": "Good to see you",
@@ -382,6 +388,7 @@
     "instant": "Instant",
     "hours": "Within {{count}} hours",
     "note": "Note (optional)",
+    "notePlaceholder": "Transfer reason or reference",
     "review": "Review transfer",
     "confirm": "Send now",
     "success": "Transfer sent",

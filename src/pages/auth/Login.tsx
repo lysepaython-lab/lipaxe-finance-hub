@@ -91,7 +91,7 @@ const Login = () => {
   const isFormValid = form.email.length > 0 && form.password.length >= 6;
 
   return (
-    <AuthLayout side={{ title: t('landing.heroTitle'), subtitle: t('landing.heroSubtitle') }}>
+    <AuthLayout side={{ title: t('auth.loginSideTitle'), subtitle: t('auth.loginSideSubtitle') }}>
       {/* Header */}
       <div className="mb-8 space-y-2">
         <div className="flex items-center gap-2">

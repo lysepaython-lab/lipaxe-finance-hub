@@ -12,7 +12,7 @@ export interface CardOffer {
   name: string;
   price: number;
   currency: string;
-  monthly_fee: number;
+  monthly_fee?: number;
   description: string;
   card_type?: string;
   creation_fixed_fee?: number;

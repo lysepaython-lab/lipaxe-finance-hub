@@ -58,6 +58,23 @@ const offerDescription = (offer: CardOffer, index: number) =>
 // Formatage des montants
 const money = (amount?: number, currency = 'USD') => formatMoney(Number(amount || 0), currency);
 
+const EmptyValue = () => <Minus className="mx-auto h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />;
+
+const moneyOrDash = (amount: number | undefined, currency = 'USD') =>
+  amount === undefined ? <EmptyValue /> : money(amount, currency);
+
+const percentOrDash = (amount: number | undefined) =>
+  amount === undefined ? <EmptyValue /> : `${amount}%`;
+
+const cardFundingFee = (offer: CardOffer) => {
+  const fixed = offer.funding_fixed_fee;
+  const provider = offer.funding_fee_percent;
+  const lipaxe = offer.lipaxe_fee_percent;
+  if (fixed === undefined && provider === undefined && lipaxe === undefined) return <EmptyValue />;
+  const percent = Number(provider || 0) + Number(lipaxe || 0);
+  return `${fixed ? `${money(fixed, offer.currency)} + ` : ''}${percent}%`;
+};
+
 // Composant de carte d'offre (responsive)
 const OfferCard = ({ offer, index, onCreate }: { offer: CardOffer; index: number; onCreate: (offer: CardOffer) => void }) => (
   <div className="flex min-h-[410px] flex-col items-center border-border/70 px-4 sm:px-6 md:px-8 py-6 sm:py-9 text-center border-b last:border-b-0 md:border-b-0 lg:border-l first:lg:border-l-0">
@@ -254,21 +271,27 @@ const VirtualCard = () => {
           <div className="min-w-[600px] md:min-w-[700px] lg:min-w-[760px] border-b border-border/70 bg-muted/35 px-3 sm:px-4 lg:px-6 py-3 sm:py-4 text-xs sm:text-sm font-semibold text-muted-foreground">
             Pricing & fees
           </div>
-          <CompareRow label="Card issuance fee" values={visibleOffers.map((o) => money(o.creation_fixed_fee || o.price, o.currency))} />
-          <CompareRow
-            label="Card funding fee"
-            values={visibleOffers.map((o) => {
-              const fixed = Number(o.funding_fixed_fee || 0);
-              const provider = Number(o.funding_fee_percent || 0);
-              const lipaxe = Number(o.lipaxe_fee_percent || 0);
-              return `${fixed ? `${money(fixed, o.currency)} + ` : ''}${provider + lipaxe}%`;
-            })}
-          />
-          <CompareRow label="Settlement fee" values={visibleOffers.map((o) => (Number(o.settlement_fee || 0) === 0 ? <Badge className="bg-emerald-100 text-emerald-700 text-[10px] sm:text-xs">Free</Badge> : money(o.settlement_fee, o.currency)))} />
-          <CompareRow label="Authorization fee" values={visibleOffers.map((o) => (o.authorization_fee ? money(o.authorization_fee, o.currency) : <Minus className="mx-auto h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />))} />
-          <CompareRow label="Cross-border fee" values={visibleOffers.map((o) => `${o.cross_border_fee_percent || 2.5}%`)} />
-          <CompareRow label="Maintenance fee" values={visibleOffers.map((o) => `${money(o.monthly_fee || 1, o.currency)}/mo`)} />
-          <CompareRow label="Withdrawal fee" values={visibleOffers.map((o) => `${o.withdrawal_fee_percent || 1.5}%`)} />
+          <CompareRow label="Card issuance fee" values={visibleOffers.map((o) => moneyOrDash(o.creation_fixed_fee ?? o.price, o.currency))} />
+          <CompareRow label="Card funding fee" values={visibleOffers.map((o) => cardFundingFee(o))} />
+          <CompareRow label="Settlement fee" values={visibleOffers.map((o) => (
+            o.settlement_fee === undefined
+              ? <EmptyValue />
+              : Number(o.settlement_fee) === 0
+                ? <Badge className="bg-emerald-100 text-emerald-700 text-[10px] sm:text-xs">Free</Badge>
+                : money(o.settlement_fee, o.currency)
+          ))} />
+          <CompareRow label="Authorization fee" values={visibleOffers.map((o) => (
+            o.authorization_fee === undefined
+              ? <EmptyValue />
+              : Number(o.authorization_fee) === 0
+                ? <Badge className="bg-emerald-100 text-emerald-700 text-[10px] sm:text-xs">Free</Badge>
+                : money(o.authorization_fee, o.currency)
+          ))} />
+          <CompareRow label="Cross-border fee" values={visibleOffers.map((o) => percentOrDash(o.cross_border_fee_percent))} />
+          <CompareRow label="Maintenance fee" values={visibleOffers.map((o) => (
+            o.monthly_fee === undefined ? <EmptyValue /> : `${money(o.monthly_fee, o.currency)}/mo`
+          ))} />
+          <CompareRow label="Withdrawal fee" values={visibleOffers.map((o) => percentOrDash(o.withdrawal_fee_percent))} />
 
           {/* Section sécurité et paiements */}
           <div className="min-w-[600px] md:min-w-[700px] lg:min-w-[760px] border-y border-border/70 bg-muted/35 px-3 sm:px-4 lg:px-6 py-3 sm:py-4 text-xs sm:text-sm font-semibold text-muted-foreground">
@@ -276,7 +299,7 @@ const VirtualCard = () => {
           </div>
           <CompareRow label="3D Secure (3DS)" values={visibleOffers.map((o) => <CheckState enabled={o.supports_3ds} />)} />
           {/* Apple Pay avec icône de check */}
-           <CompareRow  label="Apple Pay"   values={visibleOffers.map((o) => <CheckState enabled={o.supports_3ds} />)} />
+           <CompareRow  label="Apple Pay"   values={visibleOffers.map((o) => <CheckState enabled={o.supports_apple_pay} />)} />
          
           {/* <CompareRow 
             label="Apple Pay" 
@@ -295,7 +318,7 @@ const VirtualCard = () => {
             ))} 
           /> */}
           {/* Google Pay avec icône de check */}
-            <CompareRow label="Google Pay"  values={visibleOffers.map((o) => <CheckState enabled={o.supports_3ds} />)} />
+            <CompareRow label="Google Pay"  values={visibleOffers.map((o) => <CheckState enabled={o.supports_google_pay} />)} />
          
           {/* <CompareRow 
             label="Google Pay" 
@@ -313,15 +336,19 @@ const VirtualCard = () => {
               </div>
             ))} 
           /> */}
-          <CompareRow label="Authentication" values={visibleOffers.map((o) => <Badge variant="secondary" className="text-[10px] sm:text-xs">{o.authentication || 'OTP'}</Badge>)} />
+          <CompareRow label="Authentication" values={visibleOffers.map((o) => (
+            o.authentication ? <Badge variant="secondary" className="text-[10px] sm:text-xs">{o.authentication}</Badge> : <EmptyValue />
+          ))} />
 
           {/* Section limites et utilisation */}
           <div className="min-w-[600px] md:min-w-[700px] lg:min-w-[760px] border-y border-border/70 bg-muted/35 px-3 sm:px-4 lg:px-6 py-3 sm:py-4 text-xs sm:text-sm font-semibold text-muted-foreground">
             Limits & usage
           </div>
-          <CompareRow label="Daily limit" values={visibleOffers.map((o) => money(o.daily_limit || 500, o.currency))} />
-          <CompareRow label="Monthly limit" values={visibleOffers.map((o) => money(o.monthly_limit || 5000, o.currency))} />
-          <CompareRow label="Verdict" values={['Ads & online', 'Subscriptions', 'Premium usage'].map((label) => <Badge variant="secondary" className="text-[10px] sm:text-xs">{label}</Badge>)} />
+          <CompareRow label="Daily limit" values={visibleOffers.map((o) => moneyOrDash(o.daily_limit, o.currency))} />
+          <CompareRow label="Monthly limit" values={visibleOffers.map((o) => moneyOrDash(o.monthly_limit, o.currency))} />
+          <CompareRow label="Verdict" values={visibleOffers.map((o) => (
+            <Badge variant="secondary" className="max-w-[150px] truncate text-[10px] sm:text-xs">{o.card_type || o.description || offerLabel(o, 0)}</Badge>
+          ))} />
         </section>
       )}
 

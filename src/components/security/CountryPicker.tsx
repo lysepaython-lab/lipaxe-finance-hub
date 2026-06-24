@@ -7,7 +7,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useCountriesQuery } from '@/store/api/platformApi';
 import { cn } from '@/lib/utils';
 
-/** Convert ISO 3166-1 alpha-2 code to its 🇫🇷-style emoji flag (no static images). */
+/** Convert ISO 3166-1 alpha-2 code to its emoji flag. */
 export const flagEmoji = (alpha2: string): string => {
   if (!alpha2 || alpha2.length !== 2) return '🏳️';
   const A = 0x1f1e6;
@@ -79,7 +79,7 @@ export const CountryPicker = ({ value, onChange, placeholder, label, paymentMeth
             className="w-full h-11 rounded-xl justify-between font-normal"
           >
             <span className="flex items-center gap-2">
-              <span className="text-lg leading-none">{selected ? flagEmoji(selected.alpha_2) : '🌍'}</span>
+              <span className="text-lg leading-none">{selected ? flagEmoji(selected.alpha_2) : '??'}</span>
               <span className={cn(!selected && 'text-muted-foreground')}>
                 {selected?.name || placeholder || 'Choisir un pays'}
               </span>

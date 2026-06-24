@@ -25,6 +25,32 @@ const asNumber = (value: unknown, fallback = 0): number => {
   return fallback;
 };
 
+const asOptionalNumber = (...values: unknown[]): number | undefined => {
+  for (const value of values) {
+    if (value === null || value === undefined || value === '') continue;
+    if (typeof value === 'number' && Number.isFinite(value)) return value;
+    if (typeof value === 'string') {
+      const parsed = Number(value);
+      if (Number.isFinite(parsed)) return parsed;
+    }
+  }
+  return undefined;
+};
+
+const asOptionalBoolean = (...values: unknown[]): boolean | undefined => {
+  for (const value of values) {
+    if (value === null || value === undefined || value === '') continue;
+    if (typeof value === 'boolean') return value;
+    if (typeof value === 'number') return value !== 0;
+    if (typeof value === 'string') {
+      const normalized = value.trim().toLowerCase();
+      if (['true', 'yes', '1', 'enabled'].includes(normalized)) return true;
+      if (['false', 'no', '0', 'disabled'].includes(normalized)) return false;
+    }
+  }
+  return undefined;
+};
+
 const firstText = (...values: unknown[]): string => {
   for (const value of values) {
     const text = asString(value).trim();
@@ -312,24 +338,24 @@ export const normalizeCardOffer = (payload: unknown) => {
     name: asString(raw.name ?? `${brand} Virtual`),
     price: asNumber(raw.amount ?? raw.price ?? creationFee),
     currency: asString(raw.currency, 'USD'),
-    monthly_fee: asNumber(raw.monthly_fee ?? raw.maintenance_fee, 1),
+    monthly_fee: asOptionalNumber(raw.monthly_fee, raw.maintenance_fee),
     description: asString(raw.description, `${brand} virtual card`),
     card_type: asString(raw.card_type ?? raw.category, brand),
     creation_fixed_fee: creationFee,
-    funding_fixed_fee: asNumber(raw.funding_fixed_fee, 0),
-    funding_fee_percent: asNumber(raw.funding_percentage_fee ?? raw.funding_fee_percent ?? raw.funding_fee ?? raw.load_fee_percent, 2.5),
-    lipaxe_fee_percent: asNumber(raw.lipax_fee_percentage ?? raw.lipaxe_fee_percent, 0),
-    settlement_fee: asNumber(raw.settlement_fee, 0),
-    authorization_fee: asNumber(raw.authorization_fee, 0),
-    cross_border_fee_percent: asNumber(raw.cross_border_fee_percent ?? raw.cross_border_fee, 2.5),
-    withdrawal_fee_percent: asNumber(raw.withdrawal_fee_percent ?? raw.withdrawal_fee, 1.5),
-    daily_limit: asNumber(raw.daily_limit, 500),
-    monthly_limit: asNumber(raw.monthly_limit, 5000),
-    min_funding: asNumber(raw.min_funding ?? raw.minimum_funding, 5),
-    supports_3ds: Boolean(raw.supports_3ds ?? raw.three_ds ?? true),
-    supports_apple_pay: Boolean(raw.supports_apple_pay ?? raw.apple_pay),
-    supports_google_pay: Boolean(raw.supports_google_pay ?? raw.google_pay),
-    authentication: asString(raw.authentication, brand === 'Visa' ? 'OTP' : '3DS'),
+    funding_fixed_fee: asOptionalNumber(raw.funding_fixed_fee),
+    funding_fee_percent: asOptionalNumber(raw.funding_percentage_fee, raw.funding_fee_percent, raw.funding_fee, raw.load_fee_percent),
+    lipaxe_fee_percent: asOptionalNumber(raw.lipax_fee_percentage, raw.lipaxe_fee_percent),
+    settlement_fee: asOptionalNumber(raw.settlement_fee),
+    authorization_fee: asOptionalNumber(raw.authorization_fee),
+    cross_border_fee_percent: asOptionalNumber(raw.cross_border_fee_percent, raw.cross_border_fee),
+    withdrawal_fee_percent: asOptionalNumber(raw.withdrawal_fee_percent, raw.withdrawal_fee),
+    daily_limit: asOptionalNumber(raw.daily_limit),
+    monthly_limit: asOptionalNumber(raw.monthly_limit),
+    min_funding: asOptionalNumber(raw.min_funding, raw.minimum_funding),
+    supports_3ds: asOptionalBoolean(raw.supports_3ds, raw.three_ds),
+    supports_apple_pay: asOptionalBoolean(raw.supports_apple_pay, raw.apple_pay),
+    supports_google_pay: asOptionalBoolean(raw.supports_google_pay, raw.google_pay),
+    authentication: asString(raw.authentication),
     image: firstText(raw.image, raw.card_image, raw.design_image, raw.preview_image, raw.logo),
   };
 };

@@ -163,7 +163,7 @@ const Transfer = () => {
   const [wallet, setWallet] = useState<WalletV2 | undefined>();
   const [recipient, setRecipient] = useState('');
   const [recipientInfo, setRecipientInfo] = useState<RecipientLookup | null>(null);
-  const [countryTo, setCountryTo] = useState('NG');
+  const [countryTo, setCountryTo] = useState('');
   const [countryToName, setCountryToName] = useState('');
   const [methodId, setMethodId] = useState('');
   const [amount, setAmount] = useState('100');
@@ -185,6 +185,7 @@ const Transfer = () => {
   }, [internationalMethods, withdrawalMethods, depositMethods]);
 
   const intlMethodsForCountry = useMemo(() => {
+    if (!countryTo) return [];
     return intlMethods.filter((method) => methodSupportsCountry(method, countryTo));
   }, [intlMethods, countryTo]);
 
@@ -273,7 +274,7 @@ const Transfer = () => {
   // Auto-quote international
   useEffect(() => {
     const amt = parseFloat(amount);
-    if (kind === 'international' && amt > 0 && wallet) {
+    if (kind === 'international' && countryTo && amt > 0 && wallet) {
       const id = setTimeout(() => {
         getQuote({ from: wallet.currency, to: currencyForCountry[countryTo.toUpperCase()] || 'USD', amount: amt });
       }, 300);
@@ -317,6 +318,11 @@ const Transfer = () => {
 
   const doTransfer = async () => {
     const fromAccount = wallet?.id || '';
+    if (kind === 'international' && !countryTo) {
+      setErrors({ country: t('transfer.selectCountryRequired') });
+      toast.error(t('transfer.selectCountryRequired'));
+      return;
+    }
     const globalPhone = kind === 'international' ? normalizeGlobalPhone(countryTo, recipient) : null;
     if (globalPhone && !globalPhone.ok) {
       setErrors({ recipient: globalPhone.message });
@@ -368,8 +374,13 @@ const Transfer = () => {
     e.preventDefault();
     if (!walletId) { toast.error(t('transfer.selectWallet')); return; }
     if (kind === 'internal' && !recipientInfo) { toast.error('Vérifiez le destinataire d’abord.'); return; }
-    if (kind === 'international' && !methodId) { toast.error(t('deposit.selectMethod')); return; }
     if (kind === 'international') {
+      if (!countryTo) {
+        setErrors({ country: t('transfer.selectCountryRequired') });
+        toast.error(t('transfer.selectCountryRequired'));
+        return;
+      }
+      if (!methodId) { toast.error(t('deposit.selectMethod')); return; }
       const phone = normalizeGlobalPhone(countryTo, recipient);
       if (!phone.ok) {
         setErrors({ recipient: phone.message });
@@ -516,8 +527,10 @@ const Transfer = () => {
                   label={t('transfer.country')}
                   value={countryTo}
                   onChange={(c, name) => { setCountryTo(c); setCountryToName(name); setMethodId(''); }}
+                  placeholder={t('transfer.selectCountryPlaceholder')}
                   paymentMethods={intlMethods}
                 />
+                {errors.country && <p className="-mt-1 text-xs text-destructive">{errors.country}</p>}
 
                 <div className="space-y-2">
                   <Label>{t('transfer.globalRecipientPhone')}</Label>
@@ -533,7 +546,9 @@ const Transfer = () => {
                     maxLength={24}
                   />
                   <p className="text-xs text-muted-foreground">
-                    {t('transfer.globalPhoneHint', { country: countryToName || countryTo })}
+                    {countryTo
+                      ? t('transfer.globalPhoneHint', { country: countryToName || countryTo })
+                      : t('transfer.selectCountryFirst')}
                   </p>
                   {errors.recipient && <p className="text-xs text-destructive">{errors.recipient}</p>}
                 </div>

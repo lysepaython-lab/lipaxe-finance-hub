@@ -74,17 +74,17 @@ const WalletDetail = () => {
         <CardContent className="grid gap-3 p-5 sm:grid-cols-3 sm:p-7">
           <Button asChild className="h-12 rounded-2xl bg-primary text-primary-foreground">
             <Link to={`/app/deposit?wallet_id=${wallet.id}`}>
-              <ArrowDownLeft className="mr-2 h-4 w-4" /> {t('dashboard.deposit')}
+              <ArrowDownLeft className="mr-2 h-4 w-4" /> {t('nav.deposit')}
             </Link>
           </Button>
           <Button asChild variant="outline" className="h-12 rounded-2xl">
             <Link to={`/app/withdraw?wallet_id=${wallet.id}`}>
-              <ArrowUpRight className="mr-2 h-4 w-4" /> {t('dashboard.withdraw')}
+              <ArrowUpRight className="mr-2 h-4 w-4" /> {t('nav.withdraw')}
             </Link>
           </Button>
           <Button asChild variant="outline" className="h-12 rounded-2xl">
             <Link to={`/app/transfer?wallet_id=${wallet.id}`}>
-              <Send className="mr-2 h-4 w-4" /> {t('dashboard.transfer')}
+              <Send className="mr-2 h-4 w-4" /> {t('nav.transfer')}
             </Link>
           </Button>
         </CardContent>

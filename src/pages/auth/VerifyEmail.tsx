@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { FaShieldAlt } from 'react-icons/fa';
-import { Loader2, MailCheck, RefreshCw, PencilLine, Clock } from 'lucide-react';
+import { Loader2, MailCheck, RefreshCw, PencilLine, Clock, ShieldCheck, Smartphone } from 'lucide-react';
 import { AuthLayout } from '@/components/AuthLayout';
 import { Button } from '@/components/ui/button';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
@@ -49,7 +49,7 @@ const VerifyEmail = () => {
 
   useEffect(() => {
     if (pending || !initialUserId) return;
-    toast.error('Session de verification introuvable. Veuillez recommencer l\'inscription.');
+    toast.error("Session de vérification introuvable. Veuillez recommencer l'inscription.");
     navigate('/register', { replace: true });
   }, [initialUserId, navigate, pending]);
 
@@ -92,7 +92,7 @@ const VerifyEmail = () => {
       setOtp('');
       setError(null);
       setEditOpen(false);
-      toast.success('Email mis a jour, code renvoye');
+      toast.success('E-mail mis à jour, code renvoyé');
       const r = userId ? await resendOtp({ userId, email: newEmail }).unwrap().catch(() => null) : null;
       if (r?.otp) toast.info(`${t('auth.demoCode')}: ${r.otp}`);
       setCooldown(RESEND_COOLDOWN);
@@ -107,30 +107,55 @@ const VerifyEmail = () => {
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
-        className="text-center space-y-3 mb-8"
+        className="mb-6 overflow-hidden rounded-[2rem] border border-border bg-card shadow-xl shadow-primary/5"
       >
-        <div className="mx-auto h-14 w-14 rounded-2xl bg-gradient-brand shadow-brand flex items-center justify-center text-primary-foreground">
-          <MailCheck className="h-7 w-7" />
+        <div className="relative border-b border-border/70 bg-gradient-to-br from-primary/10 via-background to-background p-6">
+          <div className="absolute -right-8 -top-10 h-32 w-32 rounded-full bg-primary/15 blur-2xl" />
+          <div className="relative flex items-start gap-4">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-brand">
+              <MailCheck className="h-7 w-7" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="mb-1 inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
+                <ShieldCheck className="h-3 w-3" />
+                Lipaxe Secure
+              </p>
+              <h1 className="font-display text-2xl font-bold sm:text-3xl">{t('auth.verifyTitle')}</h1>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                {t('auth.verifySentTo')} <span className="font-semibold text-foreground">{email}</span>
+              </p>
+              <button
+                type="button"
+                onClick={() => setEditOpen(true)}
+                className="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline"
+              >
+                <PencilLine className="h-3.5 w-3.5" /> Modifier l'e-mail
+              </button>
+            </div>
+          </div>
         </div>
-        <h1 className="font-display text-3xl font-bold">{t('auth.verifyTitle')}</h1>
-        <p className="text-muted-foreground">
-          {t('auth.verifySentTo')} <span className="font-medium text-foreground">{email}</span>
-        </p>
-        <button
-          type="button"
-          onClick={() => setEditOpen(true)}
-          className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
-        >
-          <PencilLine className="h-3.5 w-3.5" /> Mauvaise adresse ? Modifier l'email
-        </button>
+
+        <div className="grid gap-5 p-5 sm:p-6">
+          <div className="rounded-3xl border border-border bg-background/80 p-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                <Smartphone className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="font-semibold">{t('auth.enterOtpCode')}</p>
+                <p className="text-xs text-muted-foreground">{t('auth.enterOtpCodeDesc')}</p>
+              </div>
+            </div>
+          </div>
+        </div>
       </motion.div>
 
       {pending && (
         <div className="mb-4 rounded-xl border border-primary/20 bg-primary/5 p-3 flex items-start gap-2 text-xs">
           <Clock className="h-4 w-4 text-primary shrink-0 mt-0.5" />
           <div>
-            <div className="font-medium text-foreground">Verification en cours sauvegardee</div>
-            <div className="text-muted-foreground">Vous pouvez fermer cet onglet et revenir terminer la verification dans les 7 jours.</div>
+            <div className="font-medium text-foreground">Vérification en cours sauvegardée</div>
+            <div className="text-muted-foreground">Vous pouvez fermer cet onglet et revenir terminer la vérification dans les 7 jours.</div>
           </div>
         </div>
       )}
@@ -148,7 +173,7 @@ const VerifyEmail = () => {
           >
             <InputOTPGroup className="gap-2">
               {[0, 1, 2, 3, 4].map((i) => (
-                <InputOTPSlot key={i} index={i} />
+                <InputOTPSlot key={i} index={i} className="h-14 w-12 rounded-2xl border-2 bg-card text-xl shadow-sm sm:h-16 sm:w-14" />
               ))}
             </InputOTPGroup>
           </InputOTP>

@@ -41,11 +41,9 @@ export const AuthLayout = ({
   side: { title: string; subtitle: string };
 }) => (
   <div className="min-h-screen bg-background lg:grid lg:grid-cols-2">
-    {/* ── Illustration panel (desktop only) ── */}
     <div className="relative hidden flex-col justify-between overflow-hidden bg-gradient-hero p-12 lg:flex">
       <AnimatedBackground />
 
-      {/* Floating badge */}
       <motion.div
         variants={floatVariants}
         animate="animate"
@@ -61,12 +59,10 @@ export const AuthLayout = ({
         </div>
       </motion.div>
 
-      {/* Logo */}
       <div className="relative z-10">
         <Logo />
       </div>
 
-      {/* Content */}
       <div className="relative z-10 max-w-md space-y-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -84,7 +80,6 @@ export const AuthLayout = ({
           )}
         </motion.div>
 
-        {/* Features grid */}
         <motion.div
           variants={containerVariants}
           initial="hidden"
@@ -110,7 +105,6 @@ export const AuthLayout = ({
         </motion.div>
       </div>
 
-      {/* Footer */}
       <div className="relative z-10">
         <p className="text-xs text-primary-foreground/60">
           &copy; {new Date().getFullYear()} Lipaxe. Sécurité et conformité.
@@ -118,11 +112,9 @@ export const AuthLayout = ({
       </div>
     </div>
 
-    {/* ── Form panel ── */}
     <div className="relative flex min-h-screen flex-col">
       <AnimatedBackground className="opacity-40 lg:hidden" />
 
-      {/* Top bar */}
       <header className="relative flex items-center justify-between p-4 sm:p-6">
         <Link
           to="/"
@@ -137,7 +129,6 @@ export const AuthLayout = ({
         </div>
       </header>
 
-      {/* Main content */}
       <main className="relative flex flex-1 items-center justify-center px-4 pb-12 sm:px-6">
         <motion.div
           initial={{ opacity: 0, y: 16 }}

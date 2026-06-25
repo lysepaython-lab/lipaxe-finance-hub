@@ -118,6 +118,8 @@
     "verifyTitle": "Vérifiez votre e-mail",
     "verifySubtitle": "Saisissez le code à 5 chiffres",
     "verifySentTo": "Code envoyé à",
+    "enterOtpCode": "Entrez le code OTP",
+    "enterOtpCodeDesc": "Saisissez les 5 chiffres reçus pour activer votre compte.",
     "verifyAction": "Vérifier",
     "resendCode": "Renvoyer le code",
     "resendIn": "Renvoyer dans",

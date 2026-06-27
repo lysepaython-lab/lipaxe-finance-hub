@@ -51,7 +51,7 @@ const ForgotPassword = () => {
   const requestOtp = async (e?: FormEvent, resend = false) => {
     e?.preventDefault();
     if (!z.string().email().safeParse(normalizedEmail).success) {
-      setErrors({ email: 'Email invalide' });
+      setErrors({ email: t('auth.invalidEmail') });
       setStep('email');
       return;
     }
@@ -82,9 +82,9 @@ const ForgotPassword = () => {
   const submitReset = async (e: FormEvent) => {
     e.preventDefault();
     const nextErrors: Record<string, string> = {};
-    if (!z.string().email().safeParse(normalizedEmail).success) nextErrors.email = 'Email invalide';
+    if (!z.string().email().safeParse(normalizedEmail).success) nextErrors.email = t('auth.invalidEmail');
     if (!new RegExp(`^\\d{${OTP_LENGTH}}$`).test(otp.trim())) nextErrors.otp = t('auth.otpIncomplete');
-    if (password.length < 8) nextErrors.password = 'Au moins 8 caractères';
+    if (password.length < 8) nextErrors.password = t('auth.passwordTooShort');
     if (password !== confirm) nextErrors.confirm = t('auth.passwordsDontMatch');
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length) {

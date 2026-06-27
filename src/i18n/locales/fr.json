@@ -149,7 +149,18 @@
     "registerSideTitle": "Un compte clair avant chaque transaction",
     "registerSideSubtitle": "Créez votre profil, vérifiez votre e-mail, puis activez les wallets et les limites liés à votre pays.",
     "hidePassword": "Masquer le mot de passe",
-    "showPassword": "Afficher le mot de passe"
+    "showPassword": "Afficher le mot de passe",
+    "authFooter": "Securite et conformite.",
+    "backHome": "Retour a l'accueil",
+    "invalidEmail": "Adresse e-mail invalide",
+    "passwordTooShort": "Le mot de passe doit contenir au moins 8 caracteres",
+    "requiredField": "Champ requis",
+    "editEmail": "Modifier l'e-mail",
+    "pendingVerificationMissing": "Session de verification introuvable. Veuillez recommencer l'inscription.",
+    "pendingAccountMissing": "Compte en attente introuvable. Recommencez l'inscription.",
+    "emailUpdatedCodeResent": "E-mail mis a jour, code renvoye",
+    "verificationSavedTitle": "Verification en cours sauvegardee",
+    "verificationSavedBody": "Vous pouvez fermer cet onglet et revenir terminer la verification dans les 7 jours."
   },
   "dashboard": {
     "greeting": "Ravi de vous revoir",

@@ -1,0 +1,98 @@
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox="0 0 600 500"
+  fill="none"
+  class="w-full h-auto text-primary"
+>
+  <!-- Background blobs -->
+  <circle cx="120" cy="100" r="90" fill="currentColor" opacity="0.06"/>
+  <circle cx="480" cy="120" r="70" fill="currentColor" opacity="0.08"/>
+  <circle cx="450" cy="380" r="110" fill="currentColor" opacity="0.05"/>
+
+  <!-- Main Card -->
+  <rect
+    x="150"
+    y="120"
+    width="300"
+    height="220"
+    rx="28"
+    class="fill-background stroke-border"
+    stroke-width="2"
+  />
+
+  <!-- Shield -->
+  <path
+    d="M300 165L355 185V245C355 290 320 315 300 325C280 315 245 290 245 245V185L300 165Z"
+    fill="currentColor"
+    opacity="0.12"
+  />
+
+  <path
+    d="M300 185L335 198V242C335 273 313 292 300 300C287 292 265 273 265 242V198L300 185Z"
+    stroke="currentColor"
+    stroke-width="4"
+    stroke-linejoin="round"
+  />
+
+  <!-- Check icon -->
+  <path
+    d="M285 240L297 252L320 228"
+    stroke="currentColor"
+    stroke-width="5"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+
+  <!-- Floating cards -->
+  <g opacity="0.9">
+    <rect
+      x="70"
+      y="210"
+      width="110"
+      height="70"
+      rx="16"
+      fill="currentColor"
+      opacity="0.08"
+    />
+
+    <circle cx="100" cy="245" r="10" fill="currentColor" opacity="0.5"/>
+    <rect x="118" y="238" width="40" height="8" rx="4" fill="currentColor" opacity="0.3"/>
+  </g>
+
+  <g opacity="0.9">
+    <rect
+      x="420"
+      y="250"
+      width="110"
+      height="70"
+      rx="16"
+      fill="currentColor"
+      opacity="0.08"
+    />
+
+    <rect x="445" y="270" width="60" height="10" rx="5" fill="currentColor" opacity="0.4"/>
+    <rect x="445" y="290" width="40" height="8" rx="4" fill="currentColor" opacity="0.25"/>
+  </g>
+
+  <!-- Connection lines -->
+  <path
+    d="M180 245H245"
+    stroke="currentColor"
+    stroke-width="2"
+    stroke-dasharray="6 6"
+    opacity="0.4"
+  />
+
+  <path
+    d="M355 245H420"
+    stroke="currentColor"
+    stroke-width="2"
+    stroke-dasharray="6 6"
+    opacity="0.4"
+  />
+
+  <!-- Floating dots -->
+  <circle cx="210" cy="90" r="6" fill="currentColor" opacity="0.3"/>
+  <circle cx="390" cy="80" r="8" fill="currentColor" opacity="0.2"/>
+  <circle cx="520" cy="200" r="5" fill="currentColor" opacity="0.4"/>
+</svg>

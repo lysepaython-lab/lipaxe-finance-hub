@@ -149,7 +149,18 @@
     "registerSideTitle": "Create a trusted Lipaxe profile",
     "registerSideSubtitle": "Create your profile, verify your email, then unlock wallets and limits for your country.",
     "hidePassword": "Hide password",
-    "showPassword": "Show password"
+    "showPassword": "Show password",
+    "authFooter": "Security and compliance.",
+    "backHome": "Back to home",
+    "invalidEmail": "Invalid email address",
+    "passwordTooShort": "Password must contain at least 8 characters",
+    "requiredField": "Required field",
+    "editEmail": "Edit email",
+    "pendingVerificationMissing": "Verification session not found. Please start registration again.",
+    "pendingAccountMissing": "Pending account not found. Please start registration again.",
+    "emailUpdatedCodeResent": "Email updated, code resent",
+    "verificationSavedTitle": "Verification progress saved",
+    "verificationSavedBody": "You can close this tab and come back within 7 days to finish verification."
   },
   "dashboard": {
     "greeting": "Good to see you",

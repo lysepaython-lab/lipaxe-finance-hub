@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
@@ -14,9 +14,9 @@ import { setCredentials } from '@/store/slices/authSlice';
 import { isSafeRedirect } from '@/lib/security';
 import { toast } from 'sonner';
 
-const schema = z.object({
-  email: z.string().trim().email('Email invalide'),
-  password: z.string().min(6, 'Mot de passe trop court'),
+const buildSchema = (t: (key: string) => string) => z.object({
+  email: z.string().trim().email(t('auth.invalidEmail')),
+  password: z.string().min(6, t('auth.passwordTooShort')),
 });
 
 const Login = () => {
@@ -31,6 +31,7 @@ const Login = () => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [rememberMe, setRememberMe] = useState(false);
+  const schema = useMemo(() => buildSchema(t), [t]);
 
   const redirect = params.get('redirect') || '';
 
@@ -56,7 +57,7 @@ const Login = () => {
         [field]: result.error.issues[0].message,
       }));
     }
-  }, []);
+  }, [schema]);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

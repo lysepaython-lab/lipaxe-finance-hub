@@ -11,7 +11,10 @@ import { useResendOtpMutation, useVerifyEmailMutation } from '@/store/api/authAp
 import { useUpdatePendingEmailMutation } from '@/store/api/securityApi';
 import { EditEmailModal } from '@/components/security/EditEmailModal';
 import {
-  setPendingVerification, getPendingVerification, clearPendingVerification, updatePendingEmail,
+  setPendingVerification,
+  getPendingVerification,
+  clearPendingVerification,
+  updatePendingEmail,
 } from '@/lib/pendingVerification';
 import { isSafeRedirect } from '@/lib/security';
 import { toast } from 'sonner';
@@ -49,9 +52,9 @@ const VerifyEmail = () => {
 
   useEffect(() => {
     if (pending || !initialUserId) return;
-    toast.error("Session de vérification introuvable. Veuillez recommencer l'inscription.");
+    toast.error(t('auth.pendingVerificationMissing'));
     navigate('/register', { replace: true });
-  }, [initialUserId, navigate, pending]);
+  }, [initialUserId, navigate, pending, t]);
 
   useEffect(() => {
     if (!cooldown) return;
@@ -60,8 +63,14 @@ const VerifyEmail = () => {
   }, [cooldown]);
 
   const submit = async (code = otp) => {
-    if (code.length !== 5) { setError(t('auth.otpIncomplete')); return; }
-    if (!userId) { setError("Compte en attente introuvable. Recommencez l'inscription."); return; }
+    if (code.length !== 5) {
+      setError(t('auth.otpIncomplete'));
+      return;
+    }
+    if (!userId) {
+      setError(t('auth.pendingAccountMissing'));
+      return;
+    }
     setError(null);
     try {
       await verifyEmail({ userId, otp: code }).unwrap();
@@ -81,24 +90,22 @@ const VerifyEmail = () => {
       toast.success(t('auth.codeResent'));
       if (r.otp) toast.info(`${t('auth.demoCode')}: ${r.otp}`);
       setCooldown(RESEND_COOLDOWN);
-    } catch { toast.error(t('common.error')); }
+    } catch {
+      toast.error(t('common.error'));
+    }
   };
 
   const onChangeEmail = async (newEmail: string) => {
-    try {
-      await updatePending({ email, new_email: newEmail }).unwrap().catch(() => {});
-      setEmail(newEmail);
-      updatePendingEmail(newEmail);
-      setOtp('');
-      setError(null);
-      setEditOpen(false);
-      toast.success('E-mail mis à jour, code renvoyé');
-      const r = userId ? await resendOtp({ userId, email: newEmail }).unwrap().catch(() => null) : null;
-      if (r?.otp) toast.info(`${t('auth.demoCode')}: ${r.otp}`);
-      setCooldown(RESEND_COOLDOWN);
-    } catch (e: any) {
-      throw e;
-    }
+    await updatePending({ email, new_email: newEmail }).unwrap().catch(() => {});
+    setEmail(newEmail);
+    updatePendingEmail(newEmail);
+    setOtp('');
+    setError(null);
+    setEditOpen(false);
+    toast.success(t('auth.emailUpdatedCodeResent'));
+    const r = userId ? await resendOtp({ userId, email: newEmail }).unwrap().catch(() => null) : null;
+    if (r?.otp) toast.info(`${t('auth.demoCode')}: ${r.otp}`);
+    setCooldown(RESEND_COOLDOWN);
   };
 
   return (
@@ -118,7 +125,7 @@ const VerifyEmail = () => {
             <div className="min-w-0 flex-1">
               <p className="mb-1 inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
                 <ShieldCheck className="h-3 w-3" />
-                Lipaxe Secure
+                {t('auth.secureLogin')}
               </p>
               <h1 className="font-display text-2xl font-bold sm:text-3xl">{t('auth.verifyTitle')}</h1>
               <p className="mt-2 text-sm leading-6 text-muted-foreground">
@@ -129,7 +136,7 @@ const VerifyEmail = () => {
                 onClick={() => setEditOpen(true)}
                 className="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline"
               >
-                <PencilLine className="h-3.5 w-3.5" /> Modifier l'e-mail
+                <PencilLine className="h-3.5 w-3.5" /> {t('auth.editEmail')}
               </button>
             </div>
           </div>
@@ -151,16 +158,16 @@ const VerifyEmail = () => {
       </motion.div>
 
       {pending && (
-        <div className="mb-4 rounded-xl border border-primary/20 bg-primary/5 p-3 flex items-start gap-2 text-xs">
-          <Clock className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+        <div className="mb-4 flex items-start gap-2 rounded-xl border border-primary/20 bg-primary/5 p-3 text-xs">
+          <Clock className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
           <div>
-            <div className="font-medium text-foreground">Vérification en cours sauvegardée</div>
-            <div className="text-muted-foreground">Vous pouvez fermer cet onglet et revenir terminer la vérification dans les 7 jours.</div>
+            <div className="font-medium text-foreground">{t('auth.verificationSavedTitle')}</div>
+            <div className="text-muted-foreground">{t('auth.verificationSavedBody')}</div>
           </div>
         </div>
       )}
 
-      <form onSubmit={(e) => { e.preventDefault(); submit(); }} className="space-y-6">
+      <form onSubmit={(e) => { e.preventDefault(); void submit(); }} className="space-y-6">
         <div className="flex flex-col items-center gap-3">
           <InputOTP
             maxLength={5}
@@ -168,7 +175,7 @@ const VerifyEmail = () => {
             onChange={(v) => {
               setOtp(v);
               setError(null);
-              if (v.length === 5) submit(v);
+              if (v.length === 5) void submit(v);
             }}
           >
             <InputOTPGroup className="gap-2">
@@ -181,13 +188,13 @@ const VerifyEmail = () => {
         </div>
 
         <motion.div whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}>
-          <Button type="submit" className="w-full bg-gradient-brand shadow-brand h-11 rounded-xl" disabled={verifying || otp.length !== 5}>
+          <Button type="submit" className="h-11 w-full rounded-xl bg-gradient-brand shadow-brand" disabled={verifying || otp.length !== 5}>
             {verifying && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             <FaShieldAlt className="mr-2 h-4 w-4" /> {t('auth.verifyAction')}
           </Button>
         </motion.div>
 
-        <div className="text-center text-sm space-y-2">
+        <div className="space-y-2 text-center text-sm">
           <button
             type="button"
             onClick={onResend}

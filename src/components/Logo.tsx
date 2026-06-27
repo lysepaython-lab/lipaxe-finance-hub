@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import iconUrl from '/icones green2.png';
-import darkLogoUrl from '/lipaxe-logo-dark.png';
+
 
 interface LogoProps {
   className?: string;
@@ -25,7 +25,7 @@ export const Logo = ({ className, compact = false, to = '/', size = 36, textClas
         className="h-full w-full object-cover dark:hidden"
       />
       <img
-        src={darkLogoUrl}
+        src={iconUrl}
         alt="Lipaxe"
         width={size}
         height={size}

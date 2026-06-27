@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
@@ -14,13 +14,13 @@ import { toast } from 'sonner';
 import { isSafeRedirect } from '@/lib/security';
 import { setPendingVerification } from '@/lib/pendingVerification';
 
-const schema = z.object({
-  firstName: z.string().trim().min(1, 'Requis').max(50),
-  lastName: z.string().trim().min(1, 'Requis').max(50),
-  email: z.string().trim().email('Email invalide').max(255),
-  password: z.string().min(8, 'Au moins 8 caractères').max(100),
+const buildSchema = (t: (key: string) => string) => z.object({
+  firstName: z.string().trim().min(1, t('auth.requiredField')).max(50),
+  lastName: z.string().trim().min(1, t('auth.requiredField')).max(50),
+  email: z.string().trim().email(t('auth.invalidEmail')).max(255),
+  password: z.string().min(8, t('auth.passwordTooShort')).max(100),
   reference: z.string().trim().max(64).optional().or(z.literal('')),
-  terms: z.literal(true, { errorMap: () => ({ message: 'Requis' }) }),
+  terms: z.literal(true, { errorMap: () => ({ message: t('auth.termsRequired') }) }),
 });
 
 const Register = () => {
@@ -30,9 +30,14 @@ const Register = () => {
   const [register, { isLoading }] = useRegisterMutation();
   const incomingRef = params.get('reference') || params.get('ref') || '';
   const redirect = params.get('redirect') || '';
+  const schema = useMemo(() => buildSchema(t), [t]);
   const [form, setForm] = useState({
-    firstName: '', lastName: '', email: '', password: '',
-    reference: incomingRef, terms: false,
+    firstName: '',
+    lastName: '',
+    email: '',
+    password: '',
+    reference: incomingRef,
+    terms: false,
   });
   const [showPwd, setShowPwd] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -64,7 +69,6 @@ const Register = () => {
       toast.success(t('auth.registerSuccess'));
       navigate('/verify-email');
     } catch (e: any) {
-    
       const firstError = e?.data ? Object.values(e.data).flat() : null;
       toast.error(firstError || e?.data?.detail || t('common.error'));
     }
@@ -76,7 +80,7 @@ const Register = () => {
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
-        className="space-y-2 mb-8"
+        className="mb-8 space-y-2"
       >
         <h1 className="font-display text-3xl font-bold">{t('auth.registerTitle')}</h1>
         <p className="text-muted-foreground">{t('auth.registerSubtitle')}</p>
@@ -116,7 +120,7 @@ const Register = () => {
           icon={<FaKey className="h-4 w-4" />}
           label={t('auth.password')}
           type={showPwd ? 'text' : 'password'}
-          placeholder="••••••••"
+          placeholder="********"
           value={form.password}
           onChange={(e) => setForm({ ...form, password: e.target.value })}
           error={errors.password}
@@ -124,7 +128,7 @@ const Register = () => {
             <button
               type="button"
               onClick={() => setShowPwd((s) => !s)}
-              className="rounded-lg p-2 text-muted-foreground hover:text-foreground transition-colors"
+              className="rounded-lg p-2 text-muted-foreground transition-colors hover:text-foreground"
               aria-label={showPwd ? t('auth.hidePassword') : t('auth.showPassword')}
             >
               {showPwd ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -134,14 +138,14 @@ const Register = () => {
 
         <IconInput
           icon={<FaUserFriends className="h-4 w-4" />}
-          label={`${t('auth.referralCode') || 'Code de parrainage'}`}
+          label={t('auth.referralCode')}
           placeholder="LIPAXE-XXXX"
           value={form.reference}
           onChange={(e) => setForm({ ...form, reference: e.target.value.toUpperCase().slice(0, 64) })}
           error={errors.reference}
         />
 
-        <label className="flex items-start gap-2 text-sm cursor-pointer">
+        <label className="flex cursor-pointer items-start gap-2 text-sm">
           <Checkbox
             checked={form.terms}
             onCheckedChange={(v) => setForm({ ...form, terms: !!v })}
@@ -152,7 +156,7 @@ const Register = () => {
         {errors.terms && <p className="text-xs text-destructive">{errors.terms}</p>}
 
         <motion.div whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}>
-          <Button type="submit" className="w-full bg-gradient-brand shadow-brand h-11 rounded-xl" disabled={isLoading}>
+          <Button type="submit" className="h-11 w-full rounded-xl bg-gradient-brand shadow-brand" disabled={isLoading}>
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} {t('auth.signUp')}
           </Button>
         </motion.div>

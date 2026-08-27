@@ -31,8 +31,9 @@ import { cn } from '@/lib/utils';
 import { useAppSelector } from '@/store/hooks';
 import { useGetKycDataQuery } from '@/store/api/kycApi';
 import { getKycState } from '@/lib/kycStatus';
+import { type FeatureName, isFeatureEnabled } from '@/config/features';
 
-type Item = { to: string; key: string; icon: React.ComponentType<{ className?: string }>; end?: boolean };
+type Item = { to: string; key: string; icon: React.ComponentType<{ className?: string }>; end?: boolean; feature?: FeatureName };
 type Group = { key: string; items: Item[] };
 
 const groups: Group[] = [
@@ -64,23 +65,23 @@ const groups: Group[] = [
   {
     key: 'payments',
     items: [
-      { to: '/app/payments/payall', key: 'payAll', icon: Users2 },
-      { to: '/app/payments/festipay', key: 'festiPay', icon: PartyPopper },
+      { to: '/app/payments/payall', key: 'payAll', icon: Users2, feature: 'payAll' },
+      { to: '/app/payments/festipay', key: 'festiPay', icon: PartyPopper, feature: 'festiPay' },
     ],
   },
   {
     key: 'strone',
     items: [
-      { to: '/app/strone/exchange', key: 'lipaxeExchange', icon: Repeat },
+      { to: '/app/strone/exchange', key: 'lipaxeExchange', icon: Repeat, feature: 'lipaxeExchange' },
       { to: '/app/strone/business', key: 'businessAll', icon: Briefcase },
-      { to: '/app/strone/cryptos', key: 'lipaxeCryptos', icon: Bitcoin },
-      { to: '/app/strone/vaults', key: 'yieldVaults', icon: Landmark },
+      { to: '/app/strone/cryptos', key: 'lipaxeCryptos', icon: Bitcoin, feature: 'lipaxeCryptos' },
+      { to: '/app/strone/vaults', key: 'yieldVaults', icon: Landmark, feature: 'yieldVaults' },
     ],
   },
   {
     key: 'account',
     items: [
-      { to: '/app/savings', key: 'savings', icon: PiggyBank },
+      { to: '/app/savings', key: 'savings', icon: PiggyBank, feature: 'savings' },
       { to: '/app/profile', key: 'profile', icon: UserCircle2 },
       { to: '/app/kyc', key: 'kyc', icon: ShieldCheck },
       { to: '/app/affiliation', key: 'affiliation', icon: Users2 },
@@ -140,7 +141,9 @@ export const AppSidebar = () => {
             </SheetHeader>
             <div className="space-y-6">
               {groups.map((group) => {
-                const visibleItems = group.items.filter((item) => item.key !== 'kyc' || !kycState.locked);
+                const visibleItems = group.items.filter((item) => (
+                  isFeatureEnabled(item.feature) && (item.key !== 'kyc' || !kycState.locked)
+                ));
                 if (!visibleItems.length) return null;
                 return (
                   <section key={group.key} className="space-y-2">

@@ -11,6 +11,9 @@ node_modules
 dist
 dist-ssr
 *.local
+docs
+deliverables
+temp
 
 # Editor directories and files
 .vscode/*
@@ -28,3 +31,10 @@ env.local
 .env.development.local
 .env.test.local
 .env.production.local
+
+.DEPLOY_WEB_LIPAXE.md
+DEPLOY_WEB_LIPAXE.md
+
+scripts
+tmp
+docs

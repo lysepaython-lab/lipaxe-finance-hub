@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes, Navigate, useLocation } from "react-router-dom";
+import { HelmetProvider } from 'react-helmet-async';
 import { Provider } from "react-redux";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
@@ -11,11 +12,14 @@ import { ProtectedRoute } from "./components/ProtectedRoute";
 import { AppLayout } from "./components/AppLayout";
 import { HostRedirect } from "./components/HostRedirect";
 import { MaintenanceOverlay } from "./components/MaintenanceOverlay";
+import { Seo } from "./components/Seo";
+import { FEATURES } from './config/features';
 import { buildAppUrl } from "./config/site";
 import { getPendingVerification } from "./lib/pendingVerification";
 import "./i18n";
 
 import LaunchScreen from "./pages/LaunchScreen";
+import Landing from "./pages/Landing";
 import Login from "./pages/auth/Login";
 import Register from "./pages/auth/Register";
 import ForgotPassword from "./pages/auth/ForgotPassword";
@@ -75,9 +79,14 @@ const VerifyEmailRoute = ({ children }: { children: JSX.Element }) => {
   return children;
 };
 
+const FeatureRoute = ({ enabled, children }: { enabled: boolean; children: JSX.Element }) => (
+  enabled ? children : <Navigate to="/app" replace />
+);
+
 const AppRoutes = () => (
   <Routes>
-    <Route path="/" element={<LaunchScreen />} />
+    <Route path="/" element={<Landing />} />
+    <Route path="/launch" element={<LaunchScreen />} />
     <Route path="/login" element={<PublicAuthRoute><Login /></PublicAuthRoute>} />
     <Route path="/register" element={<PublicAuthRoute><Register /></PublicAuthRoute>} />
     <Route path="/verify-email" element={<VerifyEmailRoute><VerifyEmail /></VerifyEmailRoute>} />
@@ -90,8 +99,8 @@ const AppRoutes = () => (
       <Route path="wallets/:id" element={<WalletDetail />} />
       <Route path="transactions" element={<Transactions />} />
       <Route path="transactions/:id" element={<TransactionDetail />} />
-      <Route path="savings" element={<SavingsHub />} />
-      <Route path="savings/:id" element={<SavingsDetail />} />
+      <Route path="savings" element={<FeatureRoute enabled={FEATURES.savings}><SavingsHub /></FeatureRoute>} />
+      <Route path="savings/:id" element={<FeatureRoute enabled={FEATURES.savings}><SavingsDetail /></FeatureRoute>} />
       <Route path="deposit" element={<Deposit />} />
       <Route path="withdraw" element={<Withdraw />} />
       <Route path="transfer" element={<Transfer />} />
@@ -103,13 +112,13 @@ const AppRoutes = () => (
       <Route path="cards/my/:id" element={<CardDetail />} />
       <Route path="cards/gift" element={<GiftCards />} />
       <Route path="cards/nfc" element={<Navigate to="/app/cards/virtual" replace />} />
-      <Route path="payments/payall" element={<PayAll />} />
-      <Route path="payments/festipay" element={<FestiPay />} />
-      <Route path="strone/exchange" element={<Exchange />} />
+      <Route path="payments/payall" element={<FeatureRoute enabled={FEATURES.payAll}><PayAll /></FeatureRoute>} />
+      <Route path="payments/festipay" element={<FeatureRoute enabled={FEATURES.festiPay}><FestiPay /></FeatureRoute>} />
+      <Route path="strone/exchange" element={<FeatureRoute enabled={FEATURES.lipaxeExchange}><Exchange /></FeatureRoute>} />
       <Route path="strone/business" element={<BusinessAll />} />
-      <Route path="strone/cryptos" element={<Cryptos />} />
-      <Route path="strone/vaults" element={<YieldVaultHub />} />
-      <Route path="strone/vaults/:id" element={<YieldVaultDetail />} />
+      <Route path="strone/cryptos" element={<FeatureRoute enabled={FEATURES.lipaxeCryptos}><Cryptos /></FeatureRoute>} />
+      <Route path="strone/vaults" element={<FeatureRoute enabled={FEATURES.yieldVaults}><YieldVaultHub /></FeatureRoute>} />
+      <Route path="strone/vaults/:id" element={<FeatureRoute enabled={FEATURES.yieldVaults}><YieldVaultDetail /></FeatureRoute>} />
       <Route path="profile" element={<Profile />} />
       <Route path="affiliation" element={<Affiliation />} />
       <Route path="kyc" element={<Kyc />} />
@@ -130,10 +139,13 @@ const App = () => (
         <TooltipProvider>
           <Toaster />
           <Sonner position="top-right" />
-          <BrowserRouter>
-            <AppRoutes />
-            <MaintenanceOverlay />
-          </BrowserRouter>
+          <HelmetProvider>
+            <BrowserRouter>
+              <Seo />
+              <AppRoutes />
+              <MaintenanceOverlay />
+            </BrowserRouter>
+          </HelmetProvider>
         </TooltipProvider>
       </QueryClientProvider>
     </ThemeProvider>

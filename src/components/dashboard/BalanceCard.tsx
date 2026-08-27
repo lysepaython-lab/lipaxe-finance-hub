@@ -101,6 +101,11 @@ export const BalanceCard = () => {
   const selected = sortedWallets.find((w) => w.currency === selectedCurrency) || sortedWallets[0];
   const topWallets = sortedWallets.slice(0, 5);
   const netChange = buildNetChangeStats(transactions, { currency: selected?.currency });
+  const equivalent = selected?.localValue?.currency !== selected?.currency
+    ? selected?.localValue
+    : selected?.usdValue?.currency !== selected?.currency
+      ? selected?.usdValue
+      : undefined;
 
   const mask = (value) => (hidden ? value.replace(/\d/g, '*') : value);
 
@@ -142,9 +147,18 @@ export const BalanceCard = () => {
             key={`${hidden}-${selected.currency}`}
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
-            className="min-w-0 truncate font-display text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight tabular"
+            className="flex min-w-0 flex-wrap items-end justify-between gap-x-3 gap-y-1"
           >
-            {mask(formatMoney(selected.balance, selected.currency))}
+            <div className="min-w-0 truncate font-display text-3xl font-bold tracking-tight tabular sm:text-4xl lg:text-5xl">
+              {mask(formatMoney(selected.balance, selected.currency))}
+            </div>
+            {equivalent && (
+              <div className="mb-1 flex items-center gap-1.5 text-xs font-semibold text-muted-foreground tabular sm:text-sm">
+                <span>~</span>
+                <CurrencyMark currency={equivalent.currency} logo={equivalent.logoUrl || equivalent.logo} className="h-4 w-4 text-[8px]" />
+                <span>{mask(formatMoney(equivalent.amount, equivalent.currency))}</span>
+              </div>
+            )}
           </motion.div>
         )}
 

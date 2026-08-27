@@ -1,7 +1,20 @@
 import { api } from './baseApi';
 import { normalizeTransaction, normalizeWallet, unwrapData } from './adapters';
 
-export interface Wallet { id: string; currency: string; symbol: string; logo?: string; logoUrl?: string; balance: number; available: number; pending: number; }
+export interface WalletValue {
+  currency: string;
+  symbol: string;
+  logo?: string;
+  logoUrl?: string;
+  amount: number;
+  formatted?: string;
+}
+export interface Wallet {
+  id: string; currency: string; symbol: string; logo?: string; logoUrl?: string;
+  balance: number; available: number; pending: number;
+  localValue?: WalletValue;
+  usdValue?: WalletValue;
+}
 export interface Transaction {
   id: string; type: 'deposit' | 'withdrawal' | 'transfer'; rawType?: string; direction: 'in' | 'out';
   amount: number; currency: string; status: 'completed' | 'pending' | 'failed' | 'processing';

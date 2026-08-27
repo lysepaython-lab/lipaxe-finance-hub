@@ -67,6 +67,18 @@ const WalletDetail = () => {
             <div className="text-left sm:text-right">
               <p className="text-sm font-medium text-primary-foreground/70">Balance</p>
               <p className="font-display text-4xl font-bold tabular">{formatMoney(wallet.available, wallet.currency)}</p>
+              {(() => {
+                const equivalent = wallet.localValue?.currency !== wallet.currency
+                  ? wallet.localValue
+                  : wallet.usdValue?.currency !== wallet.currency
+                    ? wallet.usdValue
+                    : undefined;
+                return equivalent ? (
+                  <p className="mt-1 text-sm font-medium text-primary-foreground/75 tabular">
+                    ~ {formatMoney(equivalent.amount, equivalent.currency)}
+                  </p>
+                ) : null;
+              })()}
             </div>
           </div>
         </div>

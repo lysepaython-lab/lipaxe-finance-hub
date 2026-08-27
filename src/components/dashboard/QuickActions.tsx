@@ -7,24 +7,25 @@ import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PinModal, usePinGate } from '@/components/security/PinModal';
+import { type FeatureName, isFeatureEnabled } from '@/config/features';
 
 export const QuickActions = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const pin = usePinGate();
-  const actions = [
+  const actions: Array<{ to: string; label: string; icon: typeof ArrowDownToLine; tone: string; feature?: FeatureName }> = [
     { to: '/app/deposit', label: t('nav.deposit'), icon: ArrowDownToLine, tone: 'from-brand-400/90 to-brand-600' },
     { to: '/app/withdraw', label: t('nav.withdraw'), icon: ArrowUpFromLine, tone: 'from-brand-500 to-brand-700' },
     { to: '/app/transfer', label: t('nav.transfer'), icon: Send, tone: 'from-brand-600 to-brand-800' },
     { to: '/app/transfer/qr', label: 'QR Pay', icon: QrCode, tone: 'from-brand-500 to-brand-900' },
     { to: '/app/cards/virtual', label: t('nav.cards'), icon: CreditCard, tone: 'from-brand-400 to-brand-700' },
-    { to: '/app/strone/cryptos', label: 'Crypto', icon: Coins, tone: 'from-brand-300 to-brand-600' },
+    { to: '/app/strone/cryptos', label: 'Crypto', icon: Coins, tone: 'from-brand-300 to-brand-600', feature: 'lipaxeCryptos' },
 
-    { to: '/app/payments/festipay', label:t('nav.festiPay'), icon: QrCode, tone: 'from-brand-500 to-brand-900' },
+    { to: '/app/payments/festipay', label:t('nav.festiPay'), icon: QrCode, tone: 'from-brand-500 to-brand-900', feature: 'festiPay' },
     { to: '/app/strone/business', label: t('nav.businessAll'), icon: CreditCard, tone: 'from-brand-400 to-brand-700' },
-    { to: '/app/savings', label: t('nav.savings'), icon: Wallet, tone: 'from-brand-300 to-brand-600' },
-    { to: '/app/strone/vaults', label: t('nav.yieldVaults'), icon: Vault, tone: 'from-brand-500 to-brand-900' },
-    { to: '/app/strone/exchange', label: t('nav.swap'), icon: RefreshCw, tone: 'from-brand-400 to-brand-700' },
+    { to: '/app/savings', label: t('nav.savings'), icon: Wallet, tone: 'from-brand-300 to-brand-600', feature: 'savings' },
+    { to: '/app/strone/vaults', label: t('nav.yieldVaults'), icon: Vault, tone: 'from-brand-500 to-brand-900', feature: 'yieldVaults' },
+    { to: '/app/strone/exchange', label: t('nav.swap'), icon: RefreshCw, tone: 'from-brand-400 to-brand-700', feature: 'lipaxeExchange' },
     { to: '/app/affiliation', label: t('nav.earn'), icon: Sprout, tone: 'from-brand-300 to-brand-600' },
 
 
@@ -37,7 +38,7 @@ export const QuickActions = () => {
       </CardHeader>
       <CardContent className="min-w-0 overflow-hidden px-3 pb-4 sm:px-6">
         <div className="grid min-w-0 grid-cols-1 gap-2 min-[390px]:grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
-          {actions.map((action, index) => (
+          {actions.filter((action) => isFeatureEnabled(action.feature)).map((action, index) => (
             <motion.button
               key={action.to}
               type="button"

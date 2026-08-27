@@ -81,6 +81,20 @@ export const normalizeWallet = (payload: unknown) => {
   const currency = (raw.currency ?? {}) as UnknownRecord;
   const code = asString(currency.code ?? raw.currency, 'USD');
   const balance = asNumber(raw.balance);
+  const normalizeValue = (payload: unknown) => {
+    const value = (payload ?? {}) as UnknownRecord;
+    const valueCurrency = (value.currency ?? {}) as UnknownRecord;
+    const valueCode = asString(valueCurrency.code ?? value.currency);
+    if (!valueCode) return undefined;
+    return {
+      currency: valueCode,
+      symbol: asString(valueCurrency.symbol, valueCode),
+      logo: firstText(valueCurrency.logo_url, valueCurrency.logo),
+      logoUrl: firstText(valueCurrency.logo_url, valueCurrency.logo),
+      amount: asNumber(value.amount),
+      formatted: asString(value.formatted),
+    };
+  };
 
   return {
     id: asString(raw.id),
@@ -91,6 +105,8 @@ export const normalizeWallet = (payload: unknown) => {
     balance,
     available: balance,
     pending: 0,
+    localValue: normalizeValue(raw.local_value ?? raw.localValue),
+    usdValue: normalizeValue(raw.usd_value ?? raw.usdValue),
   };
 };
 

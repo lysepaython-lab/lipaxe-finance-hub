@@ -13,13 +13,14 @@ import { cn } from '@/lib/utils';
 import { useTheme } from '@/contexts/ThemeContext';
 import { setLanguage } from '@/store/slices/uiSlice';
 import { toast } from 'sonner';
+import { FEATURES } from '@/config/features';
 
 const mainNav = [
   { to: '/app', key: 'dashboard', icon: LayoutDashboard, match: ['/app'] },
   { to: '/app/cards/virtual', key: 'cards', icon: CardIcon, match: ['/app/cards'] },
   { to: '/app/transfer', key: 'transfer', icon: Send, match: ['/app/transfer'] },
-  { to: '/app/payments/payall', key: 'payAll', icon: Users2, match: ['/app/payments', '/app/savings', '/app/strone/business'] },
-  { to: '/app/strone/exchange', key: 'lipaxeExchange', icon: Repeat, match: ['/app/strone/exchange', '/app/strone/cryptos', '/app/strone/vaults'] },
+  ...(FEATURES.payAll ? [{ to: '/app/payments/payall', key: 'payAll', icon: Users2, match: ['/app/payments', '/app/savings', '/app/strone/business'] }] : []),
+  ...(FEATURES.lipaxeExchange ? [{ to: '/app/strone/exchange', key: 'lipaxeExchange', icon: Repeat, match: ['/app/strone/exchange', '/app/strone/cryptos', '/app/strone/vaults'] }] : []),
   { to: '/app/affiliation', key: 'affiliation', icon: Users2, match: ['/app/affiliation'] },
 ];
 

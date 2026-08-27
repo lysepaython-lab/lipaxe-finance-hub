@@ -40,6 +40,11 @@ export const WalletSelector = ({ value, onChange, filterCurrency, excludeCurrenc
       <div className="grid sm:grid-cols-2 gap-2">
         {list.map((w) => {
           const active = w.id === value;
+          const equivalent = w.localValue?.currency !== w.currency
+            ? w.localValue
+            : w.usdValue?.currency !== w.currency
+              ? w.usdValue
+              : undefined;
           return (
             <motion.button
               key={w.id}
@@ -64,6 +69,11 @@ export const WalletSelector = ({ value, onChange, filterCurrency, excludeCurrenc
                   <div className="text-xs text-muted-foreground tabular-nums">
                     {formatMoney(w.available, w.currency)}
                   </div>
+                  {equivalent && (
+                    <div className="text-[11px] text-muted-foreground tabular-nums">
+                      ~ {formatMoney(equivalent.amount, equivalent.currency)}
+                    </div>
+                  )}
                 </div>
                 {active && (
                   <span className="absolute top-2 right-2 h-5 w-5 rounded-full bg-primary text-primary-foreground flex items-center justify-center">

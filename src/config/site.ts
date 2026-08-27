@@ -1,4 +1,4 @@
-export const APP_HOST = import.meta.env.VITE_APP_HOST || 'apps.lipaxe.com';
+export const APP_HOST = import.meta.env.VITE_APP_HOST || 'web.lipaxe.com';
 
 export const getCurrentHost = () => window.location.hostname.toLowerCase();
 

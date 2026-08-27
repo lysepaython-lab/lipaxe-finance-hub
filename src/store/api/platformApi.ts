@@ -1,5 +1,6 @@
 import { api } from './baseApi';
 import { normalizePaymentMethod, normalizeWallet, unwrapData } from './adapters';
+import type { WalletValue } from './walletApi';
 
 export interface IncountryEntry {
   country: { id?: string; name: string; alpha_2: string; isoCode?: string; phone_code?: string; dialling_code?: string };
@@ -34,6 +35,8 @@ export interface WalletV2 {
   balance: number;
   available: number;
   pending: number;
+  localValue?: WalletValue;
+  usdValue?: WalletValue;
 }
 
 export const platformApi = api.injectEndpoints({

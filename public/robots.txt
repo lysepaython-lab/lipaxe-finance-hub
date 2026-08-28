@@ -1,12 +1,2 @@
 User-agent: *
-Allow: /
-Disallow: /app/
-Disallow: /login
-Disallow: /register
-Disallow: /verify-email
-Disallow: /forgot-password
-Disallow: /reset-password
-Disallow: /pay/
-Disallow: /launch
-
-Sitemap: https://web.lipaxe.com/sitemap.xml
+Disallow: /

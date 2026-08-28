@@ -49,13 +49,7 @@ server {
 
     root /var/www/web.lipaxe.com/current;
     index index.html;
-
-    # The authenticated application, authentication forms, and tokenised payment
-    # journeys must never be indexed, even before the SPA updates page metadata.
-    location ~ ^/(app/|login$|register$|verify-email$|forgot-password$|reset-password$|pay/|launch$) {
-        add_header X-Robots-Tag "noindex, nofollow, noarchive" always;
-        try_files $uri $uri/ /index.html;
-    }
+    add_header X-Robots-Tag "noindex, nofollow, noarchive" always;
 
     location / {
         try_files $uri $uri/ /index.html;
@@ -116,4 +110,5 @@ VITE_SITE_URL=https://web.lipaxe.com
 - API calls go to `https://api.lipaxe.com/api/v1/...`
 - React Router routes are handled by the `try_files ... /index.html` fallback
 - static assets are served directly by host nginx
-- `/` is the public, indexable landing page; authenticated, auth, and payment-link routes return `X-Robots-Tag: noindex`
+- `web.lipaxe.com` is the private application host and returns `X-Robots-Tag: noindex` on every route
+- Publish the public marketing landing page and its sitemap only on the primary Lipaxe domain

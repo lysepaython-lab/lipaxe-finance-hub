@@ -19,7 +19,6 @@ import { getPendingVerification } from "./lib/pendingVerification";
 import "./i18n";
 
 import LaunchScreen from "./pages/LaunchScreen";
-import Landing from "./pages/Landing";
 import Login from "./pages/auth/Login";
 import Register from "./pages/auth/Register";
 import ForgotPassword from "./pages/auth/ForgotPassword";
@@ -85,7 +84,7 @@ const FeatureRoute = ({ enabled, children }: { enabled: boolean; children: JSX.E
 
 const AppRoutes = () => (
   <Routes>
-    <Route path="/" element={<Landing />} />
+    <Route path="/" element={<LaunchScreen />} />
     <Route path="/launch" element={<LaunchScreen />} />
     <Route path="/login" element={<PublicAuthRoute><Login /></PublicAuthRoute>} />
     <Route path="/register" element={<PublicAuthRoute><Register /></PublicAuthRoute>} />

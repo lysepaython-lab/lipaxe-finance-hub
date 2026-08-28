@@ -10,12 +10,6 @@ type SeoRoute = {
   indexable: boolean;
 };
 
-const PUBLIC_SEO: SeoRoute = {
-  title: 'Lipaxe | Paiements, wallets et services financiers',
-  description: 'Lipaxe aide les particuliers et les entreprises à gérer leurs paiements, wallets et services financiers avec des frais transparents et des contrôles de sécurité.',
-  indexable: true,
-};
-
 const PRIVATE_SEO: SeoRoute = {
   title: 'Espace sécurisé | Lipaxe',
   description: 'Accédez à votre espace Lipaxe sécurisé.',
@@ -45,9 +39,35 @@ const AUTH_ROUTES: Record<string, Omit<SeoRoute, 'indexable'>> = {
   },
 };
 
+const APP_ROUTES: Record<string, Omit<SeoRoute, 'indexable'>> = {
+  '/app': {
+    title: 'Tableau de bord | Lipaxe',
+    description: 'Consultez vos wallets, opérations récentes et actions disponibles dans votre espace Lipaxe.',
+  },
+  '/app/transactions': {
+    title: 'Mes transactions | Lipaxe',
+    description: 'Consultez l’historique sécurisé de vos transactions Lipaxe.',
+  },
+  '/app/profile': {
+    title: 'Mon profil | Lipaxe',
+    description: 'Gérez les informations de votre profil Lipaxe.',
+  },
+  '/app/settings': {
+    title: 'Paramètres | Lipaxe',
+    description: 'Gérez les paramètres et la sécurité de votre compte Lipaxe.',
+  },
+};
+
 const getRouteSeo = (pathname: string): SeoRoute => {
-  if (pathname === '/') return PUBLIC_SEO;
+  if (pathname === '/') {
+    return {
+      title: 'Ouverture de Lipaxe',
+      description: 'Ouverture sécurisée de votre espace Lipaxe.',
+      indexable: false,
+    };
+  }
   if (AUTH_ROUTES[pathname]) return { ...AUTH_ROUTES[pathname], indexable: false };
+  if (APP_ROUTES[pathname]) return { ...APP_ROUTES[pathname], indexable: false };
   if (pathname.startsWith('/pay/')) {
     return {
       title: 'Paiement sécurisé | Lipaxe',
@@ -65,37 +85,7 @@ const getRouteSeo = (pathname: string): SeoRoute => {
   return PRIVATE_SEO;
 };
 
-const structuredData = {
-  '@context': 'https://schema.org',
-  '@graph': [
-    {
-      '@type': 'Organization',
-      '@id': `${SITE_URL}/#organization`,
-      name: 'Lipaxe',
-      url: SITE_URL,
-      logo: DEFAULT_IMAGE,
-    },
-    {
-      '@type': 'WebSite',
-      '@id': `${SITE_URL}/#website`,
-      url: SITE_URL,
-      name: 'Lipaxe',
-      publisher: { '@id': `${SITE_URL}/#organization` },
-      inLanguage: ['fr', 'en'],
-    },
-    {
-      '@type': 'FinancialService',
-      name: 'Lipaxe',
-      url: SITE_URL,
-      description: PUBLIC_SEO.description,
-      provider: { '@id': `${SITE_URL}/#organization` },
-      areaServed: ['BI', 'RW', 'CD'],
-      availableLanguage: ['fr', 'en'],
-    },
-  ],
-};
-
-/** Centralized Helmet metadata. Private financial routes are deliberately noindex. */
+/** Centralized Helmet metadata. This host is the private application, not the marketing site. */
 export const Seo = () => {
   const { pathname } = useLocation();
   const seo = getRouteSeo(pathname);
@@ -121,10 +111,6 @@ export const Seo = () => {
       <meta name="twitter:title" content={seo.title} />
       <meta name="twitter:description" content={seo.description} />
       <meta name="twitter:image" content={DEFAULT_IMAGE} />
-      {seo.indexable && <link rel="canonical" href={canonical} />}
-      {seo.indexable && (
-        <script type="application/ld+json">{JSON.stringify(structuredData)}</script>
-      )}
     </Helmet>
   );
 };

@@ -20,6 +20,7 @@ import { isSafeRedirect } from '@/lib/security';
 import { toast } from 'sonner';
 
 const RESEND_COOLDOWN = 30;
+const OTP_LENGTH = 6;
 
 const VerifyEmail = () => {
   const { t } = useTranslation();
@@ -63,7 +64,7 @@ const VerifyEmail = () => {
   }, [cooldown]);
 
   const submit = async (code = otp) => {
-    if (code.length !== 5) {
+    if (code.length !== OTP_LENGTH) {
       setError(t('auth.otpIncomplete'));
       return;
     }
@@ -170,17 +171,17 @@ const VerifyEmail = () => {
       <form onSubmit={(e) => { e.preventDefault(); void submit(); }} className="space-y-6">
         <div className="flex flex-col items-center gap-3">
           <InputOTP
-            maxLength={5}
+            maxLength={OTP_LENGTH}
             value={otp}
             onChange={(v) => {
               setOtp(v);
               setError(null);
-              if (v.length === 5) void submit(v);
+              if (v.length === OTP_LENGTH) void submit(v);
             }}
           >
             <InputOTPGroup className="gap-2">
-              {[0, 1, 2, 3, 4].map((i) => (
-                <InputOTPSlot key={i} index={i} className="h-14 w-12 rounded-2xl border-2 bg-card text-xl shadow-sm sm:h-16 sm:w-14" />
+              {Array.from({ length: OTP_LENGTH }).map((_, i) => (
+                <InputOTPSlot key={i} index={i} className="h-12 w-10 rounded-xl border-2 bg-card text-lg shadow-sm sm:h-14 sm:w-12 sm:rounded-2xl sm:text-xl" />
               ))}
             </InputOTPGroup>
           </InputOTP>
@@ -188,7 +189,7 @@ const VerifyEmail = () => {
         </div>
 
         <motion.div whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}>
-          <Button type="submit" className="h-11 w-full rounded-xl bg-gradient-brand shadow-brand" disabled={verifying || otp.length !== 5}>
+          <Button type="submit" className="h-11 w-full rounded-xl bg-gradient-brand shadow-brand" disabled={verifying || otp.length !== OTP_LENGTH}>
             {verifying && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             <FaShieldAlt className="mr-2 h-4 w-4" /> {t('auth.verifyAction')}
           </Button>

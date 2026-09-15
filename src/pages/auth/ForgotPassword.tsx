@@ -15,7 +15,7 @@ import { toast } from 'sonner';
 
 type ResetStep = 'email' | 'otp' | 'password';
 
-const OTP_LENGTH = 5;
+const OTP_LENGTH = 6;
 const RESEND_COOLDOWN = 30;
 
 const ForgotPassword = () => {

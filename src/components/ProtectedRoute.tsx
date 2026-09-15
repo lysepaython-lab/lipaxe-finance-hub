@@ -10,7 +10,10 @@ export const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
   const { data: kycData } = useGetKycDataQuery(undefined, { skip: !token });
   const kycState = getKycState(kycData, user);
 
-  if (!token) return <Navigate to="/login" state={{ from: location }} replace />;
+  if (!token) {
+    const redirect = `${location.pathname}${location.search}${location.hash}`;
+    return <Navigate to={`/login?redirect=${encodeURIComponent(redirect)}`} state={{ from: location }} replace />;
+  }
 
   if (location.pathname.startsWith('/app/kyc') && kycState.locked) {
     return <Navigate to="/app" replace />;

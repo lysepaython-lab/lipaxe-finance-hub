@@ -32,6 +32,7 @@ import Deposit from "./pages/app/Deposit";
 import Withdraw from "./pages/app/Withdraw";
 import Transfer from "./pages/app/Transfer";
 import TransferQr from "./pages/app/transfer/TransferQr";
+import MerchantPayment from "./pages/app/MerchantPayment";
 import VirtualCard from "./pages/app/cards/VirtualCard";
 import MyCards from "./pages/app/cards/MyCards";
 import CardDetail from "./pages/app/cards/CardDetail";
@@ -105,6 +106,7 @@ const AppRoutes = () => (
       <Route path="transfer" element={<Transfer />} />
       <Route path="transfer/international" element={<Transfer />} />
       <Route path="transfer/qr" element={<TransferQr />} />
+      <Route path="merchant-pay" element={<MerchantPayment />} />
       <Route path="transfer/nfc" element={<Navigate to="/app/transfer" replace />} />
       <Route path="cards/virtual" element={<VirtualCard />} />
       <Route path="cards/my" element={<MyCards />} />

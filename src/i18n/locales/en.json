@@ -128,6 +128,7 @@
     "otpIncomplete": "Enter all 6 digits",
     "otpInvalid": "Invalid or expired code",
     "emailVerified": "Email verified",
+    "emailVerificationRequired": "Verify your email address to continue.",
     "emailNotVerified": "Email not verified",
     "passwordRequirements": "Password must contain at least 8 characters, including one number and one special character.",
     "passwordsDontMatch": "Passwords do not match",

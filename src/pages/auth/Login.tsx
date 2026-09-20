@@ -12,6 +12,7 @@ import { useLoginMutation } from '@/store/api/authApi';
 import { useAppDispatch } from '@/store/hooks';
 import { setCredentials } from '@/store/slices/authSlice';
 import { isSafeRedirect } from '@/lib/security';
+import { setPendingVerification } from '@/lib/pendingVerification';
 import { toast } from 'sonner';
 
 const buildSchema = (t: (key: string) => string) => z.object({
@@ -85,7 +86,31 @@ const Login = () => {
       const target = redirect && isSafeRedirect(redirect) ? redirect : '/app';
       navigate(target);
     } catch (e: any) {
-      toast.error(e?.data?.detail || t('common.error'));
+      const data = e?.data as {
+        error?: string;
+        message?: string;
+        detail?: string;
+        verification?: { user_id?: string | number; email?: string };
+      } | undefined;
+
+      // A verification recovery is exposed only after the backend has checked
+      // the password. No session is issued until the email OTP is validated.
+      if (
+        data?.error === 'account_not_verified'
+        && data.verification?.user_id
+        && data.verification.email
+      ) {
+        setPendingVerification({
+          userId: String(data.verification.user_id),
+          email: data.verification.email,
+          redirect: redirect && isSafeRedirect(redirect) ? redirect : undefined,
+        });
+        toast.info(data.message || t('auth.emailVerificationRequired'));
+        navigate('/verify-email', { replace: true });
+        return;
+      }
+
+      toast.error(data?.detail || data?.message || t('common.error'));
     }
   };
 

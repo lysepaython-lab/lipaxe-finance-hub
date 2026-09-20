@@ -77,11 +77,11 @@ export const authApi = api.injectEndpoints({
       }),
       transformResponse: () => ({ detail: 'Email verifie', verified: true }),
     }),
-    resendOtp: b.mutation<{ detail: string; otp?: string }, { userId: string; email?: string }>({
+    resendOtp: b.mutation<{ detail: string; otp?: string }, { userId: string; email: string }>({
       query: ({ userId, email }) => ({
         url: `/auth/register/${userId}/regenerate_otp/`,
         method: 'POST',
-        body: email ? { email } : {},
+        body: { email },
       }),
       transformResponse: () => ({ detail: 'Code renvoye' }),
     }),

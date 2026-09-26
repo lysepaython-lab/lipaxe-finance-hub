@@ -36,6 +36,7 @@ const ACTION_EXECUTION_MS = 7000; // faire l'action pour le liveness
 const FRAME_INTERVAL_MS = 180;
 const FRAME_WIDTH = 640;
 const FRAME_HEIGHT = 480;
+const CHALLENGE_TIMEOUT_SECONDS = 45;
 
 interface FaceMeshQuality {
   ok: boolean;
@@ -151,6 +152,7 @@ export const LivenessCapture = ({ open, onOpenChange, onSuccess }: LivenessCaptu
   const sendIntervalRef = useRef<number | null>(null);
   const prepareTimeoutRef = useRef<number | null>(null);
   const executionTimeoutRef = useRef<number | null>(null);
+  const challengeCountdownRef = useRef<number | null>(null);
   const faceMeshRef = useRef<FaceMesh | null>(null);
   const faceMeshResultResolverRef = useRef<((quality: FaceMeshQuality) => void) | null>(null);
   const faceMeshInFlightRef = useRef(false);
@@ -170,6 +172,7 @@ export const LivenessCapture = ({ open, onOpenChange, onSuccess }: LivenessCaptu
   const [isPreparingAction, setIsPreparingAction] = useState(false);
   const [faceMeshMessageKey, setFaceMeshMessageKey] = useState('kyc.livenessFaceMeshLoading');
   const [currentAction, setCurrentAction] = useState<LivenessAction>('fallback');
+  const [challengeSecondsRemaining, setChallengeSecondsRemaining] = useState(CHALLENGE_TIMEOUT_SECONDS);
 
   const setPreparingAction = useCallback((value: boolean) => {
     isPreparingActionRef.current = value;
@@ -198,6 +201,27 @@ export const LivenessCapture = ({ open, onOpenChange, onSuccess }: LivenessCaptu
       executionTimeoutRef.current = null;
     }
   }, []);
+
+  const clearChallengeCountdown = useCallback(() => {
+    if (challengeCountdownRef.current) {
+      window.clearInterval(challengeCountdownRef.current);
+      challengeCountdownRef.current = null;
+    }
+  }, []);
+
+  const startChallengeCountdown = useCallback((seconds = CHALLENGE_TIMEOUT_SECONDS) => {
+    clearChallengeCountdown();
+    setChallengeSecondsRemaining(seconds);
+    challengeCountdownRef.current = window.setInterval(() => {
+      setChallengeSecondsRemaining((current) => {
+        if (current <= 1) {
+          clearChallengeCountdown();
+          return 0;
+        }
+        return current - 1;
+      });
+    }, 1000);
+  }, [clearChallengeCountdown]);
 
   const closeFaceMesh = useCallback(() => {
     faceMeshResultResolverRef.current = null;
@@ -273,13 +297,14 @@ export const LivenessCapture = ({ open, onOpenChange, onSuccess }: LivenessCaptu
     if (!open) {
       clearPrepareTimeout();
       clearExecutionTimeout();
+      clearChallengeCountdown();
       stopFrameSending();
       stopCamera();
       closeSocket();
       closeFaceMesh();
       resetState();
     }
-  }, [open, clearExecutionTimeout, clearPrepareTimeout, stopFrameSending, stopCamera, closeSocket, closeFaceMesh, resetState]);
+  }, [open, clearChallengeCountdown, clearExecutionTimeout, clearPrepareTimeout, stopFrameSending, stopCamera, closeSocket, closeFaceMesh, resetState]);
 
   const captureFrame = useCallback(() => {
     const video = videoRef.current;
@@ -390,6 +415,7 @@ export const LivenessCapture = ({ open, onOpenChange, onSuccess }: LivenessCaptu
   const prepareChallenge = useCallback((instruction?: string) => {
     clearPrepareTimeout();
     clearExecutionTimeout();
+    startChallengeCountdown();
     stopFrameSending();
     activeChallengeRef.current += 1;
     const challengeId = activeChallengeRef.current;
@@ -409,7 +435,7 @@ export const LivenessCapture = ({ open, onOpenChange, onSuccess }: LivenessCaptu
         setChallengeText(t('kyc.livenessKeepTrying', { action }));
       }, ACTION_EXECUTION_MS);
     }, ACTION_PREPARE_MS);
-  }, [clearExecutionTimeout, clearPrepareTimeout, closeSocket, setPreparingAction, startFrameSending, stopFrameSending, t]);
+  }, [clearExecutionTimeout, clearPrepareTimeout, closeSocket, setPreparingAction, startChallengeCountdown, startFrameSending, stopFrameSending, t]);
 
   const handleServerMessage = useCallback((data: any) => {
     if (data.type === 'liveness_started') {
@@ -439,6 +465,7 @@ export const LivenessCapture = ({ open, onOpenChange, onSuccess }: LivenessCaptu
     if (data.type === 'liveness_completed') {
       clearPrepareTimeout();
       clearExecutionTimeout();
+      clearChallengeCountdown();
       setProgress(100);
       setStep('success');
       const snapshotFile = captureSnapshotFile();
@@ -464,6 +491,7 @@ export const LivenessCapture = ({ open, onOpenChange, onSuccess }: LivenessCaptu
     if (data.type === 'challenge_failed' || data.type === 'liveness_failed' || data.type === 'liveness_error' || data.status === 'error') {
       clearPrepareTimeout();
       clearExecutionTimeout();
+      clearChallengeCountdown();
       setErrors([data.message || t('kyc.livenessFailed')]);
       setStep('failed');
       stopFrameSending();
@@ -471,7 +499,7 @@ export const LivenessCapture = ({ open, onOpenChange, onSuccess }: LivenessCaptu
       closeSocket();
       setAttempts((value) => value + 1);
     }
-  }, [captureSnapshotFile, clearExecutionTimeout, clearPrepareTimeout, closeSocket, onOpenChange, onSuccess, prepareChallenge, stopCamera, stopFrameSending, t]);
+  }, [captureSnapshotFile, clearChallengeCountdown, clearExecutionTimeout, clearPrepareTimeout, closeSocket, onOpenChange, onSuccess, prepareChallenge, stopCamera, stopFrameSending, t]);
 
   useEffect(() => {
     handleServerMessageRef.current = handleServerMessage;
@@ -513,6 +541,7 @@ export const LivenessCapture = ({ open, onOpenChange, onSuccess }: LivenessCaptu
         } catch {
           clearPrepareTimeout();
           clearExecutionTimeout();
+          clearChallengeCountdown();
           setErrors([t('kyc.livenessInvalidServerResponse')]);
           setStep('failed');
         }
@@ -521,6 +550,7 @@ export const LivenessCapture = ({ open, onOpenChange, onSuccess }: LivenessCaptu
       ws.onerror = () => {
         clearPrepareTimeout();
         clearExecutionTimeout();
+        clearChallengeCountdown();
         setErrors([t('kyc.livenessConnectionUnavailable')]);
         setStep('failed');
         stopFrameSending();
@@ -537,7 +567,7 @@ export const LivenessCapture = ({ open, onOpenChange, onSuccess }: LivenessCaptu
       setErrors([t('kyc.livenessCameraHelp')]);
       setStep('failed');
     }
-  }, [accessToken, clearExecutionTimeout, clearPrepareTimeout, closeSocket, ensureFaceMesh, stopCamera, stopFrameSending, t]);
+  }, [accessToken, clearChallengeCountdown, clearExecutionTimeout, clearPrepareTimeout, closeSocket, ensureFaceMesh, stopCamera, stopFrameSending, t]);
 
   const retry = () => {
     if (attempts >= MAX_ATTEMPTS) {
@@ -547,6 +577,7 @@ export const LivenessCapture = ({ open, onOpenChange, onSuccess }: LivenessCaptu
     }
     clearPrepareTimeout();
     clearExecutionTimeout();
+    clearChallengeCountdown();
     stopFrameSending();
     stopCamera();
     closeSocket();
@@ -667,7 +698,14 @@ export const LivenessCapture = ({ open, onOpenChange, onSuccess }: LivenessCaptu
           </div>
 
           {(step === 'ready' || step === 'processing' || step === 'success') && (
-            <Progress value={progress} className="h-1.5" />
+            <div className="flex items-center gap-3">
+              <Progress value={progress} className="h-1.5 flex-1" />
+              {step !== 'success' && (
+                <span className="shrink-0 text-xs font-semibold tabular-nums text-muted-foreground">
+                  {challengeSecondsRemaining}s
+                </span>
+              )}
+            </div>
           )}
 
         </div>

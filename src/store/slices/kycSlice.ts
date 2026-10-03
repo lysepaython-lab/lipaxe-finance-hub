@@ -24,7 +24,7 @@ export interface KYCData {
     frontMrzConfidence: number;
     backMrzConfidence: number;
   };
-  selfie: { selfieName: string; livenessOk: boolean; livenessSignals: string[] };
+  selfie: { selfieName: string; cameraCaptured: boolean; policyAccepted: boolean };
 }
 
 const initial: KYCData = {
@@ -51,7 +51,7 @@ const initial: KYCData = {
     frontMrzConfidence: 0,
     backMrzConfidence: 0,
   },
-  selfie: { selfieName: '', livenessOk: false, livenessSignals: [] },
+  selfie: { selfieName: '', cameraCaptured: false, policyAccepted: false },
 };
 
 const load = (): KYCData => {

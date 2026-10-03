@@ -64,7 +64,7 @@ const Profile = () => {
   const kycVerified = Boolean(kycData?.kyc_verified ?? kycRecord.kyc_verified ?? user.kycStatus === 'verified');
   const kycComplete = Boolean(kycData?.kyc_complete ?? kycRecord.kyc_complete);
   const kycStatus = kycVerified ? 'verified' : kycComplete ? 'pending' : user.kycStatus || 'unverified';
-  const kycVariant: any = kycVerified ? 'default' : kycComplete ? 'secondary' : 'destructive';
+  const kycVariant: 'default' | 'secondary' | 'destructive' = kycVerified ? 'default' : kycComplete ? 'secondary' : 'destructive';
   const initials = `${user.firstName?.[0] || ''}${user.lastName?.[0] || ''}`.toUpperCase();
 
   const personalRows: ProfileRow[] = [
@@ -176,7 +176,7 @@ const Profile = () => {
               <div className="grid gap-3 pt-4 sm:grid-cols-3">
                 {[
                   ['Document', Boolean(fromRecord(kycRecord, ['photo_id_front', 'photo_id_back']))],
-                  ['Selfie / liveness', Boolean(fromRecord(kycRecord, ['selfie_with_id', 'liveness_image']))],
+                  [t('profile.selfieWithId'), Boolean(fromRecord(kycRecord, ['selfie_with_id']))],
                   ['Decision KYC', kycVerified],
                 ].map(([label, verified]) => (
                   <div key={String(label)} className="rounded-2xl border border-border/70 bg-muted/25 p-4">

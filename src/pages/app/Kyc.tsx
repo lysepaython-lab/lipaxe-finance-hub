@@ -36,7 +36,7 @@ import {
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { CountryPicker } from '@/components/security/CountryPicker';
-import { LivenessCapture } from '@/components/security/LivenessCapture';
+import { SelfieWithIdCapture } from '@/components/security/SelfieWithIdCapture';
 import AnalyzerWorker from '@/workers/kycDocumentAnalyzer.worker.ts?worker';
 import { t } from 'i18next';
 
@@ -225,8 +225,8 @@ const buildKycDecision = (kyc: KYCData, t: Translator): KycDecision => {
     addGate(t('kyc.gatePassportMrz'), 'pass', t('kyc.gatePassportMrzDetected'));
   }
 
-  if (!kyc.selfie.livenessOk) addGate(t('kyc.gateLiveness'), 'retry', t('kyc.gateLivenessMissing'), 45);
-  else addGate(t('kyc.gateLiveness'), 'pass', t('kyc.gateLivenessVerified'));
+  if (!kyc.selfie.cameraCaptured || !kyc.selfie.policyAccepted) addGate(t('kyc.gateCameraSelfie'), 'retry', t('kyc.gateCameraSelfieMissing'), 45);
+  else addGate(t('kyc.gateCameraSelfie'), 'pass', t('kyc.gateCameraSelfieVerified'));
 
   const sameCountry = kyc.personal.nationality && kyc.address.country && kyc.personal.nationality === kyc.address.country;
   if (!sameCountry) addGate(t('kyc.gateCountry'), 'review', t('kyc.gateCountryMismatch'), 12);
@@ -293,7 +293,7 @@ const Kyc = () => {
       const backQualityOk = kyc.document.type === 'passport' || (kyc.document.backQualityScore || 0) >= DOCUMENT_MIN_SCORE;
       return Boolean(kyc.document.type && kyc.document.idNumber?.trim() && hasFront && hasBack && frontQualityOk && backQualityOk);
     }
-    if (step === 2) return Boolean(kyc.selfie.livenessOk);
+    if (step === 2) return Boolean(kyc.selfie.cameraCaptured && kyc.selfie.policyAccepted);
     if (step === 3) return decision.verdict === 'ready' || decision.verdict === 'review';
     return true;
   };
@@ -357,6 +357,8 @@ const Kyc = () => {
       finalPayload.append('identity_type', kyc.document.type || '');
       finalPayload.append('id_number', kyc.document.idNumber || '');
       finalPayload.append('is_terms_conditions', 'true');
+      finalPayload.append('selfie_capture_source', 'camera');
+      finalPayload.append('selfie_capture_confirmed', 'true');
       if (user?.firstName) finalPayload.append('first_name', user.firstName);
       if (user?.lastName) finalPayload.append('last_name', user.lastName);
       if (frontCapture.file) finalPayload.append('photo_id_front', frontCapture.file, frontCapture.name);
@@ -482,7 +484,7 @@ const Kyc = () => {
             />
           )}
           {kyc.step === 2 && (
-            <SelfieLivenessStep onCapture={setSelfieCapture} />
+            <SelfieWithIdStep onCapture={setSelfieCapture} />
           )}
           {kyc.step === 3 && (
             <RiskReviewStep decision={decision} />
@@ -1225,7 +1227,7 @@ const DocumentCapture = ({
   );
 };
 
-const SelfieLivenessStep = ({
+const SelfieWithIdStep = ({
   onCapture,
 }: {
   onCapture: (capture: CapturedFile) => void;
@@ -1240,16 +1242,16 @@ const SelfieLivenessStep = ({
         whileHover={{ y: -1 }}
         className={cn(
           'rounded-xl border-2 p-6 text-center transition-colors cursor-pointer',
-          selfie.livenessOk ? 'border-success bg-success/5' : 'border-dashed border-border hover:border-primary/50',
+          selfie.cameraCaptured ? 'border-success bg-success/5' : 'border-dashed border-border hover:border-primary/50',
         )}
-        onClick={() => !selfie.livenessOk && setOpen(true)}
+        onClick={() => !selfie.cameraCaptured && setOpen(true)}
       >
-        {selfie.livenessOk ? (
+        {selfie.cameraCaptured ? (
           <>
             <div className="mx-auto mb-3 h-14 w-14 rounded-full bg-success/15 text-success flex items-center justify-center">
               <ShieldCheck className="h-7 w-7" />
             </div>
-            <p className="font-display font-semibold text-success">{t('kyc.livenessVerified')}</p>
+            <p className="font-display font-semibold text-success">{t('kyc.cameraSelfieVerified')}</p>
             <Button variant="ghost" size="sm" className="mt-2" onClick={(e) => { e.stopPropagation(); setOpen(true); }}>
               {t('kyc.viewDetails')}
             </Button>
@@ -1259,28 +1261,21 @@ const SelfieLivenessStep = ({
             <div className="mx-auto mb-3 h-14 w-14 rounded-full bg-primary/10 text-primary flex items-center justify-center">
               <Camera className="h-7 w-7" />
             </div>
-            <p className="font-display font-semibold">{t('kyc.startLivenessVerification')}</p>
+            <p className="font-display font-semibold">{t('kyc.cameraSelfieTitle')}</p>
             <p className="text-xs text-muted-foreground mt-1">
-              {t('kyc.livenessDescription')}
+              {t('kyc.cameraSelfieDescription')}
             </p>
           </>
         )}
       </motion.div>
 
-      <LivenessCapture
+      <SelfieWithIdCapture
         open={open}
         onOpenChange={setOpen}
         onSuccess={(result) => {
-          const selfieName = result.snapshotFile?.name || `liveness-${Date.now()}.jpg`;
-          const livenessSignals = [
-            result.is_live ? 'live' : 'not_live',
-            result.blink_valid ? 'blink_pass' : 'blink_missing',
-            result.head_movement ? 'movement_pass' : 'movement_missing',
-            result.smile_detected ? 'smile_pass' : 'smile_missing',
-          ];
-          dispatch(updateSelfie({ selfieName, livenessOk: true, livenessSignals }));
-          onCapture({ name: selfieName, file: result.snapshotFile || null, signals: livenessSignals });
-          toast.success(t('kyc.livenessSuccessToast'));
+          dispatch(updateSelfie({ selfieName: result.name, cameraCaptured: true, policyAccepted: true }));
+          onCapture({ name: result.name, file: result.file });
+          toast.success(t('kyc.cameraSelfieCapturedToast'));
         }}
       />
     </>
@@ -1304,7 +1299,7 @@ const ReviewStep = () => {
     },
     { k: t('kyc.idType'), v: kyc.document.type },
     { k: t('kyc.documentFile'), v: kyc.document.frontName },
-    { k: t('kyc.gateLiveness'), v: kyc.selfie.livenessOk ? t('kyc.verified') : t('kyc.missing') },
+    { k: t('kyc.gateCameraSelfie'), v: kyc.selfie.cameraCaptured ? t('kyc.verified') : t('kyc.missing') },
   ];
   return (
     <div className="space-y-3">
@@ -1360,7 +1355,7 @@ const RiskReviewStep = ({ decision }: { decision: KycDecision }) => {
     { k: t('kyc.idType'), v: kyc.document.type },
     { k: t('kyc.documentQuality'), v: `${kyc.document.frontQualityScore || 0}/100` },
     { k: t('kyc.mrz'), v: kyc.document.type === 'passport' ? `${Math.round((kyc.document.frontMrzConfidence || 0) * 100)}%` : t('kyc.notRequired') },
-    { k: t('kyc.gateLiveness'), v: kyc.selfie.livenessOk ? t('kyc.verified') : t('kyc.missing') },
+    { k: t('kyc.gateCameraSelfie'), v: kyc.selfie.cameraCaptured ? t('kyc.verified') : t('kyc.missing') },
   ];
 
   return (

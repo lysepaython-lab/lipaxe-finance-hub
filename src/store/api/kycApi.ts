@@ -30,15 +30,6 @@ export interface KycSubmissionResponse {
   data?: KycServerRecord;
 }
 
-export interface LivenessResult {
-  is_live: boolean;
-  blink_valid: boolean;
-  blinks_detected: boolean;
-  head_movement: boolean;
-  smile_detected: boolean;
-  error: string | null;
-}
-
 export const kycApi = api.injectEndpoints({
   endpoints: (b) => ({
     getKycData: b.query<KycSubmissionResponse, void>({
@@ -79,13 +70,6 @@ export const kycApi = api.injectEndpoints({
         };
       },
     }),
-    /**
-     * Liveness check: send a sequence of frames captured from the camera.
-     * The browser sets the multipart Content-Type automatically.
-     */
-    liveness: b.mutation<LivenessResult, FormData>({
-      query: (body) => ({ url: '/kyc/vivacite/', method: 'POST', body }),
-    }),
   }),
 });
 
@@ -97,5 +81,4 @@ export const {
   useSubmitFinanceMutation,
   useVerifyPhoneMutation,
   useRequestPhoneOtpMutation,
-  useLivenessMutation,
 } = kycApi;

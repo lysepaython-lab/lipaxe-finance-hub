@@ -406,7 +406,18 @@ export const normalizeUserCard = (payload: unknown) => {
     balance: asNumber(raw.balance),
     currency: asString(raw.currency, 'USD'),
     status,
-    image: firstText(raw.image, raw.card_image, raw.design_image, raw.preview_image),
+    image: firstText(
+      raw.image,
+      raw.image_url,
+      raw.card_image,
+      raw.card_design_image,
+      raw.design_image,
+      raw.preview_image,
+      (raw.virtual_card as UnknownRecord | undefined)?.image,
+      (raw.virtual_card as UnknownRecord | undefined)?.image_url,
+      (raw.virtual_card as UnknownRecord | undefined)?.card_image,
+      (raw.virtual_card as UnknownRecord | undefined)?.design_image,
+    ),
   };
 };
 

@@ -50,8 +50,8 @@ export const CardArtwork = ({
   className?: string;
   muted?: boolean;
 }) => {
-  // The configured offer determines its presentation; provider images remain a fallback for other cards.
-  const imageSrc = offerArtwork(name) || resolveImageSrc(image);
+  // A purchased card must keep the design supplied by its issuer. Offer art is only a local fallback.
+  const imageSrc = resolveImageSrc(image) || offerArtwork(name);
 
   if (imageSrc) {
     return (

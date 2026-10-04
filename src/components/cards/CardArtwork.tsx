@@ -23,6 +23,14 @@ const resolveImageSrc = (image?: string) => {
   return image;
 };
 
+const offerArtwork = (name: string) => {
+  const normalized = name.toLowerCase();
+  if (normalized.includes('starter')) return '/brand/cards/lipaxe-visa-starter.png';
+  if (normalized.includes('everyday') || normalized.includes('mastercard')) return '/brand/cards/lipaxe-mastercard-everyday.png';
+  if (normalized.includes('business')) return '/brand/cards/lipaxe-visa-business.png';
+  return '';
+};
+
 export const CardArtwork = ({
   image,
   brand = 'Visa',
@@ -42,7 +50,8 @@ export const CardArtwork = ({
   className?: string;
   muted?: boolean;
 }) => {
-  const imageSrc = resolveImageSrc(image);
+  // The configured offer determines its presentation; provider images remain a fallback for other cards.
+  const imageSrc = offerArtwork(name) || resolveImageSrc(image);
 
   if (imageSrc) {
     return (

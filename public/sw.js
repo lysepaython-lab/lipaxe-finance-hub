@@ -1,6 +1,6 @@
 /* Lipaxe Service Worker — Web Push + minimal offline shell */
 const CACHE = 'lipaxe-v1';
-const ASSETS = ['/', '/lipaxe-icon.png', '/favicon.svg'];
+const ASSETS = ['/', '/brand/lipaxe-favicon.png'];
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();

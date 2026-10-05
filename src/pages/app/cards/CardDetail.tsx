@@ -165,6 +165,7 @@ const CardDetail = () => {
             holder={card.name_on_card}
             masked={reveal && card.card_number ? card.card_number : card.number_masked}
             exp={card.exp}
+            balance={formatMoney(card.balance, card.currency)}
             muted={card.status === 'frozen'}
             className="mx-auto w-full max-w-[390px] lg:max-w-none"
           />

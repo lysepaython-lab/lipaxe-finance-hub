@@ -40,6 +40,8 @@ const MyCards = () => {
                   holder={card.name_on_card}
                   masked={card.number_masked}
                   exp={card.exp}
+                  balance={card.balance}
+                  currency={card.currency}
                   muted={card.status === 'frozen'}
                   className="transition-smooth group-hover:-translate-y-1 group-hover:shadow-xl"
                 />

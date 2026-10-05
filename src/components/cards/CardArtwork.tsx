@@ -38,6 +38,8 @@ export const CardArtwork = ({
   holder,
   masked,
   exp,
+  balance,
+  currency,
   className,
   muted = false,
 }: {
@@ -47,16 +49,42 @@ export const CardArtwork = ({
   holder?: string;
   masked?: string;
   exp?: string;
+  balance?: string | number;
+  currency?: string;
   className?: string;
   muted?: boolean;
 }) => {
   // A purchased card must keep the design supplied by its issuer. Offer art is only a local fallback.
   const imageSrc = resolveImageSrc(image) || offerArtwork(name);
+  const showCardDetails = Boolean(holder && masked);
 
   if (imageSrc) {
     return (
       <div className={cn('relative aspect-[1.58/1] overflow-hidden rounded-[1.65rem] bg-muted shadow-brand', muted && 'grayscale', className)}>
         <img src={imageSrc} alt={name} className="h-full w-full object-cover" />
+        {showCardDetails && (
+          <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/10 to-transparent p-5 text-white">
+            {balance !== undefined && (
+              <div className="absolute right-5 top-4 text-right">
+                <div className="text-[0.6rem] font-medium uppercase tracking-[0.16em] text-white/65">Balance</div>
+                <div className="font-display text-sm font-bold">{balance} {currency || ''}</div>
+              </div>
+            )}
+            <div className="absolute inset-x-5 bottom-5">
+              <div className="font-mono text-sm tracking-[0.16em] sm:text-base">{masked}</div>
+              <div className="mt-2 flex items-end justify-between gap-4 text-[0.63rem] uppercase tracking-[0.12em]">
+                <div className="min-w-0">
+                  <div className="text-white/60">Card holder</div>
+                  <div className="truncate font-semibold text-white">{holder}</div>
+                </div>
+                <div className="shrink-0 text-right">
+                  <div className="text-white/60">Exp</div>
+                  <div className="font-semibold text-white">{exp || '--/--'}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }

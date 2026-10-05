@@ -87,9 +87,13 @@ export const SelfieWithIdCapture = ({ open, onOpenChange, onSuccess }: SelfieWit
     const video = videoRef.current;
     if (!video?.videoWidth || !video.videoHeight) return;
 
+    // Cameras sometimes ignore the requested stream size. Keep a reviewable
+    // image while preventing an unnecessarily large KYC upload.
+    const maxDimension = 1280;
+    const scale = Math.min(1, maxDimension / Math.max(video.videoWidth, video.videoHeight));
     const canvas = document.createElement('canvas');
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
+    canvas.width = Math.round(video.videoWidth * scale);
+    canvas.height = Math.round(video.videoHeight * scale);
     canvas.getContext('2d')?.drawImage(video, 0, 0, canvas.width, canvas.height);
     canvas.toBlob((blob) => {
       if (!blob) return;
@@ -98,7 +102,7 @@ export const SelfieWithIdCapture = ({ open, onOpenChange, onSuccess }: SelfieWit
       const url = URL.createObjectURL(file);
       setPreview({ file, name, url });
       releaseCamera();
-    }, 'image/jpeg', 0.92);
+    }, 'image/jpeg', 0.72);
   };
 
   const retake = () => {

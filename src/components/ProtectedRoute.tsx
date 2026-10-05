@@ -15,10 +15,6 @@ export const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
     return <Navigate to={`/login?redirect=${encodeURIComponent(redirect)}`} state={{ from: location }} replace />;
   }
 
-  if (location.pathname.startsWith('/app/kyc') && kycState.locked) {
-    return <Navigate to="/app" replace />;
-  }
-
   const isAppPath = location.pathname === '/app' || location.pathname.startsWith('/app/');
   const allowedBeforeKyc = location.pathname === '/app' || 
                             location.pathname.startsWith('/app/kyc') || 

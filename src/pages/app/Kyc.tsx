@@ -15,8 +15,9 @@ import {
 } from '@/store/slices/kycSlice';
 import type { KYCData } from '@/store/slices/kycSlice';
 import {
-  useGetKycDataQuery, useSubmitPersonalMutation, useSubmitAddressMutation,
+  useGetKycDataQuery, useSubmitPersonalMutation, useSubmitDocumentsMutation,
 } from '@/store/api/kycApi';
+import { getKycState } from '@/lib/kycStatus';
 import { useCountriesQuery } from '@/store/api/platformApi';
 import type { IncountryEntry } from '@/store/api/platformApi';
 import { updateUser } from '@/store/slices/authSlice';
@@ -73,13 +74,6 @@ type KycDecision = {
   riskScore: number;
   reasons: string[];
   gates: { label: string; status: KycGateStatus; detail: string }[];
-};
-
-const normalizeKycStatus = (value?: string | null) => {
-  const raw = String(value || '').toLowerCase();
-  if (raw === 'verified' || raw === 'approved') return 'verified' as const;
-  if (raw === 'pending') return 'pending' as const;
-  return 'unverified' as const;
 };
 
 const DOCUMENT_MIN_SCORE = 78;
@@ -248,7 +242,7 @@ const Kyc = () => {
   const { data: countries } = useCountriesQuery();
   const { data: serverKyc, isLoading: serverKycLoading } = useGetKycDataQuery();
   const [submitPersonal, { isLoading: l1 }] = useSubmitPersonalMutation();
-  const [submitAddress, { isLoading: l2 }] = useSubmitAddressMutation();
+  const [submitDocuments, { isLoading: l2 }] = useSubmitDocumentsMutation();
   const isLoading = l1 || l2;
   const [frontCapture, setFrontCapture] = useState<CapturedFile>({ name: '', file: null });
   const [backCapture, setBackCapture] = useState<CapturedFile>({ name: '', file: null });
@@ -261,10 +255,8 @@ const Kyc = () => {
     () => validatePhoneForCountry(kyc.personal.phone, kyc.address.country, countries),
     [countries, kyc.address.country, kyc.personal.phone],
   );
-  const serverRecord = serverKyc?.data;
-  const serverStatus = normalizeKycStatus(serverRecord?.kyc_status ?? serverKyc?.kyc_status ?? user?.kycStatus);
-  const serverComplete = Boolean(serverRecord?.kyc_complete ?? serverKyc?.kyc_complete ?? user?.kycComplete);
-  const kycLocked = serverComplete && (serverStatus === 'pending' || serverStatus === 'verified');
+  const serverKycState = getKycState(serverKyc, user);
+  const kycLocked = serverKycState.locked;
 
   const steps = [t('kyc.step1'), t('kyc.step3'), t('kyc.step4'), t('kyc.stepDecision')];
   const isStepValid = (step: number) => {
@@ -379,16 +371,21 @@ const Kyc = () => {
       }
 
       await submitPersonal(personal).unwrap();
-      const addressResponse = await submitAddress(finalPayload).unwrap();
-      const responseStatus = normalizeKycStatus(addressResponse.data?.kyc_status ?? addressResponse.kyc_status ?? 'pending');
-      const responseComplete = Boolean(addressResponse.data?.kyc_complete ?? addressResponse.kyc_complete ?? true);
+      const addressResponse = await submitDocuments(finalPayload).unwrap();
+      const responseState = getKycState(addressResponse, {
+        ...user,
+        kycStatus: 'pending',
+        kycComplete: true,
+      });
+      const responseStatus = responseState.status === 'unverified' ? 'pending' : responseState.status;
+      const responseComplete = true;
       dispatch(updateUser({ kycStatus: responseStatus, kycComplete: responseComplete }));
       dispatch(resetKyc());
       setFrontCapture({ name: '', file: null });
       setBackCapture({ name: '', file: null });
       setSelfieCapture({ name: '', file: null });
       toast.success(t('kyc.submitted'));
-      navigate('/app');
+      navigate('/app/kyc', { replace: true });
     } catch {
       toast.error(t('common.error'));
     }
@@ -403,7 +400,7 @@ const Kyc = () => {
   }
 
   if (kycLocked) {
-    const isVerified = serverStatus === 'verified';
+    const isVerified = serverKycState.verified;
     return (
       <div className="mx-auto max-w-2xl">
         <Card className="overflow-hidden border-primary/20 bg-card/95 shadow-soft">

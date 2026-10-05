@@ -44,7 +44,7 @@ export const kycApi = api.injectEndpoints({
       query: (body) => ({ url: '/kyc/useraddress/', method: 'POST', body }),
       invalidatesTags: ['KYC'],
     }),
-    submitDocuments: b.mutation<{ detail: string }, FormData>({
+    submitDocuments: b.mutation<KycSubmissionResponse, FormData>({
       query: (body) => ({ url: '/kyc/useraddress/documents/', method: 'POST', body }),
       invalidatesTags: ['KYC'],
     }),

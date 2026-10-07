@@ -29,7 +29,7 @@ Example:
 
 ```bash
 mkdir -p /var/www/web.lipaxe.com/current
-rsync -av --delete dist/ /var/www/web.lipaxe.com/current/
+mkdir -p /var/www/web.lipaxe.com/current
 ```
 
 ## 3. Nginx host config

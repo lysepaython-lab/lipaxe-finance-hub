@@ -38,3 +38,6 @@ DEPLOY_WEB_LIPAXE.md
 scripts
 tmp
 docs
+tools
+./tools
+

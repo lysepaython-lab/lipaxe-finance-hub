@@ -40,4 +40,5 @@ tmp
 docs
 tools
 ./tools
-
+./.codex-lipaxe-artifacts
+.codex-lipaxe-artifacts

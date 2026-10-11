@@ -182,6 +182,9 @@
     "verifyNow": "Verify now",
     "kycPendingTitle": "KYC Pending",
     "kycPending": "Your KYC application is under review.",
+    "kycInProgress": "Verification to complete",
+    "kycResume": "Your application has not been submitted yet. Resume the steps where you left off.",
+    "kycContinue": "Continue",
     "kycNotVerified": "Your account is not yet verified. Complete your KYC to access all features and raise your limits.",
     "viewStatus": "View Status"
   },
@@ -734,7 +737,11 @@
     "kycPrompt": "Complete identity verification to unlock everything.",
     "kyc": {
       "unverified": "Not verified",
+      "in_progress": "In progress",
       "pending": "Pending review",
+      "action_required": "Action required",
+      "rejected": "Rejected",
+      "blocked": "Blocked",
       "verified": "Verified"
     }
   },

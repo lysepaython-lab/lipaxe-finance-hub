@@ -22,6 +22,7 @@ import { Badge } from '@/components/ui/badge';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { useUpdateProfileImageMutation } from '@/store/api/authApi';
 import { useGetKycDataQuery, type KycServerRecord } from '@/store/api/kycApi';
+import { getKycState } from '@/lib/kycStatus';
 import { updateUser } from '@/store/slices/authSlice';
 import { toast } from 'sonner';
 
@@ -61,9 +62,10 @@ const Profile = () => {
   if (!user) return null;
 
   const kycRecord = (kycData?.data || kycData || {}) as KycServerRecord;
-  const kycVerified = Boolean(kycData?.kyc_verified ?? kycRecord.kyc_verified ?? user.kycStatus === 'verified');
-  const kycComplete = Boolean(kycData?.kyc_complete ?? kycRecord.kyc_complete);
-  const kycStatus = kycVerified ? 'verified' : kycComplete ? 'pending' : user.kycStatus || 'unverified';
+  const kycState = getKycState(kycData, user);
+  const kycVerified = kycState.verified;
+  const kycComplete = kycState.complete;
+  const kycStatus = kycState.status;
   const kycVariant: 'default' | 'secondary' | 'destructive' = kycVerified ? 'default' : kycComplete ? 'secondary' : 'destructive';
   const initials = `${user.firstName?.[0] || ''}${user.lastName?.[0] || ''}`.toUpperCase();
 

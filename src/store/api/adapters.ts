@@ -69,7 +69,7 @@ export const normalizeUser = (payload: unknown): User => {
     lastName: asString(raw.last_name ?? raw.lastName),
     username: asString(raw.account_no ?? raw.username),
     kycStatus,
-    kycComplete: Boolean(raw.kyc_complete ?? raw.kycComplete ?? kycStatus !== 'unverified'),
+    kycComplete: Boolean(raw.kyc_complete ?? raw.kycComplete),
     avatar: asString(raw.profile_image_url ?? raw.avatar, ''),
     isStaff: Boolean(raw.is_staff ?? raw.isStaff),
     isSuperuser: Boolean(raw.is_superuser ?? raw.isSuperuser),

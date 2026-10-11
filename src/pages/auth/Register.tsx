@@ -61,16 +61,25 @@ const Register = () => {
       const res = await register(form).unwrap();
       const safeRedirect = redirect && isSafeRedirect(redirect) ? redirect : '';
       setPendingVerification({
-        userId: res.user.id,
+        userId: res.userId,
         email: form.email,
         redirect: safeRedirect || undefined,
         reference: form.reference || undefined,
       });
       toast.success(t('auth.registerSuccess'));
       navigate('/verify-email');
-    } catch (e: any) {
-      const firstError = e?.data ? Object.values(e.data).flat() : null;
-      toast.error(firstError || e?.data?.detail || t('common.error'));
+    } catch (e: unknown) {
+      const failure = e as { data?: Record<string, unknown> };
+      const data = failure?.data;
+      const challengeId = data?.challenge_id;
+      if (challengeId) {
+        setPendingVerification({ userId: String(challengeId), email: String(data?.email || form.email) });
+        toast.error(String(data?.detail || t('common.error')));
+        navigate('/verify-email');
+        return;
+      }
+      const firstError = data ? Object.values(data).flat().find((v) => typeof v === 'string') : null;
+      toast.error(String(firstError || data?.detail || t('common.error')));
     }
   };
 

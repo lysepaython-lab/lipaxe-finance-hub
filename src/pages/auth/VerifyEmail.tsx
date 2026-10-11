@@ -77,10 +77,11 @@ const VerifyEmail = () => {
       await verifyEmail({ userId, otp: code }).unwrap();
       clearPendingVerification();
       toast.success(t('auth.emailVerified'));
-      const target = initialRedirect && isSafeRedirect(initialRedirect) ? initialRedirect : '/app/kyc';
-      navigate(target);
-    } catch (e: any) {
-      setError(e?.data?.detail || e?.message || t('auth.otpInvalid'));
+      const continuation = initialRedirect && isSafeRedirect(initialRedirect) ? initialRedirect : '/app/kyc';
+      navigate(`/login?redirect=${encodeURIComponent(continuation)}`);
+    } catch (e: unknown) {
+      const failure = e as { data?: { detail?: string }; message?: string };
+      setError(failure?.data?.detail || failure?.message || t('auth.otpInvalid'));
     }
   };
 
@@ -96,16 +97,15 @@ const VerifyEmail = () => {
     }
   };
 
-  const onChangeEmail = async (newEmail: string) => {
-    await updatePending({ email, new_email: newEmail }).unwrap().catch(() => {});
+  const onChangeEmail = async (newEmail: string, currentOtp: string) => {
+    if (!userId) throw new Error('Inscription en attente introuvable.');
+    await updatePending({ challenge_id: userId, email, new_email: newEmail, otp: currentOtp }).unwrap();
     setEmail(newEmail);
     updatePendingEmail(newEmail);
     setOtp('');
     setError(null);
     setEditOpen(false);
     toast.success(t('auth.emailUpdatedCodeResent'));
-    const r = userId ? await resendOtp({ userId, email: newEmail }).unwrap().catch(() => null) : null;
-    if (r?.otp) toast.info(`${t('auth.demoCode')}: ${r.otp}`);
     setCooldown(RESEND_COOLDOWN);
   };
 
@@ -158,7 +158,7 @@ const VerifyEmail = () => {
         </div>
       </motion.div>
 
-      {pending && (
+      {/* {pending && (
         <div className="mb-4 flex items-start gap-2 rounded-xl border border-primary/20 bg-primary/5 p-3 text-xs">
           <Clock className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
           <div>
@@ -166,7 +166,7 @@ const VerifyEmail = () => {
             <div className="text-muted-foreground">{t('auth.verificationSavedBody')}</div>
           </div>
         </div>
-      )}
+      )} */}
 
       <form onSubmit={(e) => { e.preventDefault(); void submit(); }} className="space-y-6">
         <div className="flex flex-col items-center gap-3">
@@ -216,6 +216,7 @@ const VerifyEmail = () => {
       <EditEmailModal
         open={editOpen}
         currentEmail={email}
+        currentOtp={otp}
         onClose={() => setEditOpen(false)}
         onSubmit={onChangeEmail}
       />

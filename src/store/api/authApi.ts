@@ -3,7 +3,7 @@ import { normalizeUser } from './adapters';
 import type { User } from '../slices/authSlice';
 
 interface AuthResp { user: User; access: string; refresh: string; }
-interface RegisterResp { user: User; otpRequired?: boolean; }
+interface RegisterResp { userId: string; email: string; otpRequired: true; }
 
 export const authApi = api.injectEndpoints({
   endpoints: (b) => ({
@@ -50,9 +50,10 @@ export const authApi = api.injectEndpoints({
           reference: body.reference || undefined,
         },
       }),
-      transformResponse: (response: unknown) => ({
-        user: normalizeUser(response),
-        otpRequired: true,
+      transformResponse: (response: { id: string; email: string }) => ({
+        userId: String(response.id),
+        email: response.email,
+        otpRequired: true as const,
       }),
     }),
     forgotPassword: b.mutation<{ detail: string }, { email: string }>({

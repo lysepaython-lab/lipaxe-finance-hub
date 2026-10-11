@@ -71,11 +71,15 @@ export const Sidebar = () => {
         {(kycState.needsVerification || kycState.underReview) && (
           <div className="absolute bottom-4 left-4 right-4 rounded-xl bg-gradient-hero p-4 text-primary-foreground">
             <p className="font-display text-sm font-semibold">
-              {kycState.underReview ? t('dashboard.kycPendingTitle') : t('dashboard.verifyPrompt')}
+              {kycState.underReview
+                ? t('dashboard.kycPendingTitle')
+                : kycState.inProgress
+                  ? t('dashboard.kycInProgress')
+                  : t('dashboard.verifyPrompt')}
             </p>
             {kycState.needsVerification ? (
               <NavLink to="/app/kyc" className="mt-2 inline-flex text-xs underline underline-offset-2 hover:opacity-80">
-                {t('dashboard.verifyNow')} →
+                {kycState.inProgress ? t('dashboard.kycContinue') : t('dashboard.verifyNow')} →
               </NavLink>
             ) : (
               <p className="mt-2 text-xs opacity-80">{t('dashboard.kycPending')}</p>

@@ -75,17 +75,17 @@ const Dashboard = () => {
               </div>
               <div className="flex-1 space-y-1">
                 <p className="font-display text-base sm:text-lg font-semibold">
-                  {t('dashboard.verifyPrompt')}
+                  {kycState.inProgress ? t('dashboard.kycInProgress') : t('dashboard.verifyPrompt')}
                 </p>
                 <p className="text-xs sm:text-sm text-muted-foreground">
-                  {t('dashboard.kycNotVerified')}
+                  {kycState.inProgress ? t('dashboard.kycResume') : t('dashboard.kycNotVerified')}
                 </p>
               </div>
             </div>
 
             <Link to="/app/kyc" className="w-full sm:w-auto">
               <Button className="w-full sm:w-auto min-w-0 sm:min-w-40 bg-gradient-brand shadow-brand">
-                {t('dashboard.verifyNow')}
+                {kycState.inProgress ? t('dashboard.kycContinue') : t('dashboard.verifyNow')}
               </Button>
             </Link>
           </div>

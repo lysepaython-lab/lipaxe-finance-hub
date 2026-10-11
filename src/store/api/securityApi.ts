@@ -95,7 +95,7 @@ export const securityApi = api.injectEndpoints({
         body,
       }),
     }),
-    updatePendingEmail: b.mutation<{ detail: string; email: string }, { email: string; new_email: string }>({
+    updatePendingEmail: b.mutation<{ detail: string }, { challenge_id: string; email: string; new_email: string; otp: string }>({
       query: (body) => ({
         url: '/auth/update-pending-email/',
         method: 'POST',

@@ -13,8 +13,9 @@ const schema = z.object({
 interface Props {
   open: boolean;
   currentEmail: string;
+  currentOtp: string;
   onClose: () => void;
-  onSubmit: (newEmail: string) => Promise<void> | void;
+  onSubmit: (newEmail: string, otp: string) => Promise<void> | void;
 }
 
 /**
@@ -22,8 +23,9 @@ interface Props {
  * Backend must (a) ensure the new email isn't already taken, (b) invalidate
  * any pending OTPs for the old address, and (c) issue a fresh OTP.
  */
-export const EditEmailModal = ({ open, currentEmail, onClose, onSubmit }: Props) => {
+export const EditEmailModal = ({ open, currentEmail, currentOtp, onClose, onSubmit }: Props) => {
   const [email, setEmail] = useState(currentEmail);
+  const [otp, setOtp] = useState(currentOtp);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -39,7 +41,11 @@ export const EditEmailModal = ({ open, currentEmail, onClose, onSubmit }: Props)
     }
     setError(null);
     setBusy(true);
-    try { await onSubmit(email.trim()); } catch (e: any) { setError(e?.data?.detail || e?.message || 'Erreur'); }
+    if (!/^\d{6}$/.test(otp)) { setError('Saisissez le code à 6 chiffres reçu sur votre adresse actuelle.'); return; }
+    try { await onSubmit(email.trim(), otp); } catch (e: unknown) {
+      const failure = e as { data?: { detail?: string }; message?: string };
+      setError(failure?.data?.detail || failure?.message || 'Erreur');
+    }
     finally { setBusy(false); }
   };
 
@@ -53,10 +59,21 @@ export const EditEmailModal = ({ open, currentEmail, onClose, onSubmit }: Props)
           <DialogTitle className="text-center">Corriger votre email</DialogTitle>
           <DialogDescription className="text-center">
             Si vous n'avez pas reçu le code à <span className="font-medium text-foreground">{currentEmail}</span>,
-            vous pouvez utiliser une autre adresse. Un nouveau code sera envoyé.
+            vous pouvez utiliser une autre adresse. Confirmez avec le code reçu sur l’adresse actuelle.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-2">
+          <Label htmlFor="current-email-otp">Code reçu sur l’adresse actuelle</Label>
+          <Input
+            id="current-email-otp"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            maxLength={6}
+            value={otp}
+            onChange={(e) => { setOtp(e.target.value.replace(/\D/g, '').slice(0, 6)); setError(null); }}
+            placeholder="123456"
+            disabled={busy}
+          />
           <Label htmlFor="new-email">Nouvelle adresse email</Label>
           <Input
             id="new-email"

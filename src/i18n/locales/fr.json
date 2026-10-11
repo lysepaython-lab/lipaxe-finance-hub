@@ -182,6 +182,9 @@
     "verifyNow": "Vérifier",
     "kycPendingTitle": "KYC en revue",
     "kycPending": "Votre demande KYC est en cours de révision.",
+    "kycInProgress": "Vérification à terminer",
+    "kycResume": "Votre dossier n’a pas encore été envoyé. Reprenez les étapes là où vous les avez laissées.",
+    "kycContinue": "Continuer",
     "kycNotVerified": "Votre compte n'est pas encore vérifié. Complétez votre KYC pour accéder à toutes les fonctionnalités et relever vos plafonds.",
     "viewStatus": "Voir le statut"
   },
@@ -732,7 +735,11 @@
     "kycPrompt": "Complétez votre vérification d'identité pour tout débloquer.",
     "kyc": {
       "unverified": "Non vérifié",
+      "in_progress": "À compléter",
       "pending": "En cours d'examen",
+      "action_required": "Action requise",
+      "rejected": "Dossier refusé",
+      "blocked": "Dossier bloqué",
       "verified": "Vérifié"
     }
   },

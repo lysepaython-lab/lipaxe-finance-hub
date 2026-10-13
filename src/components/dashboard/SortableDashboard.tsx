@@ -10,7 +10,7 @@ import { GripVertical, Settings2, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
-const STORAGE_KEY = 'lipaxe-dashboard-layout-v1';
+const STORAGE_KEY = 'lipaxe-dashboard-layout-v2';
 
 export interface DashboardWidget {
   id: string;
@@ -72,7 +72,11 @@ export const SortableDashboard = ({ widgets }: Props) => {
   const [editing, setEditing] = useState(false);
 
   useEffect(() => {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(order)); } catch {}
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(order));
+    } catch {
+      // Keep the dashboard usable when browser storage is unavailable.
+    }
   }, [order]);
 
   const sensors = useSensors(

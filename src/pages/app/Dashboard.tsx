@@ -4,17 +4,18 @@ import { AlertTriangle, ShieldCheck, Smartphone } from 'lucide-react';
 import { FaApple, FaGooglePlay } from 'react-icons/fa';
 import { useAppSelector } from '@/store/hooks';
 import { BalanceCard } from '@/components/dashboard/BalanceCard';
-import { SpendingChart } from '@/components/dashboard/SpendingChart';
+import { DashboardPromotions } from '@/components/dashboard/DashboardPromotions';
 import { QuickActions } from '@/components/dashboard/QuickActions';
 import { RecentTransactions } from '@/components/dashboard/RecentTransactions';
 import { AccountsList } from '@/components/dashboard/AccountsList';
+import { CurrencyBreakdown } from '@/components/dashboard/CurrencyBreakdown';
 import { SortableDashboard, type DashboardWidget } from '@/components/dashboard/SortableDashboard';
 import { Button } from '@/components/ui/button';
 import { useGetKycDataQuery } from '@/store/api/kycApi';
 import { getKycState } from '@/lib/kycStatus';
 
 const AppDownloadBanner = () => (
-  <div className="relative overflow-hidden rounded-2xl sm:rounded-[2rem] border border-primary/20 bg-gradient-to-r from-primary via-brand-700 to-brand-900 p-4 sm:p-5 text-primary-foreground shadow-brand">
+  <div className="relative hidden overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-r from-primary via-brand-700 to-brand-900 p-4 text-primary-foreground shadow-brand md:block md:rounded-[2rem] md:p-5">
     <div className="absolute -right-16 -top-20 h-48 w-48 rounded-full bg-white/10 blur-3xl" />
     <div className="relative flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
       <div className="flex items-center gap-3 sm:gap-4">
@@ -52,8 +53,9 @@ const Dashboard = () => {
   const widgets: DashboardWidget[] = [
     { id: 'balance', column: 'side', render: () => <BalanceCard /> },
     { id: 'accounts', column: 'side', render: () => <AccountsList /> },
+    { id: 'currency-breakdown', column: 'side', render: () => <CurrencyBreakdown /> },
     { id: 'actions', column: 'main', render: () => <QuickActions /> },
-    { id: 'spending', column: 'main', render: () => <SpendingChart /> },
+    { id: 'promotions', column: 'main', render: () => <DashboardPromotions /> },
     { id: 'recent', column: 'main', render: () => <RecentTransactions /> },
   ];
 

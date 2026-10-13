@@ -10,8 +10,6 @@ import { buildNetChangeStats } from '@/lib/dashboardStats';
 import { cn } from '@/lib/utils';
 import { CurrencyMark } from '@/lib/moneyVisuals';
 
-const currencyTone = ['bg-primary', 'bg-emerald-400', 'bg-sky-400', 'bg-amber-400', 'bg-rose-400'];
-
 // Composant Select Custom avec drapeaux (responsive)
 const CurrencySelect = ({ wallets, selected, onChange }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -99,7 +97,6 @@ export const BalanceCard = () => {
     [wallets],
   );
   const selected = sortedWallets.find((w) => w.currency === selectedCurrency) || sortedWallets[0];
-  const topWallets = sortedWallets.slice(0, 5);
   const netChange = buildNetChangeStats(transactions, { currency: selected?.currency });
   const equivalent = selected?.localValue?.currency !== selected?.currency
     ? selected?.localValue
@@ -178,48 +175,6 @@ export const BalanceCard = () => {
             <div className="mt-0.5 truncate sm:mt-1 font-semibold tabular text-sm sm:text-base">
               {selected ? mask(formatMoney(selected.pending, selected.currency)) : '-'}
             </div>
-          </div>
-        </div>
-
-        <div className="min-w-0 rounded-xl sm:rounded-2xl border border-border/70 bg-background/70 p-3 sm:p-3.5">
-          <div className="mb-2 sm:mb-3 flex items-center justify-between">
-            <span className="text-xs sm:text-sm font-semibold">Currency breakdown</span>
-            <span className="text-[10px] sm:text-xs text-muted-foreground">Top 5</span>
-          </div>
-          <div className="space-y-2 sm:space-y-2.5">
-            {isLoading
-              ? Array.from({ length: 3 }).map((_, index) => <Skeleton key={index} className="h-14 sm:h-8" />)
-              : topWallets.map((wallet, index) => {
-                  const max = Math.max(...topWallets.map((item) => item.available), 1);
-                  const width = Math.max(8, (wallet.available / max) * 100);
-                  return (
-                    <button
-                      key={wallet.id || wallet.currency}
-                      type="button"
-                      onClick={() => setSelectedCurrency(wallet.currency)}
-                      className={cn(
-                        'w-full min-w-0 rounded-lg sm:rounded-xl p-1.5 sm:p-2 text-left transition-smooth hover:bg-muted',
-                        selected?.currency === wallet.currency && 'bg-primary/8 ring-1 ring-primary/20',
-                      )}
-                    >
-                      <div className="mb-1 flex min-w-0 flex-col xs:flex-row xs:items-center justify-between gap-1 xs:gap-3 text-xs">
-                        <span className="flex min-w-0 items-center gap-1.5 sm:gap-2 font-semibold">
-                          <span className={cn('h-2 w-2 sm:h-2.5 sm:w-2.5 rounded-full', currencyTone[index] || 'bg-muted-foreground')} />
-                          <span className="truncate text-xs sm:text-sm">{wallet.currency}</span>
-                        </span>
-                        <span className="max-w-full truncate tabular text-[10px] xs:text-xs sm:text-sm">
-                          {mask(formatMoney(wallet.available, wallet.currency))}
-                        </span>
-                      </div>
-                      <div className="h-1 sm:h-1.5 overflow-hidden rounded-full bg-muted">
-                        <div
-                          className={cn('h-full rounded-full', currencyTone[index] || 'bg-primary')}
-                          style={{ width: `${width}%` }}
-                        />
-                      </div>
-                    </button>
-                  );
-                })}
           </div>
         </div>
 

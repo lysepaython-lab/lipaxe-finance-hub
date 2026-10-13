@@ -177,6 +177,31 @@
     "viewAll": "Voir tout",
     "spending": "Aperçu des dépenses",
     "accounts": "Vos comptes",
+    "currencyBreakdown": "Répartition par devise",
+    "topFive": "Top 5",
+    "noAccounts": "Aucun wallet disponible pour le moment",
+    "promotions": "Découvrir les services Lipaxe",
+    "promoEyebrow": "Un écosystème. Plus de façons d’avancer.",
+    "promoGoTo": "Afficher l’offre {{number}}",
+    "promoPrevious": "Offre précédente",
+    "promoNext": "Offre suivante",
+    "promo": {
+      "virtualCards": {
+        "title": "Une carte virtuelle pour vos paiements en ligne",
+        "body": "Payez en ligne avec une carte Lipaxe dédiée et gardez la maîtrise de vos dépenses.",
+        "cta": "Découvrir les cartes virtuelles"
+      },
+      "tontines": {
+        "title": "Atteignez vos objectifs ensemble",
+        "body": "Créez ou rejoignez une tontine, organisez les cotisations et suivez les progrès du groupe.",
+        "cta": "Découvrir les tontines"
+      },
+      "affiliation": {
+        "title": "Faites grandir votre réseau avec Lipaxe",
+        "body": "Invitez des personnes sur Lipaxe et suivez vos recommandations et récompenses éligibles.",
+        "cta": "Découvrir l’affiliation"
+      }
+    },
     "noTransactions": "Aucune transaction",
     "verifyPrompt": "Vérifiez votre identité pour augmenter vos limites",
     "verifyNow": "Vérifier",
@@ -559,10 +584,12 @@
     "selfieInstructions": "Prenez une photo nette de votre visage, bien eclairee.",
     "uploadSelfie": "Televerser selfie",
     "reviewTitle": "Verifiez vos informations",
+    "manualReviewOnly": "Vos documents seront examinés par Lipaxe",
+    "manualReviewOnlyBody": "Un OCR exécuté sur l’infrastructure LIPAXE peut aider à comparer les informations du document. Il ne prouve pas l’authenticité et ne décide jamais seul : un agent conformité examine les pièces et rend le verdict. Les contrôles biométriques et listes de sanctions internes ne sont pas encore activés.",
     "submit": "Soumettre",
     "submitted": "Verification soumise",
     "lockedPendingTitle": "KYC envoye, en attente de revue",
-    "lockedPendingBody": "Votre dossier est deja complet. L'equipe compliance doit maintenant prendre la decision finale; vous ne pouvez pas renvoyer les donnees pendant cette attente.",
+    "lockedPendingBody": "Votre dossier est complet et soumis. L’équipe conformité de LIPAXE procède à une revue manuelle et rendra le verdict final. Vous ne pouvez pas modifier ni renvoyer vos pièces pendant cette période.",
     "lockedVerifiedTitle": "KYC deja approuve",
     "lockedVerifiedBody": "Votre verification est active. Vous n'avez pas besoin de soumettre un nouveau dossier.",
     "backToDashboard": "Retour au tableau de bord",

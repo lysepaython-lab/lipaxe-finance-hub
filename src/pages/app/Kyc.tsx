@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -13,7 +12,6 @@ import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import {
   setStep, updatePersonal, updateAddress, updateDocument, updateSelfie, resetKyc,
 } from '@/store/slices/kycSlice';
-import type { KYCData } from '@/store/slices/kycSlice';
 import {
   useGetKycDataQuery, useSubmitPersonalMutation, useSubmitDocumentsMutation,
 } from '@/store/api/kycApi';
@@ -22,7 +20,6 @@ import { useCountriesQuery } from '@/store/api/platformApi';
 import type { IncountryEntry } from '@/store/api/platformApi';
 import { updateUser } from '@/store/slices/authSlice';
 import {
-  AlertTriangle,
   Check,
   ChevronRight,
   ChevronLeft,
@@ -64,20 +61,7 @@ type CapturedFile = {
   signals?: string[];
 };
 
-type KycVerdict = 'ready' | 'review' | 'retry' | 'blocked';
-type Translator = (key: string, options?: Record<string, unknown>) => string;
-type KycGateStatus = 'pass' | 'review' | 'retry' | 'blocked';
-
-type KycDecision = {
-  verdict: KycVerdict;
-  riskLevel: 'low' | 'medium' | 'high';
-  riskScore: number;
-  reasons: string[];
-  gates: { label: string; status: KycGateStatus; detail: string }[];
-};
-
 const DOCUMENT_MIN_SCORE = 78;
-const PASSPORT_MRZ_MIN = 0.2;
 
 const GENDER_OPTIONS = ['male', 'female', 'other'] as const;
 const EMPLOYMENT_STATUS_OPTIONS = ['employed', 'self_employed', 'student', 'unemployed', 'retired'] as const;
@@ -156,83 +140,6 @@ const validatePhoneForCountry = (
   return { valid: true, normalized, message: `Numero coherent avec ${country?.name || alpha2}.` };
 };
 
-const getAge = (dob: string) => {
-  if (!dob) return 0;
-  const birth = new Date(dob);
-  if (Number.isNaN(birth.getTime())) return 0;
-  const today = new Date();
-  let age = today.getFullYear() - birth.getFullYear();
-  const monthDiff = today.getMonth() - birth.getMonth();
-  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) age -= 1;
-  return age;
-};
-
-const buildKycDecision = (kyc: KYCData, t: Translator): KycDecision => {
-  const reasons: string[] = [];
-  const gates: KycDecision['gates'] = [];
-  let riskScore = 0;
-
-  const addGate = (label: string, status: KycDecision['gates'][number]['status'], detail: string, risk = 0) => {
-    gates.push({ label, status, detail });
-    riskScore += risk;
-    if (status !== 'pass') reasons.push(detail);
-  };
-
-  const age = getAge(kyc.personal.dob);
-  if (!kyc.personal.consentAccepted) addGate(t('kyc.gateConsent'), 'retry', t('kyc.gateConsentMissing'), 35);
-  else addGate(t('kyc.gateConsent'), 'pass', t('kyc.gateConsentSaved'));
-
-  if (age < 15) addGate(t('kyc.gateAge'), 'blocked', t('kyc.gateAgeBlocked'), 100);
-  else addGate(t('kyc.gateAge'), 'pass', t('kyc.gateAgeOk', { age }));
-
-  if (!kyc.personal.phone?.trim()) addGate(t('kyc.gatePhone'), 'retry', t('kyc.gatePhoneMissing'), 25);
-  else addGate(t('kyc.gatePhone'), 'pass', t('kyc.gatePhoneSaved'));
-
-  if (!kyc.personal.gender || !kyc.personal.employmentStatus || !kyc.personal.purposeOfAccount || !kyc.personal.sourceOfFunds) {
-    addGate(t('kyc.gateProfile'), 'retry', t('kyc.gateProfileMissing'), 20);
-  } else {
-    addGate(t('kyc.gateProfile'), 'pass', t('kyc.gateProfileSaved'));
-  }
-
-  const frontScore = kyc.document.frontQualityScore || 0;
-  const backScore = kyc.document.backQualityScore || 0;
-  const needsBack = kyc.document.type !== 'passport';
-  if (!kyc.document.idNumber?.trim()) addGate(t('kyc.gateDocument'), 'retry', t('kyc.gateDocumentNumberMissing'), 30);
-  else if (!kyc.document.frontName || frontScore < DOCUMENT_MIN_SCORE) {
-    addGate(
-      kyc.document.type === 'passport' ? t('kyc.gatePassportPage') : t('kyc.gateDocumentFront'),
-      'retry',
-      kyc.document.type === 'passport'
-        ? t('kyc.gatePassportPageQualityLow', { score: frontScore })
-        : t('kyc.gateDocumentFrontQualityLow', { score: frontScore }),
-      35,
-    );
-  } else if (needsBack && (!kyc.document.backName || backScore < DOCUMENT_MIN_SCORE)) {
-    addGate(t('kyc.gateDocumentBack'), 'retry', t('kyc.gateDocumentBackQualityLow', { score: backScore }), 35);
-  } else {
-    addGate(t('kyc.gateDocument'), 'pass', t('kyc.gateDocumentUsable'));
-  }
-
-  if (kyc.document.type === 'passport' && (kyc.document.frontMrzConfidence || 0) < PASSPORT_MRZ_MIN) {
-    addGate(t('kyc.gatePassportMrz'), 'review', t('kyc.gatePassportMrzWeak'), 20);
-  } else if (kyc.document.type === 'passport') {
-    addGate(t('kyc.gatePassportMrz'), 'pass', t('kyc.gatePassportMrzDetected'));
-  }
-
-  if (!kyc.selfie.cameraCaptured || !kyc.selfie.policyAccepted) addGate(t('kyc.gateCameraSelfie'), 'retry', t('kyc.gateCameraSelfieMissing'), 45);
-  else addGate(t('kyc.gateCameraSelfie'), 'pass', t('kyc.gateCameraSelfieVerified'));
-
-  const sameCountry = kyc.personal.nationality && kyc.address.country && kyc.personal.nationality === kyc.address.country;
-  if (!sameCountry) addGate(t('kyc.gateCountry'), 'review', t('kyc.gateCountryMismatch'), 12);
-  else addGate(t('kyc.gateCountry'), 'pass', t('kyc.gateCountryCoherent'));
-
-  const hasBlockedGate = gates.some((gate) => gate.status === 'retry' || gate.status === 'blocked');
-  const riskLevel = riskScore >= 70 ? 'high' : riskScore >= 25 ? 'medium' : 'low';
-  const verdict: KycVerdict = hasBlockedGate ? 'retry' : riskScore >= 25 ? 'review' : 'ready';
-
-  return { verdict, riskLevel, riskScore: Math.min(100, riskScore), reasons, gates };
-};
-
 const Kyc = () => {
   const { t } = useTranslation();
   const dispatch = useAppDispatch();
@@ -247,10 +154,6 @@ const Kyc = () => {
   const [frontCapture, setFrontCapture] = useState<CapturedFile>({ name: '', file: null });
   const [backCapture, setBackCapture] = useState<CapturedFile>({ name: '', file: null });
   const [selfieCapture, setSelfieCapture] = useState<CapturedFile>({ name: '', file: null });
-  const decision = useMemo(
-    () => buildKycDecision(kyc, (key, options) => String(t(key, options))),
-    [kyc, t],
-  );
   const phoneValidation = useMemo(
     () => validatePhoneForCountry(kyc.personal.phone, kyc.address.country, countries),
     [countries, kyc.address.country, kyc.personal.phone],
@@ -281,12 +184,10 @@ const Kyc = () => {
     if (step === 1) {
       const hasFront = Boolean(kyc.document.frontName?.trim());
       const hasBack = kyc.document.type === 'passport' || Boolean(kyc.document.backName?.trim());
-      const frontQualityOk = (kyc.document.frontQualityScore || 0) >= DOCUMENT_MIN_SCORE;
-      const backQualityOk = kyc.document.type === 'passport' || (kyc.document.backQualityScore || 0) >= DOCUMENT_MIN_SCORE;
-      return Boolean(kyc.document.type && kyc.document.idNumber?.trim() && hasFront && hasBack && frontQualityOk && backQualityOk);
+      return Boolean(kyc.document.type && kyc.document.idNumber?.trim() && hasFront && hasBack);
     }
     if (step === 2) return Boolean(kyc.selfie.cameraCaptured && kyc.selfie.policyAccepted);
-    if (step === 3) return decision.verdict === 'ready' || decision.verdict === 'review';
+    if (step === 3) return true;
     return true;
   };
   const next = () => {
@@ -299,13 +200,8 @@ const Kyc = () => {
   const back = () => dispatch(setStep(Math.max(kyc.step - 1, 0)));
 
   const onSubmit = async () => {
-    const finalDecision = buildKycDecision(kyc, (key, options) => String(t(key, options)));
     if (![0, 1, 2, 3].every((step) => isStepValid(step))) {
       toast.error('Completer toutes les etapes KYC avant de soumettre.');
-      return;
-    }
-    if (finalDecision.verdict === 'retry' || finalDecision.verdict === 'blocked') {
-      toast.error(finalDecision.reasons[0] || t('kyc.fixBeforeSubmit'));
       return;
     }
     try {
@@ -484,7 +380,7 @@ const Kyc = () => {
             <SelfieWithIdStep onCapture={setSelfieCapture} />
           )}
           {kyc.step === 3 && (
-            <RiskReviewStep decision={decision} />
+            <ManualReviewStep />
           )}
 
           <div className="flex justify-between pt-4">
@@ -1296,7 +1192,7 @@ const ReviewStep = () => {
     },
     { k: t('kyc.idType'), v: kyc.document.type },
     { k: t('kyc.documentFile'), v: kyc.document.frontName },
-    { k: t('kyc.gateCameraSelfie'), v: kyc.selfie.cameraCaptured ? t('kyc.verified') : t('kyc.missing') },
+    { k: t('kyc.gateCameraSelfie'), v: kyc.selfie.cameraCaptured ? t('kyc.cameraSelfieVerified') : t('kyc.missing') },
   ];
   return (
     <div className="space-y-3">
@@ -1311,90 +1207,18 @@ const ReviewStep = () => {
   );
 };
 
-const RiskReviewStep = ({ decision }: { decision: KycDecision }) => {
+const ManualReviewStep = () => {
   const { t } = useTranslation();
-  const kyc = useAppSelector((s) => s.kyc);
-  const verdictLabel: Record<KycVerdict, string> = {
-    ready: t('kyc.verdictReady'),
-    review: t('kyc.verdictReview'),
-    retry: t('kyc.verdictRetry'),
-    blocked: t('kyc.verdictBlocked'),
-  };
-  const riskLabel: Record<KycDecision['riskLevel'], string> = {
-    low: t('kyc.risk_low'),
-    medium: t('kyc.risk_medium'),
-    high: t('kyc.risk_high'),
-  };
-  const gateStatusLabel: Record<KycGateStatus, string> = {
-    pass: t('kyc.gateStatus_pass'),
-    review: t('kyc.gateStatus_review'),
-    retry: t('kyc.gateStatus_retry'),
-    blocked: t('kyc.gateStatus_blocked'),
-  };
-  const verdictTone: Record<KycVerdict, string> = {
-    ready: 'border-success/30 bg-success/10 text-success',
-    review: 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300',
-    retry: 'border-destructive/30 bg-destructive/10 text-destructive',
-    blocked: 'border-destructive/30 bg-destructive/10 text-destructive',
-  };
-  const rows = [
-    { k: t('kyc.dob'), v: kyc.personal.dob },
-    { k: t('kyc.gender'), v: kyc.personal.gender ? t(`kyc.gender_${kyc.personal.gender}`) : '' },
-    { k: t('kyc.nationality'), v: kyc.personal.nationality },
-    { k: t('kyc.phone'), v: `${kyc.personal.phone} (${t('kyc.phoneSavedWithoutOtp')})` },
-    { k: t('kyc.employmentStatus'), v: kyc.personal.employmentStatus ? t(`kyc.employment_${kyc.personal.employmentStatus}`) : '' },
-    { k: t('kyc.purposeOfAccount'), v: kyc.personal.purposeOfAccount ? t(`kyc.purpose_${kyc.personal.purposeOfAccount}`) : '' },
-    { k: t('kyc.sourceOfFunds'), v: kyc.personal.sourceOfFunds ? t(`kyc.source_${kyc.personal.sourceOfFunds}`) : '' },
-    {
-      k: t('kyc.street'),
-      v: `${kyc.address.street}, ${kyc.address.city}, ${kyc.address.province} ${kyc.address.postalCode}, ${kyc.address.country}`,
-    },
-    { k: t('kyc.idType'), v: kyc.document.type },
-    { k: t('kyc.documentQuality'), v: `${kyc.document.frontQualityScore || 0}/100` },
-    { k: t('kyc.mrz'), v: kyc.document.type === 'passport' ? `${Math.round((kyc.document.frontMrzConfidence || 0) * 100)}%` : t('kyc.notRequired') },
-    { k: t('kyc.gateCameraSelfie'), v: kyc.selfie.cameraCaptured ? t('kyc.verified') : t('kyc.missing') },
-  ];
-
   return (
     <div className="space-y-5">
-      <div className={cn('rounded-2xl border p-4', verdictTone[decision.verdict])}>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2 font-display text-lg font-semibold">
-            {decision.verdict === 'ready' ? <ClipboardCheck className="h-5 w-5" /> : <AlertTriangle className="h-5 w-5" />}
-            {verdictLabel[decision.verdict]}
-          </div>
-          <Badge variant="outline">
-            {t('kyc.riskBadge', { level: riskLabel[decision.riskLevel], score: decision.riskScore })}
-          </Badge>
+      <div className="flex gap-3 rounded-2xl border border-primary/20 bg-primary/5 p-4">
+        <ClipboardCheck className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+        <div>
+          <p className="font-semibold">{t('kyc.manualReviewOnly')}</p>
+          <p className="mt-1 text-sm text-muted-foreground">{t('kyc.manualReviewOnlyBody')}</p>
         </div>
-        <p className="mt-2 text-sm opacity-90">
-          {decision.verdict === 'ready'
-            ? t('kyc.readyDecisionBody')
-            : t('kyc.reviewDecisionBody')}
-        </p>
       </div>
-
-      <div className="grid gap-3 md:grid-cols-2">
-        {decision.gates.map((gate) => (
-          <div key={gate.label} className="rounded-2xl border border-border bg-card/60 p-4">
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-sm font-semibold">{gate.label}</span>
-              <Badge variant={gate.status === 'pass' ? 'default' : 'outline'}>
-                {gateStatusLabel[gate.status]}
-              </Badge>
-            </div>
-            <p className="mt-2 text-xs text-muted-foreground">{gate.detail}</p>
-          </div>
-        ))}
-      </div>
-
-      <h3 className="font-display font-semibold text-lg">{t('kyc.reviewTitle')}</h3>
-      {rows.map((row) => (
-        <div key={row.k} className="flex justify-between gap-4 border-b border-border py-2 text-sm">
-          <span className="text-muted-foreground">{row.k}</span>
-          <span className="text-right font-medium">{row.v || '-'}</span>
-        </div>
-      ))}
+      <ReviewStep />
     </div>
   );
 };

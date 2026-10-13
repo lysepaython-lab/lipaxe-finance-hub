@@ -177,6 +177,31 @@
     "viewAll": "View all",
     "spending": "Spending overview",
     "accounts": "Your accounts",
+    "currencyBreakdown": "Currency breakdown",
+    "topFive": "Top 5",
+    "noAccounts": "No wallets available yet",
+    "promotions": "Explore Lipaxe services",
+    "promoEyebrow": "One ecosystem. More ways to move.",
+    "promoGoTo": "Show offer {{number}}",
+    "promoPrevious": "Previous offer",
+    "promoNext": "Next offer",
+    "promo": {
+      "virtualCards": {
+        "title": "A virtual card for your online life",
+        "body": "Pay online with a dedicated Lipaxe card and keep spending under your control.",
+        "cta": "Explore virtual cards"
+      },
+      "tontines": {
+        "title": "Reach shared goals, together",
+        "body": "Create or join a tontine, organize contributions and follow your group’s progress.",
+        "cta": "Explore tontines"
+      },
+      "affiliation": {
+        "title": "Grow your network with Lipaxe",
+        "body": "Invite people to Lipaxe and follow your referrals and eligible rewards in one place.",
+        "cta": "Discover affiliation"
+      }
+    },
     "noTransactions": "No transactions yet",
     "verifyPrompt": "Verify your identity to unlock higher limits",
     "verifyNow": "Verify now",
@@ -559,6 +584,8 @@
     "selfieInstructions": "Take a clear photo of your face in good lighting.",
     "uploadSelfie": "Upload selfie",
     "reviewTitle": "Review your information",
+    "manualReviewOnly": "Your documents will be reviewed by Lipaxe",
+    "manualReviewOnlyBody": "OCR running on LIPAXE infrastructure can help compare document details. It does not prove authenticity or make decisions: a compliance reviewer examines the evidence and makes the final decision. Biometric checks and internal sanctions lists are not enabled yet.",
     "submit": "Submit for review",
     "submitted": "Verification submitted",
     "lockedPendingTitle": "KYC submitted, awaiting review",

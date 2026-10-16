@@ -153,6 +153,7 @@ const Kyc = () => {
   const isLoading = l1 || l2;
   const [frontCapture, setFrontCapture] = useState<CapturedFile>({ name: '', file: null });
   const [backCapture, setBackCapture] = useState<CapturedFile>({ name: '', file: null });
+  const [addressProofCapture, setAddressProofCapture] = useState<CapturedFile>({ name: '', file: null });
   const [selfieCapture, setSelfieCapture] = useState<CapturedFile>({ name: '', file: null });
   const phoneValidation = useMemo(
     () => validatePhoneForCountry(kyc.personal.phone, kyc.address.country, countries),
@@ -174,6 +175,7 @@ const Kyc = () => {
         kyc.personal.employmentStatus &&
         kyc.personal.purposeOfAccount &&
         kyc.personal.sourceOfFunds &&
+        kyc.personal.annualIncome.trim() &&
         kyc.address.street?.trim() &&
         kyc.address.city?.trim() &&
         kyc.address.province?.trim() &&
@@ -184,7 +186,7 @@ const Kyc = () => {
     if (step === 1) {
       const hasFront = Boolean(kyc.document.frontName?.trim());
       const hasBack = kyc.document.type === 'passport' || Boolean(kyc.document.backName?.trim());
-      return Boolean(kyc.document.type && kyc.document.idNumber?.trim() && hasFront && hasBack);
+      return Boolean(kyc.document.type && kyc.document.idNumber?.trim() && hasFront && hasBack && addressProofCapture.file);
     }
     if (step === 2) return Boolean(kyc.selfie.cameraCaptured && kyc.selfie.policyAccepted);
     if (step === 3) return true;
@@ -226,6 +228,7 @@ const Kyc = () => {
       personal.append('employmentStatus', kyc.personal.employmentStatus || '');
       personal.append('purposeOfAccount', kyc.personal.purposeOfAccount || '');
       personal.append('sourceOfFunds', kyc.personal.sourceOfFunds || '');
+      personal.append('annualIncome', kyc.personal.annualIncome || '');
       if (user?.firstName) personal.append('first_name', user.firstName);
       if (user?.lastName) personal.append('last_name', user.lastName);
 
@@ -242,6 +245,7 @@ const Kyc = () => {
       finalPayload.append('employmentStatus', kyc.personal.employmentStatus || '');
       finalPayload.append('purposeOfAccount', kyc.personal.purposeOfAccount || '');
       finalPayload.append('sourceOfFunds', kyc.personal.sourceOfFunds || '');
+      finalPayload.append('annualIncome', kyc.personal.annualIncome || '');
       finalPayload.append('identity_type', kyc.document.type || '');
       finalPayload.append('id_number', kyc.document.idNumber || '');
       finalPayload.append('is_terms_conditions', 'true');
@@ -252,6 +256,7 @@ const Kyc = () => {
       if (frontCapture.file) finalPayload.append('photo_id_front', frontCapture.file, frontCapture.name);
       if (backCapture.file) finalPayload.append('photo_id_back', backCapture.file, backCapture.name);
       if (selfieCapture.file) finalPayload.append('selfie_with_id', selfieCapture.file, selfieCapture.name);
+      if (addressProofCapture.file) finalPayload.append('proof_of_address', addressProofCapture.file, addressProofCapture.name);
 
       if (!frontCapture.file) {
         toast.error(kyc.document.type === 'passport' ? t('kyc.capturePassportPage') : t('kyc.captureFront'));
@@ -263,6 +268,10 @@ const Kyc = () => {
       }
       if (!selfieCapture.file) {
         toast.error(t('kyc.completeSelfieBeforeSubmit'));
+        return;
+      }
+      if (!addressProofCapture.file) {
+        toast.error('Photographiez un justificatif de domicile récent avec la caméra.');
         return;
       }
 
@@ -280,6 +289,7 @@ const Kyc = () => {
       setFrontCapture({ name: '', file: null });
       setBackCapture({ name: '', file: null });
       setSelfieCapture({ name: '', file: null });
+      setAddressProofCapture({ name: '', file: null });
       toast.success(t('kyc.submitted'));
       navigate('/app/kyc', { replace: true });
     } catch {
@@ -374,6 +384,7 @@ const Kyc = () => {
             <DocumentsStep
               onFrontCapture={setFrontCapture}
               onBackCapture={setBackCapture}
+              onAddressProofCapture={setAddressProofCapture}
             />
           )}
           {kyc.step === 2 && (
@@ -516,6 +527,10 @@ const IdentityStep = ({ countries }: { countries?: IncountryEntry[] }) => {
           </Select>
         </div>
       </div>
+      <div className="space-y-2">
+        <Label>Revenu annuel estimé</Label>
+        <Input value={personal.annualIncome} onChange={(e) => dispatch(updatePersonal({ annualIncome: e.target.value }))} className="h-11 rounded-xl" maxLength={60} placeholder="Ex. 5 000 USD" />
+      </div>
       <label className="flex items-start gap-3 rounded-2xl border border-border bg-muted/30 p-4 text-sm">
         <input
           type="checkbox"
@@ -586,9 +601,11 @@ const IdentityStep = ({ countries }: { countries?: IncountryEntry[] }) => {
 const DocumentsStep = ({
   onFrontCapture,
   onBackCapture,
+  onAddressProofCapture,
 }: {
   onFrontCapture: (capture: CapturedFile) => void;
   onBackCapture: (capture: CapturedFile) => void;
+  onAddressProofCapture: (capture: CapturedFile) => void;
 }) => {
   const { t } = useTranslation();
   const dispatch = useAppDispatch();
@@ -660,6 +677,18 @@ const DocumentsStep = ({
             }}
           />
         )}
+      </div>
+      <div className="space-y-2 rounded-2xl border border-primary/15 bg-primary/5 p-4">
+        <div>
+          <p className="font-semibold">Preuve d’adresse <span className="text-destructive">*</span></p>
+          <p className="text-xs text-muted-foreground">Facture de service, relevé bancaire ou attestation de résidence récente. La capture se fait avec la caméra, sans import depuis la galerie.</p>
+        </div>
+        <DocumentCapture
+          label="Photographier le justificatif"
+          value=""
+          documentType="unknown"
+          onCapture={onAddressProofCapture}
+        />
       </div>
     </>
   );

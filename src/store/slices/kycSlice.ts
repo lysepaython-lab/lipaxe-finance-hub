@@ -12,6 +12,7 @@ export interface KYCData {
     employmentStatus: string;
     purposeOfAccount: string;
     sourceOfFunds: string;
+    annualIncome: string;
   };
   address: { street: string; city: string; province: string; postalCode: string; country: string };
   document: {
@@ -39,6 +40,7 @@ const initial: KYCData = {
     employmentStatus: '',
     purposeOfAccount: '',
     sourceOfFunds: '',
+    annualIncome: '',
   },
   address: { street: '', city: '', province: '', postalCode: '', country: '' },
   document: {

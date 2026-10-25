@@ -1244,7 +1244,7 @@ const ManualReviewStep = () => {
         <ClipboardCheck className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
         <div>
           <p className="font-semibold">{t('kyc.manualReviewOnly')}</p>
-          <p className="mt-1 text-sm text-muted-foreground">{t('kyc.manualReviewOnlyBody')}</p>
+          {/* <p className="mt-1 text-sm text-muted-foreground">{t('kyc.manualReviewOnlyBody')}</p> */}
         </div>
       </div>
       <ReviewStep />

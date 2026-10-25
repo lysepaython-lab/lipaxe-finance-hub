@@ -1,7 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { AlertTriangle, ShieldCheck, Smartphone } from 'lucide-react';
-import { FaApple, FaGooglePlay } from 'react-icons/fa';
+import { AlertTriangle, ShieldCheck } from 'lucide-react';
 import { useAppSelector } from '@/store/hooks';
 import { BalanceCard } from '@/components/dashboard/BalanceCard';
 import { DashboardPromotions } from '@/components/dashboard/DashboardPromotions';
@@ -13,33 +12,6 @@ import { SortableDashboard, type DashboardWidget } from '@/components/dashboard/
 import { Button } from '@/components/ui/button';
 import { useGetKycDataQuery } from '@/store/api/kycApi';
 import { getKycState } from '@/lib/kycStatus';
-
-const AppDownloadBanner = () => (
-  <div className="relative hidden overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-r from-primary via-brand-700 to-brand-900 p-4 text-primary-foreground shadow-brand md:block md:rounded-[2rem] md:p-5">
-    <div className="absolute -right-16 -top-20 h-48 w-48 rounded-full bg-white/10 blur-3xl" />
-    <div className="relative flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-      <div className="flex items-center gap-3 sm:gap-4">
-        <div className="flex h-10 w-10 sm:h-14 sm:w-14 items-center justify-center rounded-xl sm:rounded-2xl bg-white/14">
-          <Smartphone className="h-5 w-5 sm:h-7 sm:w-7" />
-        </div>
-        <div>
-          <h1 className="font-display text-xl sm:text-2xl lg:text-3xl font-bold">Lipaxe Mobile</h1>
-          <p className="mt-0.5 sm:mt-1 text-xs sm:text-sm text-primary-foreground/75">
-            PIN, biométrie, QR, NFC et wallets toujours avec vous.
-          </p>
-        </div>
-      </div>
-      <div className="flex flex-col sm:flex-row gap-2">
-        <button className="flex items-center justify-center gap-2 rounded-xl sm:rounded-2xl bg-white px-3 sm:px-4 py-2.5 sm:py-3 text-sm font-semibold text-primary shadow-sm">
-          <FaApple className="h-4 w-4" /> App Store
-        </button>
-        <button className="flex items-center justify-center gap-2 rounded-xl sm:rounded-2xl bg-white/12 px-3 sm:px-4 py-2.5 sm:py-3 text-sm font-semibold text-white ring-1 ring-white/20">
-          <FaGooglePlay className="h-4 w-4" /> Play Store
-        </button>
-      </div>
-    </div>
-  </div>
-);
 
 const Dashboard = () => {
   const { t } = useTranslation();
@@ -65,8 +37,6 @@ const Dashboard = () => {
         {salutation} {user?.firstName}
       </div>
       
-      <AppDownloadBanner />
-
       {kycState.needsVerification && (
         <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl border border-primary/30 bg-gradient-to-r from-primary/12 via-background to-background px-4 sm:px-5 py-4 sm:py-5 shadow-sm">
           <div className="absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-primary to-emerald-400 sm:w-1.5" />

@@ -112,7 +112,7 @@
     "backToLogin": "Back to sign in",
     "termsAccept": "I agree to the Terms of Service and Privacy Policy",
     "loginSuccess": "Welcome back!",
-    "registerSuccess": "Account created successfully",
+    "registerSuccess": "Request received. Your verification code is being sent by email.",
     "resetSent": "Check your inbox",
     "passwordUpdated": "Password updated successfully",
     "verifyTitle": "Verify your email",

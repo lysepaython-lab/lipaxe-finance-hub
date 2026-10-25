@@ -84,7 +84,9 @@ export const authApi = api.injectEndpoints({
         method: 'POST',
         body: { email },
       }),
-      transformResponse: () => ({ detail: 'Code renvoye' }),
+      transformResponse: (response: { message?: string }) => ({
+        detail: response.message || 'L’envoi du code est en cours.',
+      }),
     }),
     me: b.query<User, void>({
       query: () => '/auth/me/',

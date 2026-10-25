@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { ArrowRight, ArrowUpRight, CreditCard, Sprout, UsersRound } from 'lucide-react';
+import { ArrowRight, BadgeCheck, CreditCard, Gift, Sprout, UserRound, UsersRound } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -23,7 +23,7 @@ const offers = [
     theme: 'from-[#06433a] via-[#08705c] to-[#11a77b]',
     accent: 'bg-lime-300',
     orb: 'bg-lime-200/15',
-    art: 'community',
+    art: 'tontine',
   },
   {
     id: 'affiliation',
@@ -37,42 +37,58 @@ const offers = [
 ] as const;
 
 const PromotionArtwork = ({ offer }: { offer: (typeof offers)[number] }) => {
-  const Icon = offer.icon;
-
   if (offer.art === 'card') {
     return (
-      <div className="relative h-36 w-56 rotate-[-8deg] rounded-2xl border border-white/25 bg-gradient-to-br from-white/20 to-white/5 p-4 shadow-2xl backdrop-blur-sm transition-transform duration-500 group-hover:rotate-[-4deg] group-hover:scale-105 sm:h-40 sm:w-64">
-        <div className="flex items-center justify-between text-white">
-          <div className="flex items-center gap-2 font-semibold"><span className="grid h-7 w-7 place-items-center rounded-lg bg-white/15"><Icon className="h-4 w-4" /></span><span>Lipaxe</span></div>
-          <span className="text-[10px] uppercase tracking-[0.2em] text-white/60">Virtual</span>
-        </div>
-        <div className="absolute bottom-5 left-4 flex items-center gap-2 text-sm tracking-[0.22em] text-white/85"><span className="h-5 w-7 rounded border border-white/50 bg-white/15" />•••• •••• •••• 2048</div>
-        <div className="absolute -bottom-8 -right-8 h-36 w-36 rounded-full border border-white/10" />
+      <div className="relative h-[145px] w-[218px] transition-transform duration-500 group-hover:scale-[1.03] sm:h-[170px] sm:w-[255px]">
+        <img
+          src="/brand/promotions/lipaxe-visa-starter.png"
+          alt=""
+          className="h-full w-full rounded-2xl object-contain shadow-2xl"
+          loading="lazy"
+          draggable={false}
+        />
       </div>
     );
   }
 
-  const nodes = offer.art === 'community'
-    ? [{ x: 'left-2 top-8', delay: 0 }, { x: 'right-1 top-2', delay: 0.12 }, { x: 'right-8 bottom-1', delay: 0.24 }, { x: 'left-12 bottom-0', delay: 0.36 }]
-    : [{ x: 'left-1 bottom-3', delay: 0 }, { x: 'left-16 top-2', delay: 0.12 }, { x: 'right-10 top-0', delay: 0.24 }, { x: 'right-0 bottom-8', delay: 0.36 }];
+  if (offer.art === 'tontine') {
+    return (
+      <div className="relative flex h-40 w-full max-w-[270px] items-center justify-center sm:h-48 sm:max-w-[320px]">
+        <div className="absolute h-36 w-36 rounded-full bg-emerald-200/20 blur-2xl sm:h-44 sm:w-44" />
+        <div className="absolute inset-x-6 inset-y-3 rounded-[2rem] border border-white/20 bg-white/[0.08] shadow-xl backdrop-blur-sm" />
+        <img
+          src="/brand/promotions/tontine.webp"
+          alt=""
+          className="relative h-full w-full object-contain drop-shadow-[0_16px_24px_rgba(0,0,0,0.2)]"
+          loading="lazy"
+          draggable={false}
+        />
+        <div className="absolute bottom-2 right-1 grid h-10 w-10 place-items-center rounded-2xl border border-white/25 bg-white/15 text-white shadow-lg backdrop-blur-md sm:bottom-3 sm:right-2">
+          <UsersRound className="h-5 w-5" />
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="relative h-40 w-64">
-      <div className="absolute left-1/2 top-1/2 h-px w-44 -translate-x-1/2 -translate-y-1/2 rotate-[-22deg] bg-white/35" />
-      <div className="absolute left-1/2 top-1/2 h-px w-40 -translate-x-1/2 -translate-y-1/2 rotate-[30deg] bg-white/25" />
-      {nodes.map((node, index) => (
-        <motion.div
-          key={node.x}
-          initial={{ opacity: 0, scale: 0.65 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: node.delay, duration: 0.3 }}
-          className={cn('absolute grid h-12 w-12 place-items-center rounded-2xl border border-white/25 bg-white/12 text-white shadow-lg backdrop-blur-sm', node.x)}
-        >
-          {index === 0 ? <Icon className="h-5 w-5" /> : <span className="text-lg font-semibold">{index + 1}</span>}
-        </motion.div>
-      ))}
-      <div className="absolute left-1/2 top-1/2 grid h-16 w-16 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-[1.35rem] border border-white/30 bg-white/20 text-white shadow-xl backdrop-blur-md">
-        {offer.art === 'community' ? <UsersRound className="h-7 w-7" /> : <ArrowUpRight className="h-7 w-7" />}
+    <div className="relative h-40 w-full max-w-[270px] sm:h-48 sm:max-w-[320px]" aria-hidden="true">
+      <div className="absolute left-1/2 top-1/2 h-px w-[72%] -translate-x-1/2 -translate-y-1/2 rotate-[-24deg] bg-gradient-to-r from-transparent via-white/70 to-transparent" />
+      <div className="absolute left-1/2 top-1/2 h-px w-[72%] -translate-x-1/2 -translate-y-1/2 rotate-[24deg] bg-gradient-to-r from-transparent via-white/55 to-transparent" />
+      <div className="absolute left-1/2 top-1/2 grid h-[4.5rem] w-[4.5rem] -translate-x-1/2 -translate-y-1/2 place-items-center rounded-[1.6rem] border border-white/35 bg-white/20 text-white shadow-2xl backdrop-blur-md sm:h-20 sm:w-20">
+        <Sprout className="h-8 w-8 sm:h-9 sm:w-9" />
+      </div>
+      <div className="absolute left-[7%] top-[12%] grid h-12 w-12 place-items-center rounded-2xl border border-white/25 bg-white/15 text-white shadow-lg backdrop-blur-md sm:h-14 sm:w-14">
+        <UserRound className="h-6 w-6" />
+      </div>
+      <div className="absolute right-[8%] top-[8%] grid h-12 w-12 place-items-center rounded-2xl border border-white/25 bg-white/15 text-white shadow-lg backdrop-blur-md sm:h-14 sm:w-14">
+        <UserRound className="h-6 w-6" />
+      </div>
+      <div className="absolute bottom-[8%] left-[25%] grid h-11 w-11 place-items-center rounded-2xl border border-white/25 bg-white/15 text-white shadow-lg backdrop-blur-md sm:h-12 sm:w-12">
+        <UserRound className="h-5 w-5" />
+      </div>
+      <div className="absolute bottom-[7%] right-[17%] flex items-center gap-2 rounded-2xl border border-white/25 bg-white/15 px-3 py-2 text-white shadow-lg backdrop-blur-md">
+        <Gift className="h-4 w-4" />
+        <BadgeCheck className="h-4 w-4 text-emerald-200" />
       </div>
     </div>
   );
@@ -97,7 +113,7 @@ export const DashboardPromotions = () => {
     >
       <div className={cn('absolute -right-16 -top-24 -z-10 h-72 w-72 rounded-full blur-3xl', offer.orb)} />
       <div className="absolute inset-0 -z-10 opacity-[0.08] [background-image:radial-gradient(white_1px,transparent_1px)] [background-size:18px_18px]" />
-      <div className="flex min-h-[300px] flex-col justify-between gap-6 pb-12 md:min-h-[235px] md:flex-row md:items-center md:pb-0">
+      <div className="flex min-h-[300px] flex-col justify-between gap-3 pb-12 sm:gap-5 md:min-h-[235px] md:flex-row md:items-center md:pb-0">
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={offer.id}
@@ -118,7 +134,7 @@ export const DashboardPromotions = () => {
             </Link>
           </motion.div>
         </AnimatePresence>
-        <div className="hidden flex-1 items-center justify-center md:flex">
+        <div className="flex min-h-[145px] w-full items-center justify-center md:min-h-[220px] md:flex-1">
           <PromotionArtwork offer={offer} />
         </div>
       </div>

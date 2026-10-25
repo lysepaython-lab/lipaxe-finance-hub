@@ -292,8 +292,14 @@ const Kyc = () => {
       setAddressProofCapture({ name: '', file: null });
       toast.success(t('kyc.submitted'));
       navigate('/app/kyc', { replace: true });
-    } catch {
-      toast.error(t('common.error'));
+    } catch (error: unknown) {
+      const data = (error as { data?: { message?: unknown; detail?: unknown } })?.data;
+      const message = typeof data?.message === 'string'
+        ? data.message
+        : typeof data?.detail === 'string'
+          ? data.detail
+          : t('common.error');
+      toast.error(message);
     }
   };
 
@@ -804,25 +810,21 @@ const DocumentCapture = ({
     const v = videoRef.current;
     const c = canvasRef.current;
     if (!v || !c) return;
-    const previewW = 640;
-    const previewH = 480;
+    const maxDimension = 1600;
+    const scale = Math.min(1, maxDimension / Math.max(v.videoWidth, v.videoHeight));
+    const previewW = Math.round(v.videoWidth * scale);
+    const previewH = Math.round(v.videoHeight * scale);
+    if (previewW < 640 || previewH < 480) {
+      toast.error('La résolution de la caméra est trop faible. Veuillez utiliser une meilleure caméra ou un autre appareil.');
+      return;
+    }
     c.width = previewW;
     c.height = previewH;
     const ctx = c.getContext('2d', { willReadFrequently: true });
     if (!ctx) return;
     drawVideoCover(ctx, v, previewW, previewH);
 
-    const frameX = Math.floor(previewW * 0.10);
-    const frameY = Math.floor(previewH * 0.10);
-    const frameW = Math.floor(previewW * 0.80);
-    const frameH = Math.floor(previewH * 0.80);
-    const output = document.createElement('canvas');
-    output.width = frameW;
-    output.height = frameH;
-    const outCtx = output.getContext('2d', { willReadFrequently: true });
-    if (!outCtx) return;
-    outCtx.drawImage(c, frameX, frameY, frameW, frameH, 0, 0, frameW, frameH);
-    output.toBlob((blob) => {
+    c.toBlob((blob) => {
       if (!blob) return;
       const fileName = `${label.replace(/\s+/g, '-')}-${Date.now()}.jpg`;
       const file = new File([blob], fileName, { type: 'image/jpeg' });

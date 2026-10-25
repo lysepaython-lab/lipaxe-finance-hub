@@ -11,6 +11,7 @@ export interface User {
   avatar?: string;
   isStaff?: boolean;
   isSuperuser?: boolean;
+  isPin?: boolean;
 }
 
 interface AuthState {
@@ -23,7 +24,9 @@ const loadInitial = (): AuthState => {
   try {
     const raw = localStorage.getItem('lipaxe-auth');
     if (raw) return JSON.parse(raw);
-  } catch {}
+  } catch {
+    // Ignore malformed persisted auth data and start logged out.
+  }
   return { user: null, accessToken: null, refreshToken: null };
 };
 

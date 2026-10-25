@@ -33,7 +33,7 @@ const RATES: Record<string, number> = {
 
 let user: User = {
   id: 'u_1', email: 'demo@lipaxe.app', firstName: 'Alex', lastName: 'Morgan',
-  username: 'alex.morgan', kycStatus: 'unverified',
+  username: 'alex.morgan', kycStatus: 'unverified', isPin: true,
 };
 
 // PIN required for sensitive actions. Demo PIN: 12345
@@ -615,13 +615,14 @@ export async function mockHandler(url: string, method: string, body: any): Promi
   }
 
   // ---------- PIN ----------------------------------------------------------
-  if (url === '/api/verify-pin/' && method === 'POST') {
+  if ((url === '/api/verify-pin/' || url === '/auth/verify-pin/') && method === 'POST') {
     if (body?.pin === userPin) return ok({ valid: true });
     throw new Error('PIN incorrect');
   }
-  if (url === '/api/update-pin/' && method === 'POST') {
+  if ((url === '/api/update-pin/' || url === '/auth/update-pin/') && method === 'POST') {
     if (!/^\d{5}$/.test(body?.pin || '')) throw new Error('Le PIN doit contenir 5 chiffres');
     userPin = body.pin;
+    user = { ...user, isPin: true };
     return ok({ detail: 'PIN updated' });
   }
 

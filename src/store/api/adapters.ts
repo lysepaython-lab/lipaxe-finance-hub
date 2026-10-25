@@ -73,6 +73,7 @@ export const normalizeUser = (payload: unknown): User => {
     avatar: asString(raw.profile_image_url ?? raw.avatar, ''),
     isStaff: Boolean(raw.is_staff ?? raw.isStaff),
     isSuperuser: Boolean(raw.is_superuser ?? raw.isSuperuser),
+    isPin: typeof raw.is_pin === 'boolean' ? raw.is_pin : typeof raw.isPin === 'boolean' ? raw.isPin : undefined,
   };
 };
 

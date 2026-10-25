@@ -655,7 +655,7 @@ const Transfer = () => {
                 </div>
               )}
               <div className="flex justify-between">
-                <span className="text-muted-foreground">{t('transfer.fee')}</span>
+                  <span className="text-muted-foreground">{t('transfer.totalFees')}</span>
                 <span className="inline-flex items-center gap-2 tabular">
                   <CurrencyFlagMark currency={wallet?.currency || 'USD'} />
                   {formatMoney(fee, wallet?.currency || 'USD')}

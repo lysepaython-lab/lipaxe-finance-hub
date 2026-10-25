@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useAppSelector } from '@/store/hooks';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,12 +9,14 @@ import { QRCodeSVG } from 'qrcode.react';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import { useUpdatePinMutation } from '@/store/api/platformApi';
+import { updateUser } from '@/store/slices/authSlice';
 import { PIN_REGEX } from '@/lib/security';
 import { toast } from 'sonner';
 
 const Settings = () => {
   const { t } = useTranslation();
   const user = useAppSelector(s => s.auth.user);
+  const dispatch = useAppDispatch();
   const [updatePin, { isLoading: updatingPin }] = useUpdatePinMutation();
   const [currentPin, setCurrentPin] = useState('');
   const [newPin, setNewPin] = useState('');
@@ -35,6 +37,7 @@ const Settings = () => {
     }
     try {
       await updatePin({ pin: newPin, current_pin: currentPin || undefined }).unwrap();
+      dispatch(updateUser({ isPin: true }));
       setCurrentPin('');
       setNewPin('');
       setConfirmPin('');
@@ -91,7 +94,7 @@ const Settings = () => {
           </CardHeader>
           <CardContent>
             <form onSubmit={onUpdatePin} className="grid gap-4 md:grid-cols-3">
-              <div className="space-y-2">
+              {user?.isPin && <div className="space-y-2">
                 <Label>{t('settings.currentPin')}</Label>
                 <Input
                   type="password"
@@ -102,7 +105,7 @@ const Settings = () => {
                   placeholder="•••••"
                   className="h-12 rounded-xl tracking-[0.4em]"
                 />
-              </div>
+              </div>}
               <div className="space-y-2">
                 <Label>{t('settings.newPin')}</Label>
                 <Input

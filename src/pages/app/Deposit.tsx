@@ -299,13 +299,6 @@ const Deposit = () => {
                             )}
                             <div className="font-semibold text-sm">{m.name}</div>
                           </div>
-                          {m.fees && (
-                            <div className="text-xs text-muted-foreground mt-1">
-                              {m.fees.lipaxePercent || m.fees.providerPercent
-                                ? `${t('deposit.totalFees')} ${m.fees.percent}% (${t('deposit.lipaxeFee')} ${m.fees.lipaxePercent || 0}% + ${t('deposit.providerFee')} ${m.fees.providerPercent || 0}%)`
-                                : `${t('deposit.totalFees')} ${m.fees.percent}%`}
-                            </div>
-                          )}
                         </motion.button>
                       ))}
                     </div>
@@ -382,28 +375,6 @@ const Deposit = () => {
                 <span className="text-muted-foreground">{t('deposit.amount')}</span>
                 <span className="tabular">{formatMoney(amt, wallet?.currency || 'USD')}</span>
               </div>
-              {lipaxeFee > 0 && (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">
-                    {t('deposit.lipaxeFee')} ({selectedMethod?.fees?.lipaxePercent || 0}%)
-                  </span>
-                  <span className="tabular">{formatMoney(lipaxeFee, wallet?.currency || 'USD')}</span>
-                </div>
-              )}
-              {providerFee > 0 && (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">
-                    {t('deposit.providerFee')} ({selectedMethod?.fees?.providerPercent || 0}%)
-                  </span>
-                  <span className="tabular">{formatMoney(providerFee, wallet?.currency || 'USD')}</span>
-                </div>
-              )}
-              {fixedFee > 0 && (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">{t('deposit.fixedFee')}</span>
-                  <span className="tabular">{formatMoney(fixedFee, wallet?.currency || 'USD')}</span>
-                </div>
-              )}
               <div className="flex justify-between">
                 <span className="text-muted-foreground">{t('deposit.totalFees')}</span>
                 <span className="tabular">{formatMoney(totalFee, wallet?.currency || 'USD')}</span>

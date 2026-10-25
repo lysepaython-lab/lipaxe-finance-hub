@@ -104,7 +104,6 @@ const Withdraw = () => {
     setErrors({});
     try {
       const typeName = selectedMethod?.payment_type?.name;
-      let tx;
       if (typeName === 'Cryptos') {
         const r = await cryptoWithdraw({
           symbol: 'USDT',
@@ -125,7 +124,7 @@ const Withdraw = () => {
         typeName === 'Mobile Payment' ? sanitizeText(fields.phone || '') :
         typeName === 'Bank Transfer' ? `${(fields.card_number || '').slice(-4)}` :
         selectedMethod?.name || '';
-      tx = await withdraw({
+      const tx = await withdraw({
         amount: amt,
         payment_method: resolvedPaymentMethod,
         wallet_id: walletId!,
@@ -231,13 +230,6 @@ const Withdraw = () => {
                             )}
                             <div className="font-semibold text-sm">{m.name}</div>
                           </div>
-                          {m.fees && (
-                            <div className="text-xs text-muted-foreground mt-1">
-                              {(m.fees.withdrawalPercent || m.fees.providerWithdrawalPercent)
-                                ? `${t('deposit.totalFees')} ${(m.fees.withdrawalPercent || 0) + (m.fees.providerWithdrawalPercent || 0)}% (${t('deposit.lipaxeFee')} ${m.fees.withdrawalPercent || 0}% + ${t('deposit.providerFee')} ${m.fees.providerWithdrawalPercent || 0}%)`
-                                : `${m.fees.fixed > 0 ? `${m.fees.fixed} + ` : ''}${m.fees.percent}%`}
-                            </div>
-                          )}
                         </motion.button>
                       ))}
                     </div>
@@ -292,28 +284,6 @@ const Withdraw = () => {
                 <span className="text-muted-foreground">{t('withdraw.amount')}</span>
                 <span className="tabular">{formatMoney(amt, wallet?.currency || 'USD')}</span>
               </div>
-              {lipaxeFee > 0 && (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">
-                    {t('deposit.lipaxeFee')} ({selectedMethod?.fees?.withdrawalPercent || 0}%)
-                  </span>
-                  <span className="tabular">{formatMoney(lipaxeFee, wallet?.currency || 'USD')}</span>
-                </div>
-              )}
-              {providerFee > 0 && (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">
-                    {t('deposit.providerFee')} ({selectedMethod?.fees?.providerWithdrawalPercent || 0}%)
-                  </span>
-                  <span className="tabular">{formatMoney(providerFee, wallet?.currency || 'USD')}</span>
-                </div>
-              )}
-              {fixedFee > 0 && (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">{t('deposit.fixedFee')}</span>
-                  <span className="tabular">{formatMoney(fixedFee, wallet?.currency || 'USD')}</span>
-                </div>
-              )}
               <div className="flex justify-between">
                 <span className="text-muted-foreground">{t('deposit.totalFees')}</span>
                 <span className="tabular">{formatMoney(fee, wallet?.currency || 'USD')}</span>

@@ -30,6 +30,9 @@ import {
   RotateCcw,
   Loader2,
   CheckCircle2,
+  FileText,
+  UploadCloud,
+  X,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -271,7 +274,7 @@ const Kyc = () => {
         return;
       }
       if (!addressProofCapture.file) {
-        toast.error('Photographiez un justificatif de domicile récent avec la caméra.');
+        toast.error(t('kyc.addressProofRequired'));
         return;
       }
 
@@ -684,19 +687,121 @@ const DocumentsStep = ({
           />
         )}
       </div>
-      <div className="space-y-2 rounded-2xl border border-primary/15 bg-primary/5 p-4">
-        <div>
-          <p className="font-semibold">Preuve d’adresse <span className="text-destructive">*</span></p>
-          <p className="text-xs text-muted-foreground">Facture de service, relevé bancaire ou attestation de résidence récente. La capture se fait avec la caméra, sans import depuis la galerie.</p>
-        </div>
-        <DocumentCapture
-          label="Photographier le justificatif"
-          value=""
-          documentType="unknown"
-          onCapture={onAddressProofCapture}
-        />
-      </div>
+      <AddressProofUpload onCapture={onAddressProofCapture} />
     </>
+  );
+};
+
+const ADDRESS_PROOF_MAX_BYTES = 10 * 1024 * 1024;
+const ADDRESS_PROOF_TYPES = new Map([
+  ['pdf', 'application/pdf'],
+  ['png', 'image/png'],
+  ['jpg', 'image/jpeg'],
+  ['jpeg', 'image/jpeg'],
+]);
+
+const AddressProofUpload = ({ onCapture }: { onCapture: (capture: CapturedFile) => void }) => {
+  const { t } = useTranslation();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [file, setFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!file || !file.type.startsWith('image/')) {
+      setPreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    setPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [file]);
+
+  const chooseFile = (selected?: File) => {
+    if (!selected) return;
+    const extension = selected.name.split('.').pop()?.toLowerCase() || '';
+    const expectedType = ADDRESS_PROOF_TYPES.get(extension);
+    if (!expectedType || (selected.type && selected.type !== expectedType && selected.type !== 'application/octet-stream')) {
+      toast.error(t('kyc.addressProofInvalidType'));
+      if (inputRef.current) inputRef.current.value = '';
+      return;
+    }
+    if (selected.size === 0 || selected.size > ADDRESS_PROOF_MAX_BYTES) {
+      toast.error(t('kyc.addressProofInvalidSize'));
+      if (inputRef.current) inputRef.current.value = '';
+      return;
+    }
+    setFile(selected);
+    onCapture({ name: selected.name, file: selected });
+  };
+
+  const removeFile = () => {
+    setFile(null);
+    onCapture({ name: '', file: null });
+    if (inputRef.current) inputRef.current.value = '';
+  };
+
+  return (
+    <section className="rounded-2xl border border-primary/15 bg-primary/[0.035] p-4 sm:p-5" aria-labelledby="address-proof-title">
+      <div className="flex items-start gap-3">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+          <ShieldCheck className="h-5 w-5" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <h3 id="address-proof-title" className="font-semibold">
+            {t('kyc.addressProofTitle')} <span className="text-destructive">*</span>
+          </h3>
+          <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+            {t('kyc.addressProofDescription')}
+          </p>
+          <p className="mt-2 text-xs font-medium text-muted-foreground">{t('kyc.addressProofFormats')}</p>
+        </div>
+      </div>
+
+      <input
+        ref={inputRef}
+        type="file"
+        accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg"
+        className="sr-only"
+        onChange={(event) => chooseFile(event.currentTarget.files?.[0])}
+        aria-label={t('kyc.addressProofTitle')}
+      />
+
+      {file ? (
+        <div className="mt-4 overflow-hidden rounded-xl border border-border bg-background">
+          {previewUrl && (
+            <img src={previewUrl} alt="Aperçu du justificatif de domicile" className="max-h-52 w-full bg-muted object-contain" />
+          )}
+          <div className="flex items-center gap-3 p-3 sm:p-4">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-success/10 text-success">
+              <FileText className="h-5 w-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-semibold" title={file.name}>{file.name}</p>
+              <p className="text-xs text-muted-foreground">{(file.size / (1024 * 1024)).toFixed(2)} Mo · {t('kyc.addressProofReady')}</p>
+            </div>
+            <Button type="button" variant="ghost" size="icon" aria-label="Retirer le justificatif" onClick={removeFile}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+          <div className="flex flex-wrap gap-2 border-t border-border p-3">
+            <Button type="button" variant="outline" size="sm" onClick={() => inputRef.current?.click()}>
+              {t('kyc.addressProofReplace')}
+            </Button>
+            <Button type="button" variant="ghost" size="sm" onClick={removeFile}>{t('kyc.addressProofRemove')}</Button>
+          </div>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          className="mt-4 flex min-h-28 w-full flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-primary/35 bg-background/70 px-4 py-5 text-center transition-colors hover:border-primary hover:bg-primary/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+        >
+          <UploadCloud className="h-6 w-6 text-primary" />
+          <span className="text-sm font-semibold text-foreground">{t('kyc.addressProofChoose')}</span>
+          <span className="text-xs text-muted-foreground">{t('kyc.addressProofSending')}</span>
+        </button>
+      )}
+    </section>
   );
 };
 

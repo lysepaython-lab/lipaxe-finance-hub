@@ -2,12 +2,20 @@ import { api } from './baseApi';
 import { normalizeUser } from './adapters';
 import type { User } from '../slices/authSlice';
 
+export interface LoginChallenge {
+  two_factor_required: true;
+  challenge_id: string;
+  masked_email: string;
+  expires_in: number;
+  resend_after: number;
+}
 interface AuthResp { user: User; access: string; refresh: string; }
+export type LoginResult = AuthResp | LoginChallenge;
 interface RegisterResp { userId: string; email: string; otpRequired: true; }
 
 export const authApi = api.injectEndpoints({
   endpoints: (b) => ({
-    login: b.mutation<AuthResp, { email: string; password: string }>({
+    login: b.mutation<LoginResult, { email: string; password: string }>({
       async queryFn(body, _api, _extraOptions, baseQuery) {
         const loginResult = await baseQuery({
           url: '/auth/login/',
@@ -16,7 +24,11 @@ export const authApi = api.injectEndpoints({
         });
         if ('error' in loginResult) return { error: loginResult.error };
 
-        const tokens = (loginResult.data ?? {}) as { access?: string; refresh?: string };
+        const loginData = (loginResult.data ?? {}) as LoginChallenge | { access?: string; refresh?: string };
+        if ('two_factor_required' in loginData && loginData.two_factor_required) {
+          return { data: loginData };
+        }
+        const tokens = loginData as { access?: string; refresh?: string };
         const meResult = await baseQuery({
           url: '/auth/me/',
           method: 'GET',
@@ -32,6 +44,42 @@ export const authApi = api.injectEndpoints({
           },
         };
       },
+    }),
+    verifyWebLoginOtp: b.mutation<AuthResp, { challenge_id: string; otp: string }>({
+      async queryFn(body, _api, _extraOptions, baseQuery) {
+        const verifyResult = await baseQuery({
+          url: '/auth/login/verify-otp/',
+          method: 'POST',
+          body,
+        });
+        if ('error' in verifyResult) return { error: verifyResult.error };
+
+        const tokens = (verifyResult.data ?? {}) as { access?: string; refresh?: string };
+        const meResult = await baseQuery({
+          url: '/auth/me/',
+          method: 'GET',
+          headers: tokens.access ? { Authorization: `Bearer ${tokens.access}` } : undefined,
+        });
+        if ('error' in meResult) return { error: meResult.error };
+        return {
+          data: {
+            user: normalizeUser(meResult.data),
+            access: tokens.access || '',
+            refresh: tokens.refresh || '',
+          },
+        };
+      },
+    }),
+    resendWebLoginOtp: b.mutation<{ detail: string; resend_after?: number }, { challenge_id: string }>({
+      query: (body) => ({
+        url: '/auth/login/resend-otp/',
+        method: 'POST',
+        body,
+      }),
+      transformResponse: (response: { detail?: string; resend_after?: number }) => ({
+        detail: response.detail || 'Un nouveau code a été envoyé.',
+        resend_after: response.resend_after,
+      }),
     }),
     register: b.mutation<
       RegisterResp,
@@ -112,6 +160,8 @@ export const authApi = api.injectEndpoints({
 
 export const {
   useLoginMutation,
+  useVerifyWebLoginOtpMutation,
+  useResendWebLoginOtpMutation,
   useRegisterMutation,
   useForgotPasswordMutation,
   useResetPasswordMutation,

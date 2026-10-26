@@ -1,14 +1,15 @@
-import { useMemo, useState, useCallback } from 'react';
+import { useMemo, useState, useCallback, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
 import { FaEnvelope, FaLock } from 'react-icons/fa';
-import { Eye, EyeOff, Loader2, ArrowRight, ShieldCheck } from 'lucide-react';
+import { Eye, EyeOff, Loader2, ArrowRight, ShieldCheck, RefreshCw } from 'lucide-react';
 import { AuthLayout } from '@/components/AuthLayout';
 import { IconInput } from '@/components/IconInput';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { useLoginMutation } from '@/store/api/authApi';
+import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
+import { useLoginMutation, useVerifyWebLoginOtpMutation, useResendWebLoginOtpMutation, type LoginChallenge } from '@/store/api/authApi';
 import { useAppDispatch } from '@/store/hooks';
 import { setCredentials } from '@/store/slices/authSlice';
 import { isSafeRedirect } from '@/lib/security';
@@ -20,21 +21,49 @@ const buildSchema = (t: (key: string) => string) => z.object({
   password: z.string().min(6, t('auth.passwordTooShort')),
 });
 
+type LoginApiError = {
+  data?: {
+    error?: string;
+    message?: string;
+    detail?: string;
+    retry_after?: number;
+    verification?: { user_id?: string | number; email?: string };
+  };
+};
+
 const Login = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const [params] = useSearchParams();
   const [login, { isLoading }] = useLoginMutation();
+  const [verifyOtp, { isLoading: isVerifying }] = useVerifyWebLoginOtpMutation();
+  const [resendOtp, { isLoading: isResending }] = useResendWebLoginOtpMutation();
 
   const [form, setForm] = useState({ email: '', password: '' });
   const [showPwd, setShowPwd] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [rememberMe, setRememberMe] = useState(false);
+  const [challenge, setChallenge] = useState<LoginChallenge | null>(null);
+  const [otp, setOtp] = useState('');
+  const [resendIn, setResendIn] = useState(0);
   const schema = useMemo(() => buildSchema(t), [t]);
 
   const redirect = params.get('redirect') || '';
+
+  useEffect(() => {
+    if (!challenge || resendIn <= 0) return;
+    const timer = window.setTimeout(() => setResendIn((value) => Math.max(0, value - 1)), 1000);
+    return () => window.clearTimeout(timer);
+  }, [challenge, resendIn]);
+
+  const finishLogin = (res: { user: Parameters<typeof setCredentials>[0]['user']; access: string; refresh: string }) => {
+    dispatch(setCredentials({ user: res.user, accessToken: res.access, refreshToken: res.refresh }));
+    toast.success(t('auth.loginSuccess'));
+    const target = redirect && isSafeRedirect(redirect) ? redirect : '/app';
+    navigate(target);
+  };
 
   const updateField = useCallback((field: string, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -77,21 +106,16 @@ const Login = () => {
     setErrors({});
     try {
       const res = await login(form).unwrap();
-      dispatch(setCredentials({
-        user: res.user,
-        accessToken: res.access,
-        refreshToken: res.refresh,
-      }));
-      toast.success(t('auth.loginSuccess'));
-      const target = redirect && isSafeRedirect(redirect) ? redirect : '/app';
-      navigate(target);
-    } catch (e: any) {
-      const data = e?.data as {
-        error?: string;
-        message?: string;
-        detail?: string;
-        verification?: { user_id?: string | number; email?: string };
-      } | undefined;
+      if ('two_factor_required' in res && res.two_factor_required) {
+        setChallenge(res);
+        setOtp('');
+        setResendIn(res.resend_after);
+        toast.success(t('auth.loginOtpSent'));
+        return;
+      }
+      finishLogin(res);
+    } catch (e: unknown) {
+      const data = (e as LoginApiError)?.data;
 
       // A verification recovery is exposed only after the backend has checked
       // the password. No session is issued until the email OTP is validated.
@@ -114,6 +138,33 @@ const Login = () => {
     }
   };
 
+  const submitOtp = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!challenge || !/^\d{6}$/.test(otp)) return;
+    try {
+      const res = await verifyOtp({ challenge_id: challenge.challenge_id, otp }).unwrap();
+      finishLogin(res);
+    } catch (error: unknown) {
+      const data = (error as LoginApiError)?.data;
+      toast.error(data?.detail || t('auth.loginOtpInvalid'));
+      setOtp('');
+    }
+  };
+
+  const handleResendOtp = async () => {
+    if (!challenge || resendIn > 0 || isResending) return;
+    try {
+      await resendOtp({ challenge_id: challenge.challenge_id }).unwrap();
+      setResendIn(challenge.resend_after);
+      setOtp('');
+      toast.success(t('auth.loginOtpResent'));
+    } catch (error: unknown) {
+      const data = (error as LoginApiError)?.data;
+      toast.error(data?.detail || t('common.error'));
+      if (data?.retry_after) setResendIn(data.retry_after);
+    }
+  };
+
   const isFormValid = form.email.length > 0 && form.password.length >= 6;
 
   return (
@@ -129,15 +180,41 @@ const Login = () => {
           </span>
         </div>
         <h1 className="font-display text-3xl font-bold leading-tight tracking-tight">
-          {t('auth.loginTitle')}
+            {challenge ? t('auth.loginOtpTitle') : t('auth.loginTitle')}
         </h1>
         <p className="text-sm leading-relaxed text-muted-foreground">
-          {t('auth.loginSubtitle')}
+          {challenge ? t('auth.loginOtpDescription', { email: challenge.masked_email }) : t('auth.loginSubtitle')}
         </p>
       </div>
 
       {/* Form */}
-      <form onSubmit={onSubmit} className="space-y-5" noValidate>
+      {challenge ? (
+      <form onSubmit={submitOtp} className="space-y-5" noValidate>
+        <div className="space-y-2">
+          <label className="block text-sm font-medium">{t('auth.loginOtpLabel')}</label>
+          <InputOTP maxLength={6} value={otp} onChange={(value) => setOtp(value.replace(/\D/g, '').slice(0, 6))}>
+            <InputOTPGroup className="w-full justify-between gap-2">
+              {Array.from({ length: 6 }).map((_, index) => (
+                <InputOTPSlot key={index} index={index} className="h-11 w-10 rounded-lg border-2 bg-card text-lg sm:h-12 sm:w-11 sm:rounded-xl" />
+              ))}
+            </InputOTPGroup>
+          </InputOTP>
+        </div>
+        <Button type="submit" className="h-12 w-full rounded-xl bg-gradient-brand shadow-brand" disabled={isVerifying || otp.length !== 6}>
+          {isVerifying && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          {t('auth.loginOtpAction')} <ArrowRight className="ml-2 h-4 w-4" />
+        </Button>
+        <div className="flex flex-col items-center gap-3 text-sm">
+          <button type="button" onClick={() => void handleResendOtp()} disabled={resendIn > 0 || isResending} className="inline-flex items-center gap-2 text-primary hover:underline disabled:text-muted-foreground disabled:no-underline">
+            <RefreshCw className={`h-4 w-4 ${isResending ? 'animate-spin' : ''}`} />
+            {resendIn > 0 ? t('auth.loginOtpResendIn', { seconds: resendIn }) : t('auth.loginOtpResend')}
+          </button>
+          <button type="button" onClick={() => { setChallenge(null); setOtp(''); }} className="text-muted-foreground hover:text-foreground">
+            {t('auth.loginOtpBack')}
+          </button>
+        </div>
+      </form>
+      ) : <form onSubmit={onSubmit} className="space-y-5" noValidate>
         {/* Email */}
         <div className="space-y-1.5">
           <IconInput
@@ -221,7 +298,7 @@ const Login = () => {
             )}
           </span>
         </Button>
-      </form>
+      </form>}
 
       {/* Divider */}
       <div className="relative my-6">

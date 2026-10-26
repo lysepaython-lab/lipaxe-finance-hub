@@ -548,8 +548,22 @@ export async function mockHandler(url: string, method: string, body: any): Promi
   // ---------- AUTH (legacy + Django-style) ---------------------------------
   if ((url === '/auth/login/' || url === '/api/jwt/create/') && method === 'POST') {
     if (!body?.email || !body?.password) throw new Error('Missing credentials');
+    if (url === '/auth/login/') {
+      return ok({
+        two_factor_required: true,
+        challenge_id: 'mock-web-login-challenge',
+        masked_email: body.email.replace(/^(.).+(@.+)$/, '$1•••$2'),
+        expires_in: 600,
+        resend_after: 30,
+      });
+    }
     return ok({ user, access: 'mock-access-token', refresh: 'mock-refresh-token' });
   }
+  if (url === '/auth/login/verify-otp/' && method === 'POST') {
+    if (body?.otp !== '123456' || body?.challenge_id !== 'mock-web-login-challenge') throw new Error('Code incorrect ou expiré.');
+    return ok({ access: 'mock-access-token', refresh: 'mock-refresh-token' });
+  }
+  if (url === '/auth/login/resend-otp/' && method === 'POST') return ok({ detail: 'A new sign-in code has been sent.', resend_after: 30 });
   if (url === '/api/jwt/refresh/' && method === 'POST') {
     return ok({ access: 'mock-access-token-refreshed' });
   }

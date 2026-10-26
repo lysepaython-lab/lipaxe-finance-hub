@@ -110,7 +110,7 @@ const Login = () => {
         setChallenge(res);
         setOtp('');
         setResendIn(res.resend_after);
-        toast.success(t('auth.loginOtpSent'));
+        toast.success(res.detail || t('auth.loginOtpSent'));
         return;
       }
       finishLogin(res);

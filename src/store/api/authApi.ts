@@ -8,6 +8,7 @@ export interface LoginChallenge {
   masked_email: string;
   expires_in: number;
   resend_after: number;
+  detail?: string;
 }
 interface AuthResp { user: User; access: string; refresh: string; }
 export type LoginResult = AuthResp | LoginChallenge;

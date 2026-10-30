@@ -101,6 +101,7 @@ export const platformApi = api.injectEndpoints({
     updatePin: b.mutation<{ detail: string }, { pin: string; current_pin?: string }>({
       query: (body) => ({ url: '/auth/update-pin/', method: 'POST', body }),
       transformResponse: () => ({ detail: 'PIN mis a jour' }),
+      invalidatesTags: ['User'],
     }),
   }),
 });

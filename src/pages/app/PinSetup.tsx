@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useUpdatePinMutation } from '@/store/api/platformApi';
+import { useMeQuery } from '@/store/api/authApi';
 import { useAppDispatch } from '@/store/hooks';
 import { logout, updateUser } from '@/store/slices/authSlice';
 import { PIN_REGEX } from '@/lib/security';
@@ -18,6 +19,8 @@ const PinSetup = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [updatePin, { isLoading }] = useUpdatePinMutation();
+  const { refetch: refreshUser } = useMeQuery();
+  const [isRefreshingUser, setIsRefreshingUser] = useState(false);
   const [pin, setPin] = useState('');
   const [confirmation, setConfirmation] = useState('');
 
@@ -36,7 +39,12 @@ const PinSetup = () => {
 
     try {
       await updatePin({ pin }).unwrap();
-      dispatch(updateUser({ isPin: true }));
+      setIsRefreshingUser(true);
+      const refreshedUser = await refreshUser().unwrap();
+      if (refreshedUser.isPin !== true) {
+        throw new Error('Le serveur n’a pas confirmé la configuration du code PIN.');
+      }
+      dispatch(updateUser(refreshedUser));
       toast.success(t('settings.pinSetupSuccess'));
       const destination = (location.state as { from?: unknown } | null)?.from;
       navigate(typeof destination === 'string' && destination.startsWith('/app/') ? destination : '/app', { replace: true });
@@ -49,7 +57,9 @@ const PinSetup = () => {
         navigate('/login', { replace: true });
         return;
       }
-      toast.error(data?.detail || data?.message || t('common.error'));
+      toast.error(data?.detail || data?.message || (error instanceof Error ? error.message : t('common.error')));
+    } finally {
+      setIsRefreshingUser(false);
     }
   };
 
@@ -78,9 +88,9 @@ const PinSetup = () => {
             <div className="rounded-xl border border-primary/15 bg-primary/5 p-3 text-sm leading-relaxed text-muted-foreground">
               <LockKeyhole className="mr-2 inline h-4 w-4 text-primary" />{t('settings.pinRequired')}
             </div>
-            <Button type="submit" disabled={isLoading} className="h-12 w-full rounded-xl bg-gradient-brand shadow-brand">
-              {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}
-              {isLoading ? t('common.loading') : t('settings.updatePin')}
+            <Button type="submit" disabled={isLoading || isRefreshingUser} className="h-12 w-full rounded-xl bg-gradient-brand shadow-brand">
+              {isLoading || isRefreshingUser ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}
+              {isLoading || isRefreshingUser ? t('common.loading') : t('settings.updatePin')}
             </Button>
           </form>
         </CardContent>

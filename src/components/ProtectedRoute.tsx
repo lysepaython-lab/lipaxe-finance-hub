@@ -32,6 +32,10 @@ export const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
   }
 
   const isPinSetupPath = location.pathname === '/app/security/pin-setup';
+  const requestedDestination = (location.state as { from?: unknown } | null)?.from;
+  const pinSetupDestination = typeof requestedDestination === 'string' && requestedDestination.startsWith('/app/')
+    ? requestedDestination
+    : '/app';
   if (isUserLoading && currentUser?.isPin === undefined) {
     return <div className="grid min-h-screen place-items-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   }
@@ -54,7 +58,7 @@ export const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
     return <Navigate to="/app/security/pin-setup" state={{ from: `${location.pathname}${location.search}${location.hash}` }} replace />;
   }
   if (currentUser?.isPin === true && isPinSetupPath) {
-    return <Navigate to="/app" replace />;
+    return <Navigate to={pinSetupDestination} replace />;
   }
 
   const isAppPath = location.pathname === '/app' || location.pathname.startsWith('/app/');

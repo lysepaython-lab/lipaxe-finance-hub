@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
@@ -39,6 +39,7 @@ const VerifyEmail = () => {
   const [error, setError] = useState<string | null>(null);
   const [cooldown, setCooldown] = useState(0);
   const [editOpen, setEditOpen] = useState(false);
+  const submittingRef = useRef(false);
   const [verifyEmail, { isLoading: verifying }] = useVerifyEmailMutation();
   const [resendOtp, { isLoading: resending }] = useResendOtpMutation();
   const [updatePending] = useUpdatePendingEmailMutation();
@@ -67,6 +68,7 @@ const VerifyEmail = () => {
   }, [cooldown]);
 
   const submit = async (code = otp) => {
+    if (submittingRef.current) return;
     if (code.length !== OTP_LENGTH) {
       setError(t('auth.otpIncomplete'));
       return;
@@ -76,6 +78,7 @@ const VerifyEmail = () => {
       return;
     }
     setError(null);
+    submittingRef.current = true;
     try {
       const session = await verifyEmail({ userId, otp: code }).unwrap();
       dispatch(setCredentials({ user: session.user, accessToken: session.access, refreshToken: session.refresh }));
@@ -86,6 +89,8 @@ const VerifyEmail = () => {
     } catch (e: unknown) {
       const failure = e as { data?: { detail?: string }; message?: string };
       setError(failure?.data?.detail || failure?.message || t('auth.otpInvalid'));
+    } finally {
+      submittingRef.current = false;
     }
   };
 

@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes, Navigate, useLocation } from "react-router-dom";
+import { useState } from "react";
 import { HelmetProvider } from 'react-helmet-async';
 import { Provider } from "react-redux";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -73,9 +74,10 @@ const PublicAuthRoute = ({ children }: { children: JSX.Element }) => {
 
 const VerifyEmailRoute = ({ children }: { children: JSX.Element }) => {
   const token = useAppSelector((s) => s.auth.accessToken);
-  const pending = getPendingVerification();
-  if (token) return <Navigate to="/app" replace />;
-  if (!pending?.userId || !pending.email) return <Navigate to="/register" replace />;
+  const [authenticatedAtEntry] = useState(() => Boolean(token));
+  const [pendingAtEntry] = useState(() => getPendingVerification());
+  if (authenticatedAtEntry) return <Navigate to="/app" replace />;
+  if (!pendingAtEntry?.userId || !pendingAtEntry.email) return <Navigate to="/register" replace />;
   return children;
 };
 

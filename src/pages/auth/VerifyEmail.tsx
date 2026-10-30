@@ -8,6 +8,8 @@ import { AuthLayout } from '@/components/AuthLayout';
 import { Button } from '@/components/ui/button';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { useResendOtpMutation, useVerifyEmailMutation } from '@/store/api/authApi';
+import { useAppDispatch } from '@/store/hooks';
+import { setCredentials } from '@/store/slices/authSlice';
 import { useUpdatePendingEmailMutation } from '@/store/api/securityApi';
 import { EditEmailModal } from '@/components/security/EditEmailModal';
 import {
@@ -25,6 +27,7 @@ const OTP_LENGTH = 6;
 const VerifyEmail = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
   const pending = getPendingVerification();
   const initialEmail = pending?.email || '';
   const initialUserId = pending?.userId || '';
@@ -74,11 +77,12 @@ const VerifyEmail = () => {
     }
     setError(null);
     try {
-      await verifyEmail({ userId, otp: code }).unwrap();
+      const session = await verifyEmail({ userId, otp: code }).unwrap();
+      dispatch(setCredentials({ user: session.user, accessToken: session.access, refreshToken: session.refresh }));
       clearPendingVerification();
       toast.success(t('auth.emailVerified'));
       const continuation = initialRedirect && isSafeRedirect(initialRedirect) ? initialRedirect : '/app/kyc';
-      navigate(`/login?redirect=${encodeURIComponent(continuation)}`);
+      navigate(continuation, { replace: true });
     } catch (e: unknown) {
       const failure = e as { data?: { detail?: string }; message?: string };
       setError(failure?.data?.detail || failure?.message || t('auth.otpInvalid'));

@@ -119,13 +119,35 @@ export const authApi = api.injectEndpoints({
         body,
       }),
     }),
-    verifyEmail: b.mutation<{ detail: string; verified: boolean }, { userId: string; otp: string }>({
-      query: ({ userId, otp }) => ({
-        url: `/auth/register/${userId}/verify_otp/`,
-        method: 'POST',
-        body: { otp },
-      }),
-      transformResponse: () => ({ detail: 'Email verifie', verified: true }),
+    verifyEmail: b.mutation<AuthResp, { userId: string; otp: string }>({
+      async queryFn({ userId, otp }, _api, _extraOptions, baseQuery) {
+        const verifyResult = await baseQuery({
+          url: `/auth/register/${userId}/verify_otp/`,
+          method: 'POST',
+          body: { otp, platform: 'web' },
+        });
+        if ('error' in verifyResult) return { error: verifyResult.error };
+
+        const tokens = (verifyResult.data ?? {}) as { access?: string; refresh?: string };
+        if (!tokens.access || !tokens.refresh) {
+          return { error: { status: 'CUSTOM_ERROR', error: 'Le serveur n’a pas renvoyé les jetons de session.' } };
+        }
+
+        const meResult = await baseQuery({
+          url: '/auth/me/',
+          method: 'GET',
+          headers: { Authorization: `Bearer ${tokens.access}` },
+        });
+        if ('error' in meResult) return { error: meResult.error };
+
+        return {
+          data: {
+            user: normalizeUser(meResult.data),
+            access: tokens.access,
+            refresh: tokens.refresh,
+          },
+        };
+      },
     }),
     resendOtp: b.mutation<{ detail: string; otp?: string }, { userId: string; email: string }>({
       query: ({ userId, email }) => ({

@@ -351,6 +351,7 @@ export const normalizeCardOffer = (payload: unknown) => {
 
   return {
     id: asString(raw.id),
+    provider: asString(raw.provider).toLowerCase(),
     brand,
     name: asString(raw.name ?? `${brand} Virtual`),
     price: asNumber(raw.amount ?? raw.price ?? creationFee),
@@ -419,6 +420,7 @@ export const normalizeUserCard = (payload: unknown) => {
       (raw.virtual_card as UnknownRecord | undefined)?.card_image,
       (raw.virtual_card as UnknownRecord | undefined)?.design_image,
     ),
+    provider: asString(raw.provider).toLowerCase(),
   };
 };
 

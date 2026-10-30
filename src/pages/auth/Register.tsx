@@ -12,7 +12,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useRegisterMutation } from '@/store/api/authApi';
 import { toast } from 'sonner';
 import { isSafeRedirect } from '@/lib/security';
-import { setPendingVerification } from '@/lib/pendingVerification';
+import { getPendingVerification, setPendingVerification } from '@/lib/pendingVerification';
 
 const buildSchema = (t: (key: string) => string) => z.object({
   firstName: z.string().trim().min(1, t('auth.requiredField')).max(50),
@@ -30,6 +30,7 @@ const Register = () => {
   const [register, { isLoading }] = useRegisterMutation();
   const incomingRef = params.get('reference') || params.get('ref') || '';
   const redirect = params.get('redirect') || '';
+  const pendingVerification = getPendingVerification();
   const schema = useMemo(() => buildSchema(t), [t]);
   const [form, setForm] = useState({
     firstName: '',
@@ -177,6 +178,14 @@ const Register = () => {
           {t('auth.signIn')}
         </Link>
       </p>
+      {pendingVerification?.userId && (
+        <div className="mt-4 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-center text-sm">
+          <p className="text-muted-foreground">{t('auth.pendingSignupNotice')}</p>
+          <Link to="/verify-email" className="mt-1 inline-block font-semibold text-primary hover:underline">
+            {t('auth.resumeVerification')}
+          </Link>
+        </div>
+      )}
     </AuthLayout>
   );
 };

@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, CreditCard, Eye, EyeOff, Snowflake } from 'lucide-react';
+import { ArrowLeft, CreditCard, Eye, EyeOff, Loader2, Snowflake, XCircle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { PageHeader } from '@/components/PageHeader';
 import { Button } from '@/components/ui/button';
@@ -16,11 +16,14 @@ import { PinModal, usePinGate } from '@/components/security/PinModal';
 import { CardArtwork } from '@/components/cards/CardArtwork';
 import {
   type UserCard,
+  type RevealedCardDetails,
   useCardTransactionsQuery,
   useFreezeCardMutation,
   useMyCardsQuery,
+  useRevealScarabPayCardMutation,
   useRechargeCardMutation,
   useWithdrawCardMutation,
+  useTerminateScarabPayCardMutation,
 } from '@/store/api/cardApi';
 import { formatDate, formatMoney } from '@/lib/format';
 import { toast } from 'sonner';
@@ -45,14 +48,22 @@ const CardDetail = () => {
   const card = useMemo(() => (cards || []).find((item) => item.id === id) || null, [cards, id]);
   const { data: cardTx } = useCardTransactionsQuery(id, { skip: !id });
   const [reveal, setReveal] = useState(false);
+  const [revealedDetails, setRevealedDetails] = useState<RevealedCardDetails | null>(null);
   const [fundOpen, setFundOpen] = useState(false);
   const [fundAmount, setFundAmount] = useState('20');
   const [fundWallet, setFundWallet] = useState<string>();
   const [fundMode, setFundMode] = useState<'recharge' | 'withdraw'>('recharge');
+  const [terminateOpen, setTerminateOpen] = useState(false);
+  const [terminationReason, setTerminationReason] = useState<'lost' | 'stolen' | 'fraud' | 'no_longer_needed' | 'other'>('no_longer_needed');
   const [rechargeCard] = useRechargeCardMutation();
   const [withdrawCard] = useWithdrawCardMutation();
   const [freezeCard] = useFreezeCardMutation();
+  const [revealScarabPayCard, revealRequest] = useRevealScarabPayCardMutation();
+  const [terminateScarabPayCard] = useTerminateScarabPayCardMutation();
   const pin = usePinGate();
+  const isScarabPay = card?.provider === 'scarabpay';
+  const detailsVisible = isScarabPay ? Boolean(revealedDetails) : reveal;
+  const activeReveal = isScarabPay ? revealedDetails : null;
   const isFrozen = card?.status === 'frozen';
   const canMoveFunds = card?.status === 'active';
 
@@ -111,13 +122,68 @@ const CardDetail = () => {
     });
   };
 
+  const submitTermination = () => {
+    if (!card || !isScarabPay) return;
+    pin.guard(async (pinCode) => {
+      try {
+        if (!pinCode) return;
+        const result = await terminateScarabPayCard({ card_id: card.id, reason: terminationReason, pin: pinCode }).unwrap();
+        notifyOperation(result, 'Carte résiliée');
+        setTerminateOpen(false);
+      } catch (error) {
+        toast.error(apiMessage(error, 'Impossible de résilier cette carte.'));
+      }
+    });
+  };
+
   const toggleReveal = () => {
-    if (reveal) {
+    if (detailsVisible) {
       setReveal(false);
+      setRevealedDetails(null);
+      revealRequest.reset();
       return;
     }
-    pin.guard(() => setReveal(true));
+    pin.guard(async (pinCode) => {
+      if (!card) return;
+      if (!isScarabPay) {
+        setReveal(true);
+        return;
+      }
+      if (!pinCode) return;
+      try {
+        const details = await revealScarabPayCard({ card_id: card.id, pin: pinCode }).unwrap();
+        setRevealedDetails(details);
+      } catch (error) {
+        toast.error(apiMessage(error, 'Impossible d’afficher les détails de la carte.'));
+      } finally {
+        revealRequest.reset();
+      }
+    });
   };
+
+  useEffect(() => {
+    if (!revealedDetails) return;
+    const hide = () => setRevealedDetails(null);
+    const timer = window.setTimeout(hide, 30_000);
+    const onVisibilityChange = () => {
+      if (document.visibilityState !== 'visible') hide();
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    window.addEventListener('pagehide', hide);
+    return () => {
+      window.clearTimeout(timer);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      window.removeEventListener('pagehide', hide);
+    };
+  }, [revealedDetails]);
+
+  useEffect(() => {
+    setReveal(false);
+    setRevealedDetails(null);
+    revealRequest.reset();
+    // The card id is the only route value that should reset revealed data.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
 
   if (isLoading) {
     return (
@@ -161,26 +227,27 @@ const CardDetail = () => {
           <CardArtwork
             image={card.image}
             brand={card.brand}
-            name={card.name_on_card}
-            holder={card.name_on_card}
-            masked={reveal && card.card_number ? card.card_number : card.number_masked}
-            exp={card.exp}
+            name={activeReveal?.cardholder_name || card.name_on_card}
+            holder={activeReveal?.cardholder_name || card.name_on_card}
+            masked={activeReveal?.card_number || (reveal && card.card_number ? card.card_number : card.number_masked)}
+            exp={activeReveal?.expiry || card.exp}
             balance={formatMoney(card.balance, card.currency)}
             muted={card.status === 'frozen'}
             className="mx-auto w-full max-w-[390px] lg:max-w-none"
           />
-          {reveal && (
+          {detailsVisible && (
             <div className="grid min-w-0 grid-cols-1 gap-3 rounded-3xl border border-border bg-muted/30 p-4 text-sm sm:grid-cols-2">
               <div className="min-w-0">
                 <div className="text-xs text-muted-foreground">CVV</div>
-                <div className="font-bold">{card.cvv || '---'}</div>
+                <div className="font-bold">{activeReveal?.cvv || card.cvv || '---'}</div>
               </div>
-              <div className="min-w-0">
+              {!isScarabPay && <div className="min-w-0">
                 <div className="text-xs text-muted-foreground">Billing</div>
                 <div className="truncate font-bold">{card.billing || '---'}</div>
-              </div>
+              </div>}
             </div>
           )}
+          {isScarabPay && detailsVisible && <p className="px-1 text-xs text-muted-foreground">{t('cards.revealNotice')}</p>}
         </div>
 
         <div className="min-w-0 space-y-4">
@@ -194,9 +261,11 @@ const CardDetail = () => {
                 <Badge variant={card.status === 'active' ? 'default' : 'secondary'} className="capitalize">{card.status}</Badge>
               </div>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                <Button variant="outline" className="min-w-0" onClick={toggleReveal}>
-                  {reveal ? <EyeOff className="mr-2 h-4 w-4" /> : <Eye className="mr-2 h-4 w-4" />}
-                  {reveal ? t('cards.hide') : t('cards.reveal')}
+                <Button variant="outline" className="min-w-0" onClick={toggleReveal} disabled={revealRequest.isLoading}>
+                  {revealRequest.isLoading
+                    ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    : detailsVisible ? <EyeOff className="mr-2 h-4 w-4" /> : <Eye className="mr-2 h-4 w-4" />}
+                  {detailsVisible ? t('cards.hide') : t('cards.reveal')}
                 </Button>
                 <Button variant="outline" className="min-w-0" onClick={() => toggleFreeze(card)} disabled={card.status === 'pending' || card.status === 'inactive'}>
                   <Snowflake className="mr-2 h-4 w-4" /> {card.status === 'frozen' ? 'Unfreeze' : 'Freeze'}
@@ -208,9 +277,12 @@ const CardDetail = () => {
                 >
                   Recharge
                 </Button>
-                <Button variant="outline" onClick={() => openFund('withdraw')} disabled={!canMoveFunds}>
+                {!isScarabPay && <Button variant="outline" onClick={() => openFund('withdraw')} disabled={!canMoveFunds}>
                   Withdrawal
-                </Button>
+                </Button>}
+                {isScarabPay && <Button variant="destructive" onClick={() => setTerminateOpen(true)} disabled={!['active', 'frozen'].includes(card.status)}>
+                  <XCircle className="mr-2 h-4 w-4" /> Terminate card
+                </Button>}
               </div>
               <div className="flex items-center justify-between rounded-2xl bg-muted/45 px-3 py-2 text-sm">
                 <span className="flex items-center gap-2 text-muted-foreground"><Snowflake className="h-4 w-4" /> Freeze status</span>
@@ -257,6 +329,31 @@ const CardDetail = () => {
             <div className="flex justify-end gap-3 pt-2">
               <Button variant="outline" onClick={() => setFundOpen(false)}>Cancel</Button>
               <Button onClick={submitFund} className="bg-primary text-primary-foreground hover:bg-primary/90">Confirm</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={terminateOpen} onOpenChange={setTerminateOpen}>
+        <DialogContent className="max-w-md rounded-3xl">
+          <DialogHeader>
+            <DialogTitle className="font-display">Terminate this card?</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">This action cannot be undone. ScarabPay may return an eligible remaining balance after its termination fee; Lipaxe will credit it to your USD wallet after provider confirmation.</p>
+            <div className="space-y-2">
+              <Label htmlFor="termination-reason">Reason</Label>
+              <select id="termination-reason" value={terminationReason} onChange={(event) => setTerminationReason(event.target.value as typeof terminationReason)} className="h-11 w-full rounded-xl border border-input bg-background px-3 text-sm">
+                <option value="no_longer_needed">No longer needed</option>
+                <option value="lost">Lost</option>
+                <option value="stolen">Stolen</option>
+                <option value="fraud">Fraud concern</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            <div className="flex justify-end gap-3 pt-2">
+              <Button variant="outline" onClick={() => setTerminateOpen(false)}>Keep card</Button>
+              <Button variant="destructive" onClick={submitTermination}>Confirm termination</Button>
             </div>
           </div>
         </DialogContent>

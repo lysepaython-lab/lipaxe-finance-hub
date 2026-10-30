@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1350" viewBox="0 0 1080 1350" role="img" aria-labelledby="title description">
+  <title id="title">Lipaxe est de retour</title>
+  <desc id="description">Annonce du relancement de Lipaxe et de sa nouvelle identité visuelle.</desc>
+  <defs>
+    <linearGradient id="green" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#075e4d" />
+      <stop offset="1" stop-color="#003b32" />
+    </linearGradient>
+    <clipPath id="panel">
+      <path d="M0 1000 Q0 940 64 940 H1080 V1350 H0Z" />
+    </clipPath>
+  </defs>
+
+  <rect width="1080" height="1350" fill="#f5f5eb" />
+  <rect x="0" y="0" width="15" height="940" fill="#10b981" />
+
+  <g font-family="'DM Sans', 'Segoe UI', sans-serif">
+    <image href="../lipaxe-mark.png" x="72" y="56" width="66" height="66" />
+    <text x="153" y="105" fill="#075e4d" font-size="42" font-weight="800" letter-spacing="-2">Lipaxe</text>
+    <text x="1008" y="91" text-anchor="end" fill="#58736a" font-size="16" font-weight="700" letter-spacing="3">ANNONCE DE RELANCEMENT</text>
+
+    <line x1="76" y1="207" x2="1004" y2="207" stroke="#d7e2d9" stroke-width="2" />
+    <circle cx="87" cy="273" r="7" fill="#10b981" />
+    <text x="108" y="280" fill="#075e4d" font-size="18" font-weight="700" letter-spacing="3">UN NOUVEAU CHAPITRE</text>
+
+    <image href="../lipaxe-mark.png" x="651" y="266" width="360" height="360" opacity="0.055" />
+
+    <text x="76" y="432" fill="#073d33" font-size="100" font-weight="700" letter-spacing="-6">Lipaxe est</text>
+    <text x="76" y="550" fill="#073d33" font-size="118" font-weight="800" letter-spacing="-7">de retour.</text>
+    <rect x="78" y="593" width="146" height="8" rx="4" fill="#10b981" />
+
+    <text x="78" y="695" fill="#204b41" font-size="32" font-weight="500">
+      <tspan x="78" dy="0">Une identité repensée, et la même volonté :</tspan>
+      <tspan x="78" dy="49">simplifier la gestion de votre argent au quotidien.</tspan>
+    </text>
+    <text x="78" y="836" fill="#5c776f" font-size="23" font-weight="500">Nous sommes heureux de vous retrouver.</text>
+
+    <g clip-path="url(#panel)">
+      <rect x="0" y="940" width="1080" height="410" fill="url(#green)" />
+      <circle cx="1020" cy="1110" r="265" fill="none" stroke="#1a806a" stroke-width="2" opacity="0.55" />
+      <circle cx="1020" cy="1110" r="210" fill="none" stroke="#1a806a" stroke-width="2" opacity="0.45" />
+      <path d="M760 1350 C840 1200 930 1090 1080 1015 V1350Z" fill="#10b981" opacity="0.16" />
+    </g>
+
+    <text x="78" y="1040" fill="#b6e8d2" font-size="17" font-weight="700" letter-spacing="3">RETROUVEZ LIPAXE EN LIGNE</text>
+    <text x="78" y="1120" fill="#ffffff" font-size="58" font-weight="800" letter-spacing="-2">web.lipaxe.com</text>
+    <rect x="78" y="1170" width="292" height="70" rx="35" fill="#e8f5ed" />
+    <text x="224" y="1215" text-anchor="middle" fill="#075e4d" font-size="22" font-weight="700">Découvrir Lipaxe</text>
+
+    <text x="1000" y="1292" text-anchor="end" fill="#b6d8ca" font-size="15" font-weight="600" letter-spacing="2">LIPAXE</text>
+  </g>
+</svg>

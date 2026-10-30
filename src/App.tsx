@@ -67,9 +67,7 @@ const PathRedirect = ({ buildTarget }: { buildTarget: (path: string) => string }
 
 const PublicAuthRoute = ({ children }: { children: JSX.Element }) => {
   const token = useAppSelector((s) => s.auth.accessToken);
-  const pending = getPendingVerification();
   if (token) return <Navigate to="/app" replace />;
-  if (pending?.userId) return <Navigate to="/verify-email" replace />;
   return children;
 };
 

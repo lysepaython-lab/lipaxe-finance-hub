@@ -9,12 +9,13 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
 import { WalletSelector } from '@/components/security/WalletSelector';
 import { PinModal, usePinGate } from '@/components/security/PinModal';
 import { CardArtwork } from '@/components/cards/CardArtwork';
 import { useAppSelector } from '@/store/hooks';
-import { type CardOffer, useCardOffersQuery, useOrderCardMutation } from '@/store/api/cardApi';
+import { type CardOffer, useCardOffersQuery, useOrderCardMutation, useScarabPayKycStatusQuery } from '@/store/api/cardApi';
 import { formatMoney } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -150,6 +151,7 @@ const VirtualCard = () => {
   const { t } = useTranslation();
   const user = useAppSelector((s) => s.auth.user);
   const { data: offers, isLoading } = useCardOffersQuery();
+  const { data: scarabKyc } = useScarabPayKycStatusQuery();
   const [orderCard, { isLoading: ordering }] = useOrderCardMutation();
   const pin = usePinGate();
   
@@ -159,6 +161,12 @@ const VirtualCard = () => {
   const [walletId, setWalletId] = useState<string>();
   const [funding, setFunding] = useState('5');
   const [nameOnCard, setNameOnCard] = useState((user ? `${user.firstName} ${user.lastName}` : '').toUpperCase());
+  const [occupation, setOccupation] = useState('');
+  const [employmentStatus, setEmploymentStatus] = useState('employed');
+  const [accountPurpose, setAccountPurpose] = useState('personal_spending');
+  const [annualSalary, setAnnualSalary] = useState('');
+  const [expectedMonthlyVolume, setExpectedMonthlyVolume] = useState('');
+  const [scarabTermsAccepted, setScarabTermsAccepted] = useState(false);
 
   // 3 premières offres uniquement
   const visibleOffers = useMemo(() => (offers || []).slice(0, 3), [offers]);
@@ -171,11 +179,16 @@ const VirtualCard = () => {
   const lipaxeFundingFee = initialBalance * (Number(selectedOffer?.lipaxe_fee_percent || 0) / 100);
   const totalFundingFee = providerFundingFee + lipaxeFundingFee;
   const orderTotal = issuanceFee + initialBalance + totalFundingFee;
+  const scarabKycStatus = String(scarabKyc?.kyc_status || 'not_started').toLowerCase();
+  const scarabKycInReview = ['pending', 'review'].includes(scarabKycStatus);
+  const scarabKycApproved = scarabKycStatus === 'approved';
+  const scarabNeedsDeclarations = !scarabKycApproved && !scarabKycInReview;
 
   // Ouvre le modal de création avec l'offre sélectionnée
   const openCreate = (offer: CardOffer) => {
     setSelectedOffer(offer);
     setFunding(String(offer.min_funding || 5));
+    setScarabTermsAccepted(false);
     setOrderOpen(true);
   };
 
@@ -183,6 +196,16 @@ const VirtualCard = () => {
   const submitOrder = () => {
     if (!selectedOffer || !walletId) {
       toast.error('Sélectionnez une offre et un wallet');
+      return;
+    }
+    if (selectedOffer.provider === 'scarabpay' && scarabKycInReview) {
+      toast.warning('Your ScarabPay cardholder profile is still under review. We will let you know when it is approved.');
+      return;
+    }
+    if (selectedOffer.provider === 'scarabpay' && scarabNeedsDeclarations && (
+      !occupation.trim() || !annualSalary.trim() || !expectedMonthlyVolume.trim() || !scarabTermsAccepted
+    )) {
+      toast.error('Complétez votre profil financier et confirmez les conditions avant de continuer.');
       return;
     }
     pin.guard(async () => {
@@ -193,11 +216,21 @@ const VirtualCard = () => {
           name_on_card: nameOnCard,
           funding_amount: initialBalance,
           wallet_id: walletId,
+          ...(selectedOffer.provider === 'scarabpay' ? {
+            occupation: occupation.trim(),
+            employment_status: employmentStatus,
+            account_purpose: accountPurpose,
+            annual_salary: annualSalary,
+            expected_monthly_volume: expectedMonthlyVolume,
+            terms_of_service_accepted: scarabNeedsDeclarations ? scarabTermsAccepted : true,
+          } : {}),
         }).unwrap();
         const raw = result as { status?: string; message?: string; detail?: string; reference?: string };
-        raw.status === 'pending'
-          ? toast.warning(raw.message || `Opération en vérification fournisseur. Référence: ${raw.reference || '-'}`)
-          : toast.success(raw.message || raw.detail || t('cards.virtualCreated'));
+        if (raw.status === 'pending') {
+          toast.warning(raw.message || `Opération en vérification fournisseur. Référence: ${raw.reference || '-'}`);
+        } else {
+          toast.success(raw.message || raw.detail || t('cards.virtualCreated'));
+        }
         setOrderOpen(false);
       } catch (error) {
         toast.error(apiMessage(error, t('common.error')));
@@ -408,6 +441,59 @@ const VirtualCard = () => {
                 />
                 <p className="text-xs sm:text-sm text-muted-foreground">Latin letters only, 4-23 characters</p>
               </div>
+
+              {selectedOffer?.provider === 'scarabpay' && scarabKycInReview && (
+                <div role="status" className="rounded-xl border border-amber-300/70 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
+                  Your cardholder profile is being reviewed by ScarabPay. Card creation will be available when the review is complete.
+                </div>
+              )}
+
+              {selectedOffer?.provider === 'scarabpay' && scarabNeedsDeclarations && (
+                <section className="space-y-4 rounded-2xl border border-primary/15 bg-primary/[0.035] p-4 sm:p-5" aria-labelledby="scarab-profile-title">
+                  <div>
+                    <h4 id="scarab-profile-title" className="font-semibold">Cardholder declarations</h4>
+                    <p className="mt-1 text-xs text-muted-foreground">ScarabPay requires these details to review your cardholder profile. Use accurate estimates.</p>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="scarab-occupation">Occupation</Label>
+                      <Input id="scarab-occupation" value={occupation} onChange={(event) => setOccupation(event.target.value)} maxLength={100} placeholder="For example, teacher" className="h-11 rounded-xl" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="scarab-employment">Employment status</Label>
+                      <select id="scarab-employment" value={employmentStatus} onChange={(event) => setEmploymentStatus(event.target.value)} className="h-11 w-full rounded-xl border border-input bg-background px-3 text-sm">
+                        <option value="employed">Employed</option>
+                        <option value="self_employed">Self-employed</option>
+                        <option value="student">Student</option>
+                        <option value="unemployed">Unemployed</option>
+                        <option value="retired">Retired</option>
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="scarab-purpose">Purpose of card</Label>
+                      <select id="scarab-purpose" value={accountPurpose} onChange={(event) => setAccountPurpose(event.target.value)} className="h-11 w-full rounded-xl border border-input bg-background px-3 text-sm">
+                        <option value="personal_spending">Personal spending</option>
+                        <option value="online_purchases">Online purchases</option>
+                        <option value="business_expenses">Business expenses</option>
+                        <option value="travel">Travel</option>
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="scarab-salary">Annual income (whole amount)</Label>
+                      <Input id="scarab-salary" inputMode="numeric" value={annualSalary} onChange={(event) => setAnnualSalary(event.target.value.replace(/\D/g, ''))} maxLength={12} placeholder="4800000" className="h-11 rounded-xl" />
+                    </div>
+                    <div className="space-y-2 sm:col-span-2">
+                      <Label htmlFor="scarab-volume">Estimated monthly card spending</Label>
+                      <Input id="scarab-volume" inputMode="numeric" value={expectedMonthlyVolume} onChange={(event) => setExpectedMonthlyVolume(event.target.value.replace(/\D/g, ''))} maxLength={12} placeholder="150000" className="h-11 rounded-xl" />
+                      <p className="text-xs text-muted-foreground">Enter the amount in your local currency, without decimals.</p>
+                    </div>
+                  </div>
+                  <label className="flex cursor-pointer items-start gap-3 text-sm leading-5">
+                    <Checkbox checked={scarabTermsAccepted} onCheckedChange={(checked) => setScarabTermsAccepted(checked === true)} className="mt-0.5" />
+                    <span>I confirm these declarations are accurate and accept ScarabPay’s cardholder terms.</span>
+                  </label>
+                </section>
+              )}
               
               {/* Champ solde initial */}
               <div className="space-y-2">
@@ -460,7 +546,7 @@ const VirtualCard = () => {
                 <Button variant="outline" size="lg" onClick={() => setOrderOpen(false)} className="min-w-full sm:min-w-32 rounded-xl sm:rounded-2xl">
                   Cancel
                 </Button>
-                <Button onClick={submitOrder} disabled={ordering} size="lg" className="min-w-full sm:min-w-48 rounded-xl sm:rounded-2xl bg-primary text-primary-foreground hover:bg-primary/90">
+                <Button onClick={submitOrder} disabled={ordering || (selectedOffer?.provider === 'scarabpay' && scarabKycInReview)} size="lg" className="min-w-full sm:min-w-48 rounded-xl sm:rounded-2xl bg-primary text-primary-foreground hover:bg-primary/90">
                   {ordering ? <Loader2 className="mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4 animate-spin" /> : <Check className="mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4" />}
                   Confirm & Create
                 </Button>

@@ -51,7 +51,6 @@ import Activity from "./pages/app/Activity";
 import Settings from "./pages/app/Settings";
 import Security from "./pages/app/Security";
 import PinSetup from "./pages/app/PinSetup";
-import PinSetup from "./pages/app/PinSetup";
 import SavingsHub from "./pages/app/savings/SavingsHub";
 import SavingsDetail from "./pages/app/savings/SavingsDetail";
 import YieldVaultHub from "./pages/app/vaults/YieldVaultHub";
@@ -129,7 +128,6 @@ const AppRoutes = () => (
       <Route path="activity" element={<Activity />} />
       <Route path="settings" element={<Settings />} />
       <Route path="security" element={<Security />} />
-      <Route path="security/pin-setup" element={<PinSetup />} />
       <Route path="security/pin-setup" element={<PinSetup />} />
     </Route>
 

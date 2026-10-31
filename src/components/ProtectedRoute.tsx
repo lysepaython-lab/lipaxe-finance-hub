@@ -63,6 +63,7 @@ export const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
 
   const isAppPath = location.pathname === '/app' || location.pathname.startsWith('/app/');
   const allowedBeforeKyc = location.pathname === '/app' || 
+                            location.pathname === '/app/security/pin-setup' ||
                             location.pathname.startsWith('/app/kyc') || 
                             location.pathname.startsWith('/app/notifications') ||
                             location.pathname.startsWith('/app/settings') ||

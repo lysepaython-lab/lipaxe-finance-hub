@@ -151,7 +151,7 @@ export const cardApi = api.injectEndpoints({
         body: { pin },
       }),
     }),
-    orderCard: b.mutation<UserCard | CardOperationResult, { id: string; amount: number; name_on_card: string; funding_amount: number; wallet_id: string; occupation?: string; employment_status?: string; account_purpose?: string; annual_salary?: string; expected_monthly_volume?: string; terms_of_service_accepted?: boolean }>({
+    orderCard: b.mutation<UserCard | CardOperationResult, { id: string; amount: number; name_on_card: string; funding_amount: number; wallet_id: string }>({
       query: (body) => ({ url: '/cards/order-cards/', method: 'POST', body }),
       transformResponse: (response: unknown) => {
         const raw = (response ?? {}) as { status?: string; message?: string; reference?: string };

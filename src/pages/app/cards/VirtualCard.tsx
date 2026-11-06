@@ -9,7 +9,6 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
 import { WalletSelector } from '@/components/security/WalletSelector';
 import { PinModal, usePinGate } from '@/components/security/PinModal';
@@ -172,12 +171,6 @@ const VirtualCard = () => {
   const [walletId, setWalletId] = useState<string>();
   const [funding, setFunding] = useState('5');
   const [nameOnCard, setNameOnCard] = useState((user ? `${user.firstName} ${user.lastName}` : '').toUpperCase());
-  const [occupation, setOccupation] = useState('');
-  const [employmentStatus, setEmploymentStatus] = useState('employed');
-  const [accountPurpose, setAccountPurpose] = useState('personal_spending');
-  const [annualSalary, setAnnualSalary] = useState('');
-  const [expectedMonthlyVolume, setExpectedMonthlyVolume] = useState('');
-  const [scarabTermsAccepted, setScarabTermsAccepted] = useState(false);
 
   // 3 premières offres uniquement
   const visibleOffers = useMemo(() => (offers || []).slice(0, 3), [offers]);
@@ -205,7 +198,6 @@ const VirtualCard = () => {
   const openCreate = (offer: CardOffer) => {
     setSelectedOffer(offer);
     setFunding(String(offer.min_funding || 5));
-    setScarabTermsAccepted(false);
     setOrderOpen(true);
   };
 
@@ -219,12 +211,6 @@ const VirtualCard = () => {
       toast.warning('Your ScarabPay cardholder profile is still under review. We will let you know when it is approved.');
       return;
     }
-    if (selectedOffer.provider === 'scarabpay' && scarabNeedsDeclarations && (
-      !occupation.trim() || !annualSalary.trim() || !expectedMonthlyVolume.trim() || !scarabTermsAccepted
-    )) {
-      toast.error('Complétez votre profil financier et confirmez les conditions avant de continuer.');
-      return;
-    }
     pin.guard(async () => {
       try {
         const result = await orderCard({
@@ -233,14 +219,6 @@ const VirtualCard = () => {
           name_on_card: nameOnCard,
           funding_amount: initialBalance,
           wallet_id: walletId,
-          ...(selectedOffer.provider === 'scarabpay' ? {
-            occupation: occupation.trim(),
-            employment_status: employmentStatus,
-            account_purpose: accountPurpose,
-            annual_salary: annualSalary,
-            expected_monthly_volume: expectedMonthlyVolume,
-            terms_of_service_accepted: scarabNeedsDeclarations ? scarabTermsAccepted : true,
-          } : {}),
         }).unwrap();
         const raw = result as { status?: string; message?: string; detail?: string; reference?: string };
         if (raw.status === 'pending') {
@@ -418,47 +396,9 @@ const VirtualCard = () => {
               {selectedOffer?.provider === 'scarabpay' && scarabNeedsDeclarations && (
                 <section className="space-y-4 rounded-2xl border border-primary/15 bg-primary/[0.035] p-4 sm:p-5" aria-labelledby="scarab-profile-title">
                   <div>
-                    <h4 id="scarab-profile-title" className="font-semibold">Cardholder declarations</h4>
-                    <p className="mt-1 text-xs text-muted-foreground">ScarabPay requires these details to review your cardholder profile. Use accurate estimates.</p>
+                    <h4 id="scarab-profile-title" className="font-semibold">Cardholder verification</h4>
+                    <p className="mt-1 text-xs leading-relaxed text-muted-foreground">We’ll use the information already in your Lipaxe KYC profile for the cardholder review. You don’t need to enter it again.</p>
                   </div>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="scarab-occupation">Occupation</Label>
-                      <Input id="scarab-occupation" value={occupation} onChange={(event) => setOccupation(event.target.value)} maxLength={100} placeholder="For example, teacher" className="h-11 rounded-xl" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="scarab-employment">Employment status</Label>
-                      <select id="scarab-employment" value={employmentStatus} onChange={(event) => setEmploymentStatus(event.target.value)} className="h-11 w-full rounded-xl border border-input bg-background px-3 text-sm">
-                        <option value="employed">Employed</option>
-                        <option value="self_employed">Self-employed</option>
-                        <option value="student">Student</option>
-                        <option value="unemployed">Unemployed</option>
-                        <option value="retired">Retired</option>
-                      </select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="scarab-purpose">Purpose of card</Label>
-                      <select id="scarab-purpose" value={accountPurpose} onChange={(event) => setAccountPurpose(event.target.value)} className="h-11 w-full rounded-xl border border-input bg-background px-3 text-sm">
-                        <option value="personal_spending">Personal spending</option>
-                        <option value="online_purchases">Online purchases</option>
-                        <option value="business_expenses">Business expenses</option>
-                        <option value="travel">Travel</option>
-                      </select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="scarab-salary">Annual income (whole amount)</Label>
-                      <Input id="scarab-salary" inputMode="numeric" value={annualSalary} onChange={(event) => setAnnualSalary(event.target.value.replace(/\D/g, ''))} maxLength={12} placeholder="4800000" className="h-11 rounded-xl" />
-                    </div>
-                    <div className="space-y-2 sm:col-span-2">
-                      <Label htmlFor="scarab-volume">Estimated monthly card spending</Label>
-                      <Input id="scarab-volume" inputMode="numeric" value={expectedMonthlyVolume} onChange={(event) => setExpectedMonthlyVolume(event.target.value.replace(/\D/g, ''))} maxLength={12} placeholder="150000" className="h-11 rounded-xl" />
-                      <p className="text-xs text-muted-foreground">Enter the amount in your local currency, without decimals.</p>
-                    </div>
-                  </div>
-                  <label className="flex cursor-pointer items-start gap-3 text-sm leading-5">
-                    <Checkbox checked={scarabTermsAccepted} onCheckedChange={(checked) => setScarabTermsAccepted(checked === true)} className="mt-0.5" />
-                    <span>I confirm these declarations are accurate and accept ScarabPay’s cardholder terms.</span>
-                  </label>
                 </section>
               )}
               

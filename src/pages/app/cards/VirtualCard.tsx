@@ -23,7 +23,11 @@ import { toast } from 'sonner';
 // Gestion des erreurs API avec fallback
 const apiMessage = (error: unknown, fallback: string) => {
   const data = (error as { data?: { detail?: string; message?: string; error?: string } })?.data;
-  return data?.message || data?.detail || data?.error || fallback;
+  const message = data?.message || data?.detail || data?.error || '';
+  if (/payscribe|provider customer setup|authentication failed|authentification.*échou/i.test(message)) {
+    return 'Card creation is temporarily unavailable. Your request was not completed. Check your wallet activity before trying again.';
+  }
+  return message || fallback;
 };
 
 // État visuel pour les fonctionnalités (activé/désactivé)
@@ -38,16 +42,8 @@ const CheckState = ({ enabled }: { enabled?: boolean }) =>
     </span>
   );
 
-// Labels des offres selon le type ou l'index
-const offerLabel = (offer: CardOffer, index: number) => {
-  if (offer.name.toLowerCase().includes('starter')) return 'Visa Starter';
-  if (offer.name.toLowerCase().includes('contactless')) return 'Visa Contactless';
-  if (offer.name.toLowerCase().includes('business')) return 'Visa Business';
-  const type = offer.card_type?.toLowerCase() || '';
-  if (type.includes('credit')) return 'Credit card';
-  if (type.includes('debit')) return 'Debit card';
-  return index === 2 ? 'Credit card' : index === 1 ? 'Debit card' : 'Prepaid card';
-};
+// Offer names come from the backend; never infer a different product label.
+const offerLabel = (offer: CardOffer) => offer.name.trim() || `${offer.brand} card`;
 
 // Descriptions des offres
 const offerDescription = (offer: CardOffer, index: number) =>
@@ -68,10 +64,11 @@ const percentOrDash = (amount: number | undefined) =>
 
 const cardFundingFee = (offer: CardOffer) => {
   const fixed = Math.max(offer.funding_fixed_fee || 0, offer.live_funding_fixed_fee || 0);
-  const percentage = Math.max(offer.funding_fee_percent || 0, offer.live_funding_percentage_fee || 0);
+  const providerPercentage = Math.max(offer.funding_fee_percent || 0, offer.live_funding_percentage_fee || 0);
+  const percentage = providerPercentage + (offer.lipaxe_fee_percent || 0);
   const minimum = Math.max(offer.funding_minimum_fee || 0, offer.live_funding_minimum_fee || 0);
-  if (!fixed && !percentage && !offer.lipaxe_fee_percent) return <EmptyValue />;
-  return `${money(fixed, offer.currency)} + ${percentage}% (min. ${money(minimum, offer.currency)}) + Lipaxe ${offer.lipaxe_fee_percent || 0}%`;
+  if (!fixed && !percentage) return <EmptyValue />;
+  return `${money(fixed, offer.currency)} + ${percentage}%${minimum ? ` (minimum ${money(minimum, offer.currency)})` : ''}`;
 };
 
 const providerFee = (fixed: number, percentage: number, minimum: number, amount: number) =>
@@ -88,7 +85,7 @@ const OfferCard = ({ offer, index, onCreate }: { offer: CardOffer; index: number
         index >= 2 && 'bg-amber-800 text-white',
       )}
     >
-      {offerLabel(offer, index)}
+      {offerLabel(offer)}
     </Badge>
     <div className="mb-5 w-full max-w-[260px]">
       <CardArtwork
@@ -120,8 +117,8 @@ const OfferCard = ({ offer, index, onCreate }: { offer: CardOffer; index: number
     )}
     {Number(offer.daily_limit || 0) > 0 && (
       <div className="mb-4 w-full rounded-xl border border-primary/15 bg-primary/5 px-3 py-2 text-left text-xs">
-        <div className="font-semibold text-foreground">Daily spending cap</div>
-        <div className="mt-0.5 text-muted-foreground">{money(offer.daily_limit!, offer.currency)} per day, enforced by Lipaxe</div>
+        <div className="font-semibold text-foreground">Daily spending limit</div>
+        <div className="mt-0.5 text-muted-foreground">{money(offer.daily_limit!, offer.currency)} per day</div>
       </div>
     )}
     <div className="mb-6 flex flex-wrap justify-center gap-1.5 sm:gap-2">
@@ -325,10 +322,10 @@ const VirtualCard = () => {
             Pricing & fees
           </div>
           <CompareRow label="Lipaxe card price" values={visibleOffers.map((o) => moneyOrDash(o.price, o.currency))} />
-          <CompareRow label="Provider issuance fee" values={visibleOffers.map((o) => (
+          <CompareRow label="Issuance fee" values={visibleOffers.map((o) => (
             o.creation_fixed_fee === undefined && o.live_creation_fixed_fee === undefined ? <EmptyValue /> : `${money(Math.max(o.creation_fixed_fee || 0, o.live_creation_fixed_fee || 0), o.currency)} + ${Math.max(o.creation_percentage_fee || 0, o.live_creation_percentage_fee || 0)}% (min. ${money(Math.max(o.creation_minimum_fee || 0, o.live_creation_minimum_fee || 0), o.currency)})`
           ))} />
-          <CompareRow label="Card funding fee" values={visibleOffers.map((o) => cardFundingFee(o))} />
+          <CompareRow label="Top-up fee" values={visibleOffers.map((o) => cardFundingFee(o))} />
           <CompareRow label="Settlement fee" values={visibleOffers.map((o) => (
             o.settlement_fee === undefined
               ? <EmptyValue />
@@ -351,7 +348,7 @@ const VirtualCard = () => {
           <CompareRow label="First declined authorization" values={visibleOffers.map((o) => `${o.decline_free_attempts_per_day ?? 1} free; card frozen`)} />
           <CompareRow label="2nd and 3rd confirmed issuer declines" values={visibleOffers.map((o) => money(o.decline_fee_per_attempt ?? 0.8, o.currency))} />
           <CompareRow label="Daily decline limit" values={visibleOffers.map((o) => `${o.decline_max_attempts_per_day ?? 3} declines`)} />
-          <CompareRow label="Daily spending cap (Lipaxe)" values={visibleOffers.map((o) => moneyOrDash(o.daily_limit, o.currency))} />
+          <CompareRow label="Daily spending limit" values={visibleOffers.map((o) => moneyOrDash(o.daily_limit, o.currency))} />
 
           {/* Section sécurité et paiements */}
           <div className="min-w-[600px] md:min-w-[700px] lg:min-w-[760px] border-y border-border/70 bg-muted/35 px-3 sm:px-4 lg:px-6 py-3 sm:py-4 text-xs sm:text-sm font-semibold text-muted-foreground">
@@ -367,11 +364,8 @@ const VirtualCard = () => {
             Limits & usage
           </div>
           <CompareRow label="Monthly limit" values={visibleOffers.map((o) => moneyOrDash(o.monthly_limit, o.currency))} />
-          <div className="min-w-[600px] md:min-w-[700px] lg:min-w-[760px] border-t border-border/70 px-4 py-3 text-xs text-muted-foreground sm:px-6">
-            Lipaxe tracks issuer-reported authorizations and freezes the card when the daily cap is reached. It is reactivated after the daily reset. ScarabPay does not provide a pre-authorization limit hook, so a payment already being authorized may still complete before the freeze takes effect.
-          </div>
           <CompareRow label="Verdict" values={visibleOffers.map((o) => (
-            <Badge variant="secondary" className="max-w-[150px] truncate text-[10px] sm:text-xs">{o.card_type || o.description || offerLabel(o, 0)}</Badge>
+            <Badge variant="secondary" className="max-w-[150px] truncate text-[10px] sm:text-xs">{o.card_type || o.description || offerLabel(o)}</Badge>
           ))} />
         </section>
       )}
@@ -493,7 +487,7 @@ const VirtualCard = () => {
                   <span className="font-bold text-foreground">{money(issuanceFee, selectedOffer?.currency)}</span>
                 </div>
                 <div className="flex justify-between py-1 text-xs sm:text-sm text-muted-foreground">
-                  <span>Provider issuance fee</span>
+                  <span>Issuance fee</span>
                   <span className="font-bold text-foreground">{money(providerIssueFee, selectedOffer?.currency)}</span>
                 </div>
                 <div className="flex justify-between py-1 text-xs sm:text-sm text-muted-foreground">
@@ -501,12 +495,8 @@ const VirtualCard = () => {
                   <span className="font-bold text-foreground">{money(initialBalance, selectedOffer?.currency)}</span>
                 </div>
                 <div className="flex justify-between py-1 text-xs sm:text-sm text-muted-foreground">
-                  <span>Lipaxe Fee</span>
-                  <span className="font-bold text-foreground">{money(lipaxeFundingFee, selectedOffer?.currency)}</span>
-                </div>
-                <div className="flex justify-between py-1 text-xs sm:text-sm text-muted-foreground">
-                  <span>Provider Fee</span>
-                  <span className="font-bold text-foreground">{money(providerFundingFee, selectedOffer?.currency)}</span>
+                  <span>Fee</span>
+                  <span className="font-bold text-foreground">{money(totalFundingFee, selectedOffer?.currency)}</span>
                 </div>
                 {selectedOffer?.provider === 'scarabpay' && (
                   <p className="pt-2 text-[11px] leading-relaxed text-muted-foreground">
@@ -514,7 +504,7 @@ const VirtualCard = () => {
                   </p>
                 )}
                 <div className="flex justify-between py-1 text-xs sm:text-sm text-muted-foreground">
-                  <span>Total Fees</span>
+                  <span>Total fees</span>
                   <span className="font-bold text-foreground">{money(providerIssueFee + totalFundingFee, selectedOffer?.currency)}</span>
                 </div>
                 <div className="mt-3 sm:mt-4 flex justify-between border-t border-border pt-3 sm:pt-4 font-display text-xl sm:text-2xl font-bold">

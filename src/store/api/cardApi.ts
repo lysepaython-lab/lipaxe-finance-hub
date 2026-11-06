@@ -17,8 +17,17 @@ export interface CardOffer {
   description: string;
   card_type?: string;
   creation_fixed_fee?: number;
+  creation_percentage_fee?: number;
+  creation_minimum_fee?: number;
+  live_creation_fixed_fee?: number;
+  live_creation_percentage_fee?: number;
+  live_creation_minimum_fee?: number;
   funding_fixed_fee?: number;
+  funding_minimum_fee?: number;
   funding_fee_percent?: number;
+  live_funding_fixed_fee?: number;
+  live_funding_percentage_fee?: number;
+  live_funding_minimum_fee?: number;
   lipaxe_fee_percent?: number;
   settlement_fee?: number;
   authorization_fee?: number;
@@ -32,6 +41,11 @@ export interface CardOffer {
   supports_google_pay?: boolean;
   authentication?: string;
   image?: string;
+  features?: string[];
+  decline_free_attempts_per_day?: number;
+  decline_fee_per_attempt?: number;
+  decline_max_attempts_per_day?: number;
+  freeze_on_decline?: boolean;
 }
 export interface UserCard {
   id: string;
@@ -49,6 +63,16 @@ export interface UserCard {
   status: 'active' | 'frozen' | 'inactive' | 'pending';
   image?: string;
   provider?: string;
+  provider_mode?: string;
+  provider_decline_count?: number;
+  provider_decline_limit?: number;
+  provider_decline_last_at?: string | null;
+  is_freezon_by_system?: boolean;
+  daily_limit?: number;
+  daily_spend_today?: number;
+  daily_limit_remaining?: number;
+  daily_limit_reached_on?: string | null;
+  is_daily_limit_frozen?: boolean;
 }
 export interface RevealedCardDetails {
   card_number: string;
@@ -71,6 +95,24 @@ export interface CardOperationResult {
   detail?: string;
   message?: string;
   reference?: string;
+}
+export interface CardWithdrawalRequest {
+  id: number;
+  status: 'pending' | 'needs_review' | 'completed' | 'failed';
+  amount: string;
+  provider_fee?: string;
+  expected_credit?: string;
+  credited_amount: string | null;
+  wallet_id: string;
+  requested_at: string;
+  completed_at?: string | null;
+}
+export interface CardWithdrawalPreview {
+  mode: 'sandbox' | 'live' | 'test' | string;
+  card_balance: string;
+  withdrawal_fee_bps: number;
+  minimum_withdrawal: string;
+  maximum_withdrawal: string;
 }
 export interface ScarabPayKycStatus {
   status: 'success' | 'unavailable';
@@ -141,6 +183,19 @@ export const cardApi = api.injectEndpoints({
       transformResponse: (response: unknown) => response as CardOperationResult,
       invalidatesTags: ['Cards', 'Wallet'],
     }),
+    scarabPayCardWithdrawalRequest: b.query<{ request: CardWithdrawalRequest | null; preview: CardWithdrawalPreview }, string>({
+      query: (cardId) => `/cards/${encodeURIComponent(cardId)}/withdraw/`,
+      providesTags: (_r, _e, id) => [{ type: 'Cards', id: `withdrawal-${id}` }],
+    }),
+    requestScarabPayCardWithdrawal: b.mutation<CardOperationResult & { request?: CardWithdrawalRequest }, { card_id: string; wallet_id: string; amount: number; pin: string }>({
+      query: ({ card_id, ...body }) => ({ url: `/cards/${encodeURIComponent(card_id)}/withdraw/`, method: 'POST', body }),
+      transformResponse: (response: unknown) => response as CardOperationResult & { request?: CardWithdrawalRequest },
+      invalidatesTags: (_r, _e, arg) => ['Cards', 'Wallet', { type: 'Cards', id: `withdrawal-${arg.card_id}` }],
+    }),
+    simulateScarabPayCard: b.mutation<CardOperationResult & { data?: Record<string, unknown> }, { card_id: string; type: 'purchase' | 'decline' | 'refund'; amount: number; pin: string; merchant_name?: string; decline_reason?: string }>({
+      query: ({ card_id, ...body }) => ({ url: `/cards/${encodeURIComponent(card_id)}/simulate/`, method: 'POST', body }),
+      invalidatesTags: (_r, _e, arg) => ['Cards', { type: 'CardTx', id: arg.card_id }],
+    }),
   }),
 });
 
@@ -155,4 +210,7 @@ export const {
   useWithdrawCardMutation,
   useFreezeCardMutation,
   useTerminateScarabPayCardMutation,
+  useScarabPayCardWithdrawalRequestQuery,
+  useRequestScarabPayCardWithdrawalMutation,
+  useSimulateScarabPayCardMutation,
 } = cardApi;

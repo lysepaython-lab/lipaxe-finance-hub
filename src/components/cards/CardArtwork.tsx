@@ -26,6 +26,7 @@ const resolveImageSrc = (image?: string) => {
 const offerArtwork = (name: string) => {
   const normalized = name.toLowerCase();
   if (normalized.includes('starter')) return '/brand/cards/lipaxe-visa-starter.png';
+  if (normalized.includes('contactless')) return '/brand/cards/lipaxe-visa-premium-horizontal.png';
   if (normalized.includes('everyday') || normalized.includes('mastercard')) return '/brand/cards/lipaxe-mastercard-everyday.png';
   if (normalized.includes('business')) return '/brand/cards/lipaxe-visa-business.png';
   return '';

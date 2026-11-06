@@ -347,21 +347,31 @@ export const normalizeCardOffer = (payload: unknown) => {
   const brand = (sourceBrand.toLowerCase().includes('master')
     ? 'Mastercard'
     : 'Visa') as 'Visa' | 'Mastercard';
-  const creationFee = asNumber(raw.creation_fixed_fee ?? raw.issuance_fee ?? raw.amount);
+  const creationFee = asNumber(raw.creation_fixed_fee ?? raw.issuance_fee);
+  const featurePayload = Array.isArray(raw.features) ? raw.features : [];
 
   return {
     id: asString(raw.id),
     provider: asString(raw.provider).toLowerCase(),
     brand,
     name: asString(raw.name ?? `${brand} Virtual`),
-    price: asNumber(raw.amount ?? raw.price ?? creationFee),
+    price: asNumber(raw.amount ?? raw.price),
     currency: asString(raw.currency, 'USD'),
     monthly_fee: asOptionalNumber(raw.monthly_fee, raw.maintenance_fee),
     description: asString(raw.description, `${brand} virtual card`),
     card_type: asString(raw.card_type ?? raw.category, brand),
     creation_fixed_fee: creationFee,
+    creation_percentage_fee: asOptionalNumber(raw.creation_percentage_fee),
+    creation_minimum_fee: asOptionalNumber(raw.creation_minimum_fee),
+    live_creation_fixed_fee: asOptionalNumber(raw.live_creation_fixed_fee),
+    live_creation_percentage_fee: asOptionalNumber(raw.live_creation_percentage_fee),
+    live_creation_minimum_fee: asOptionalNumber(raw.live_creation_minimum_fee),
     funding_fixed_fee: asOptionalNumber(raw.funding_fixed_fee),
+    funding_minimum_fee: asOptionalNumber(raw.funding_minimum_fee),
     funding_fee_percent: asOptionalNumber(raw.funding_percentage_fee, raw.funding_fee_percent, raw.funding_fee, raw.load_fee_percent),
+    live_funding_fixed_fee: asOptionalNumber(raw.live_funding_fixed_fee),
+    live_funding_percentage_fee: asOptionalNumber(raw.live_funding_percentage_fee),
+    live_funding_minimum_fee: asOptionalNumber(raw.live_funding_minimum_fee),
     lipaxe_fee_percent: asOptionalNumber(raw.lipax_fee_percentage, raw.lipaxe_fee_percent),
     settlement_fee: asOptionalNumber(raw.settlement_fee),
     authorization_fee: asOptionalNumber(raw.authorization_fee),
@@ -375,6 +385,11 @@ export const normalizeCardOffer = (payload: unknown) => {
     supports_google_pay: asOptionalBoolean(raw.supports_google_pay, raw.google_pay),
     authentication: asString(raw.authentication),
     image: firstText(raw.image, raw.card_image, raw.design_image, raw.preview_image, raw.logo),
+    features: featurePayload.map((feature) => typeof feature === 'string' ? feature : asString((feature as UnknownRecord)?.name)).filter(Boolean),
+    decline_free_attempts_per_day: asOptionalNumber(raw.decline_free_attempts_per_day),
+    decline_fee_per_attempt: asOptionalNumber(raw.decline_fee_per_attempt),
+    decline_max_attempts_per_day: asOptionalNumber(raw.decline_max_attempts_per_day),
+    freeze_on_decline: asOptionalBoolean(raw.freeze_on_decline),
   };
 };
 
@@ -421,6 +436,16 @@ export const normalizeUserCard = (payload: unknown) => {
       (raw.virtual_card as UnknownRecord | undefined)?.design_image,
     ),
     provider: asString(raw.provider).toLowerCase(),
+    provider_mode: asString(raw.provider_mode).toLowerCase(),
+    provider_decline_count: asNumber(raw.provider_decline_count),
+    is_freezon_by_system: Boolean(raw.is_freezon_by_system),
+    provider_decline_limit: asNumber(raw.provider_decline_limit),
+    provider_decline_last_at: raw.provider_decline_last_at == null ? null : asString(raw.provider_decline_last_at),
+    daily_limit: asOptionalNumber(raw.daily_limit ?? (raw.virtual_card as UnknownRecord | undefined)?.daily_limit),
+    daily_spend_today: asOptionalNumber(raw.daily_spend_today),
+    daily_limit_remaining: asOptionalNumber(raw.daily_limit_remaining),
+    daily_limit_reached_on: raw.daily_limit_reached_on == null ? null : asString(raw.daily_limit_reached_on),
+    is_daily_limit_frozen: Boolean(raw.is_daily_limit_frozen),
   };
 };
 

@@ -73,6 +73,9 @@ export interface UserCard {
   daily_limit_remaining?: number;
   daily_limit_reached_on?: string | null;
   is_daily_limit_frozen?: boolean;
+  monthly_limit?: number;
+  monthly_spend?: number;
+  monthly_limit_remaining?: number;
 }
 export interface RevealedCardDetails {
   card_number: string;

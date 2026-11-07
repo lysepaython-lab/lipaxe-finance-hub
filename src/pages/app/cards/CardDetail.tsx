@@ -88,8 +88,15 @@ const CardDetail = () => {
   const activeReveal = isScarabPay ? revealedDetails : null;
   const isFrozen = card?.status === 'frozen';
   const canMoveFunds = card?.status === 'active';
+  const monthlyCapReached = Boolean(
+    isScarabPay && Number(card?.monthly_limit || 0) > 0 && Number(card?.monthly_limit_remaining ?? card?.monthly_limit) <= 0,
+  );
 
   const openFund = (mode: 'recharge' | 'withdraw') => {
+    if (mode === 'recharge' && monthlyCapReached) {
+      toast.error('La limite mensuelle est atteinte. Vous pourrez recharger cette carte le mois prochain.');
+      return;
+    }
     if (isFrozen) {
       const canTopUpProtectionFreeze = mode === 'recharge' && isScarabPay && card?.is_freezon_by_system;
       if (!canTopUpProtectionFreeze) {
@@ -343,7 +350,7 @@ const CardDetail = () => {
                 <Button
                   className="bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
                   onClick={() => openFund('recharge')}
-                  disabled={!canMoveFunds && !(isScarabPay && isFrozen && card.is_freezon_by_system)}
+                  disabled={monthlyCapReached || (!canMoveFunds && !(isScarabPay && isFrozen && card.is_freezon_by_system))}
                 >
                   Recharge
                 </Button>
@@ -380,6 +387,19 @@ const CardDetail = () => {
                     {card.is_daily_limit_frozen
                       ? 'Daily cap reached. The card will be reactivated automatically after the daily reset.'
                       : `${formatMoney(Number(card.daily_limit_remaining ?? card.daily_limit), card.currency)} remaining today. Lipaxe applies this cap using transaction updates reported by the issuer.`}
+                  </p>
+                </div>
+              )}
+              {isScarabPay && Number(card.monthly_limit || 0) > 0 && (
+                <div className="rounded-2xl border border-primary/20 bg-primary/5 p-3 text-sm">
+                  <div className="flex flex-wrap items-center justify-between gap-2 font-semibold">
+                    <span>Monthly spending cap</span>
+                    <span>{formatMoney(Number(card.monthly_spend || 0), card.currency)} / {formatMoney(Number(card.monthly_limit), card.currency)}</span>
+                  </div>
+                  <p className="mt-1 text-muted-foreground">
+                    {Number(card.monthly_limit_remaining ?? card.monthly_limit) <= 0
+                      ? 'Monthly limit reached. You can keep using the available balance, but this card cannot be topped up again until next month.'
+                      : `${formatMoney(Number(card.monthly_limit_remaining ?? card.monthly_limit), card.currency)} of monthly spending limit remains. Once reached, further top-ups are blocked until next month.`}
                   </p>
                 </div>
               )}

@@ -120,6 +120,12 @@ const OfferCard = ({ offer, index, onCreate }: { offer: CardOffer; index: number
         <div className="mt-0.5 text-muted-foreground">{money(offer.daily_limit!, offer.currency)} per day</div>
       </div>
     )}
+    {Number(offer.monthly_limit || 0) > 0 && (
+      <div className="mb-4 w-full rounded-xl border border-primary/15 bg-primary/5 px-3 py-2 text-left text-xs">
+        <div className="font-semibold text-foreground">Monthly spending limit</div>
+        <div className="mt-0.5 text-muted-foreground">{money(offer.monthly_limit!, offer.currency)} per month</div>
+      </div>
+    )}
     <div className="mb-6 flex flex-wrap justify-center gap-1.5 sm:gap-2">
       {offer.supports_3ds && (
         <Badge variant="secondary" className="gap-1 rounded-lg px-2 sm:px-3 py-1 text-[10px] sm:text-xs">
@@ -191,8 +197,6 @@ const VirtualCard = () => {
   const orderTotal = issuanceFee + initialBalance + providerIssueFee + totalFundingFee;
   const scarabKycStatus = String(scarabKyc?.kyc_status || 'not_started').toLowerCase();
   const scarabKycInReview = ['pending', 'review'].includes(scarabKycStatus);
-  const scarabKycApproved = scarabKycStatus === 'approved';
-  const scarabNeedsDeclarations = !scarabKycApproved && !scarabKycInReview;
 
   // Ouvre le modal de création avec l'offre sélectionnée
   const openCreate = (offer: CardOffer) => {
@@ -341,7 +345,11 @@ const VirtualCard = () => {
           <div className="min-w-[600px] md:min-w-[700px] lg:min-w-[760px] border-y border-border/70 bg-muted/35 px-3 sm:px-4 lg:px-6 py-3 sm:py-4 text-xs sm:text-sm font-semibold text-muted-foreground">
             Limits & usage
           </div>
-          <CompareRow label="Monthly limit" values={visibleOffers.map((o) => moneyOrDash(o.monthly_limit, o.currency))} />
+          <CompareRow label="Monthly limit" values={visibleOffers.map((o) => (
+            Number(o.monthly_limit || 0) > 0
+              ? money(o.monthly_limit!, o.currency)
+              : <Badge variant="secondary" className="text-[10px] sm:text-xs">Configurable</Badge>
+          ))} />
           <CompareRow label="Verdict" values={visibleOffers.map((o) => (
             <Badge variant="secondary" className="max-w-[150px] truncate text-[10px] sm:text-xs">{o.card_type || o.description || offerLabel(o)}</Badge>
           ))} />
@@ -393,15 +401,6 @@ const VirtualCard = () => {
                 </div>
               )}
 
-              {selectedOffer?.provider === 'scarabpay' && scarabNeedsDeclarations && (
-                <section className="space-y-4 rounded-2xl border border-primary/15 bg-primary/[0.035] p-4 sm:p-5" aria-labelledby="scarab-profile-title">
-                  <div>
-                    <h4 id="scarab-profile-title" className="font-semibold">Cardholder verification</h4>
-                    <p className="mt-1 text-xs leading-relaxed text-muted-foreground">We’ll use the information already in your Lipaxe KYC profile for the cardholder review. You don’t need to enter it again.</p>
-                  </div>
-                </section>
-              )}
-              
               {/* Champ solde initial */}
               <div className="space-y-2">
                 <Label className="text-sm sm:text-base">Initial Balance *</Label>

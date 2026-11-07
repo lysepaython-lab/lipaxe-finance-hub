@@ -442,10 +442,13 @@ export const normalizeUserCard = (payload: unknown) => {
     provider_decline_limit: asNumber(raw.provider_decline_limit),
     provider_decline_last_at: raw.provider_decline_last_at == null ? null : asString(raw.provider_decline_last_at),
     daily_limit: asOptionalNumber(raw.daily_limit ?? (raw.virtual_card as UnknownRecord | undefined)?.daily_limit),
+    monthly_limit: asOptionalNumber(raw.monthly_limit ?? (raw.virtual_card as UnknownRecord | undefined)?.monthly_limit),
     daily_spend_today: asOptionalNumber(raw.daily_spend_today),
     daily_limit_remaining: asOptionalNumber(raw.daily_limit_remaining),
     daily_limit_reached_on: raw.daily_limit_reached_on == null ? null : asString(raw.daily_limit_reached_on),
     is_daily_limit_frozen: Boolean(raw.is_daily_limit_frozen),
+    monthly_spend: asOptionalNumber(raw.monthly_spend),
+    monthly_limit_remaining: asOptionalNumber(raw.monthly_limit_remaining),
   };
 };
 

@@ -212,7 +212,7 @@ const VirtualCard = () => {
       return;
     }
     if (selectedOffer.provider === 'scarabpay' && scarabKycInReview) {
-      toast.warning('Your ScarabPay cardholder profile is still under review. We will let you know when it is approved.');
+      toast.warning('Your card profile is still under review. We will let you know when verification is complete.');
       return;
     }
     pin.guard(async () => {
@@ -397,7 +397,7 @@ const VirtualCard = () => {
 
               {selectedOffer?.provider === 'scarabpay' && scarabKycInReview && (
                 <div role="status" className="rounded-xl border border-amber-300/70 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
-                  Your cardholder profile is being reviewed by ScarabPay. Card creation will be available when the review is complete.
+                  Your card profile is being reviewed. Card creation will be available when verification is complete.
                 </div>
               )}
 

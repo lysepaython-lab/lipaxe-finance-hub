@@ -120,7 +120,6 @@ export interface CardWithdrawalPreview {
 export interface ScarabPayKycStatus {
   status: 'success' | 'unavailable';
   kyc_status: 'not_started' | 'unsubmitted' | 'pending' | 'review' | 'approved' | 'rejected' | string;
-  kyc_failure_reason?: string;
   mode: 'sandbox' | 'live' | string;
 }
 

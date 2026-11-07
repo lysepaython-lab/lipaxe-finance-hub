@@ -9,6 +9,8 @@ export interface KycPersonal {
   employmentStatus?: string;
   purposeOfAccount?: string;
   sourceOfFunds?: string;
+  annualIncome?: string;
+  expectedMonthlyVolume?: string;
 }
 export interface KycAddress { street: string; city: string; province?: string; postalCode: string; country: string }
 

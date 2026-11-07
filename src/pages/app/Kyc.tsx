@@ -67,7 +67,6 @@ type CapturedFile = {
 const DOCUMENT_MIN_SCORE = 78;
 
 const GENDER_OPTIONS = ['male', 'female', 'other'] as const;
-const EMPLOYMENT_STATUS_OPTIONS = ['employed', 'self_employed', 'student', 'unemployed', 'retired'] as const;
 const PURPOSE_OF_ACCOUNT_OPTIONS = ['personal', 'transfers', 'business', 'savings', 'crypto'] as const;
 const SOURCE_OF_FUNDS_OPTIONS = ['salary', 'business', 'savings', 'family_support', 'investment', 'crypto'] as const;
 
@@ -179,6 +178,7 @@ const Kyc = () => {
         kyc.personal.purposeOfAccount &&
         kyc.personal.sourceOfFunds &&
         kyc.personal.annualIncome.trim() &&
+        kyc.personal.expectedMonthlyVolume.trim() &&
         kyc.address.street?.trim() &&
         kyc.address.city?.trim() &&
         kyc.address.province?.trim() &&
@@ -232,6 +232,7 @@ const Kyc = () => {
       personal.append('purposeOfAccount', kyc.personal.purposeOfAccount || '');
       personal.append('sourceOfFunds', kyc.personal.sourceOfFunds || '');
       personal.append('annualIncome', kyc.personal.annualIncome || '');
+      personal.append('expectedMonthlyVolume', kyc.personal.expectedMonthlyVolume || '');
       if (user?.firstName) personal.append('first_name', user.firstName);
       if (user?.lastName) personal.append('last_name', user.lastName);
 
@@ -249,6 +250,7 @@ const Kyc = () => {
       finalPayload.append('purposeOfAccount', kyc.personal.purposeOfAccount || '');
       finalPayload.append('sourceOfFunds', kyc.personal.sourceOfFunds || '');
       finalPayload.append('annualIncome', kyc.personal.annualIncome || '');
+      finalPayload.append('expectedMonthlyVolume', kyc.personal.expectedMonthlyVolume || '');
       finalPayload.append('identity_type', kyc.document.type || '');
       finalPayload.append('id_number', kyc.document.idNumber || '');
       finalPayload.append('is_terms_conditions', 'true');
@@ -487,19 +489,13 @@ const IdentityStep = ({ countries }: { countries?: IncountryEntry[] }) => {
         </div>
         <div className="space-y-2">
           <Label>{t('kyc.employmentStatus')}</Label>
-          <Select
-            value={personal.employmentStatus || undefined}
-            onValueChange={(value) => dispatch(updatePersonal({ employmentStatus: value }))}
-          >
-            <SelectTrigger className="h-11 rounded-xl">
-              <SelectValue placeholder={t('kyc.selectPlaceholder')} />
-            </SelectTrigger>
-            <SelectContent>
-              {EMPLOYMENT_STATUS_OPTIONS.map((value) => (
-                <SelectItem key={value} value={value}>{t(`kyc.employment_${value}`)}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Input
+            value={personal.employmentStatus}
+            onChange={(e) => dispatch(updatePersonal({ employmentStatus: e.target.value }))}
+            className="h-11 rounded-xl"
+            maxLength={50}
+            placeholder={t('kyc.occupationPlaceholder')}
+          />
         </div>
       </div>
       <div className="grid gap-3 md:grid-cols-2">
@@ -539,6 +535,17 @@ const IdentityStep = ({ countries }: { countries?: IncountryEntry[] }) => {
       <div className="space-y-2">
         <Label>Revenu annuel estimé</Label>
         <Input value={personal.annualIncome} onChange={(e) => dispatch(updatePersonal({ annualIncome: e.target.value }))} className="h-11 rounded-xl" maxLength={60} placeholder="Ex. 5 000 USD" />
+      </div>
+      <div className="space-y-2">
+        <Label>{t('kyc.expectedMonthlyVolume')}</Label>
+        <Input
+          value={personal.expectedMonthlyVolume}
+          onChange={(e) => dispatch(updatePersonal({ expectedMonthlyVolume: e.target.value.replace(/[^0-9]/g, '') }))}
+          className="h-11 rounded-xl"
+          inputMode="numeric"
+          maxLength={60}
+          placeholder={t('kyc.expectedMonthlyVolumePlaceholder')}
+        />
       </div>
       <label className="flex items-start gap-3 rounded-2xl border border-border bg-muted/30 p-4 text-sm">
         <input
@@ -1319,7 +1326,7 @@ const ReviewStep = () => {
     { k: t('kyc.gender'), v: kyc.personal.gender ? t(`kyc.gender_${kyc.personal.gender}`) : '' },
     { k: t('kyc.nationality'), v: kyc.personal.nationality },
     { k: t('kyc.phone'), v: kyc.personal.phone },
-    { k: t('kyc.employmentStatus'), v: kyc.personal.employmentStatus ? t(`kyc.employment_${kyc.personal.employmentStatus}`) : '' },
+    { k: t('kyc.employmentStatus'), v: kyc.personal.employmentStatus },
     { k: t('kyc.purposeOfAccount'), v: kyc.personal.purposeOfAccount ? t(`kyc.purpose_${kyc.personal.purposeOfAccount}`) : '' },
     { k: t('kyc.sourceOfFunds'), v: kyc.personal.sourceOfFunds ? t(`kyc.source_${kyc.personal.sourceOfFunds}`) : '' },
     {

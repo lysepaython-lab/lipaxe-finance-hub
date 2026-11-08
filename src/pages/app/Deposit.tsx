@@ -11,10 +11,9 @@ import {
   useAfripayDepositConfirmMutation,
   useCardDepositMutation,
   useElectronicDepositMutation,
-  useCryptoDepositMutation,
 } from '@/store/api/walletApi';
 import { usePaymentMethodsDepositQuery, type PaymentMethod, type WalletV2 } from '@/store/api/platformApi';
-import { useCryptoNetworksQuery } from '@/store/api/businessApi';
+import { useCryptoDepositAddressMutation, useCryptoNetworksQuery } from '@/store/api/businessApi';
 import { Loader2, Check, ShieldCheck, Copy } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatMoney } from '@/lib/format';
@@ -48,7 +47,7 @@ const Deposit = () => {
   const [afripayDepositConfirm, { isLoading: lAfripayConfirm }] = useAfripayDepositConfirmMutation();
   const [cardDeposit, { isLoading: l2 }] = useCardDepositMutation();
   const [elecDeposit, { isLoading: l3 }] = useElectronicDepositMutation();
-  const [cryptoDeposit, { isLoading: l4 }] = useCryptoDepositMutation();
+  const [cryptoDepositAddress, { isLoading: l4 }] = useCryptoDepositAddressMutation();
   const pin = usePinGate();
 
   const [walletId, setWalletId] = useState<string>();
@@ -115,14 +114,13 @@ const Deposit = () => {
       const typeName = selectedMethod?.payment_type?.name;
       if (typeName === 'Cryptos') {
         // Backend returns a deposit address that the user funds externally.
-        const r = await cryptoDeposit({
-          amount: amt, payment_method: methodId, wallet_id: walletId!, network: fields.network,
-        }).unwrap() as unknown as { address?: string; network?: string; symbol?: string; id?: string };
-        if (r?.address) {
-          setCryptoAddress({ address: r.address, network: r.network || fields.network!, symbol: r.symbol || 'USDT' });
-        } else if (r?.id) {
-          setTxId(r.id);
-        }
+        const r = await cryptoDepositAddress({
+          expected_amount: amt,
+          symbol: 'USDT',
+          wallet_id: walletId!,
+          network: fields.network!,
+        }).unwrap();
+        setCryptoAddress({ address: r.address, network: r.network || fields.network!, symbol: r.symbol || 'USDT' });
         toast.success('Adresse de dépôt générée');
         setDone(true);
         return;

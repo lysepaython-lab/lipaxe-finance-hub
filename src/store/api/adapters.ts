@@ -349,10 +349,21 @@ export const normalizeCardOffer = (payload: unknown) => {
     : 'Visa') as 'Visa' | 'Mastercard';
   const creationFee = asNumber(raw.creation_fixed_fee ?? raw.issuance_fee);
   const featurePayload = Array.isArray(raw.features) ? raw.features : [];
+  const provider = asString(raw.provider).toLowerCase();
+  const featureNames = featurePayload.map((feature) =>
+    typeof feature === 'string' ? feature : asString((feature as UnknownRecord)?.name),
+  );
+  const supports3ds = asOptionalBoolean(
+    raw.supports_3ds,
+    raw.three_ds,
+    raw.three_ds_supported,
+    raw.supports_3d_secure,
+    raw.three_d_secure,
+  ) ?? (provider === 'scarabpay' || featureNames.some((feature) => /3\s*-?d\s*secure|\b3ds\b/i.test(feature)));
 
   return {
     id: asString(raw.id),
-    provider: asString(raw.provider).toLowerCase(),
+    provider,
     brand,
     name: asString(raw.name ?? `${brand} Virtual`),
     price: asNumber(raw.amount ?? raw.price),
@@ -378,14 +389,14 @@ export const normalizeCardOffer = (payload: unknown) => {
     cross_border_fee_percent: asOptionalNumber(raw.cross_border_fee_percent, raw.cross_border_fee),
     withdrawal_fee_percent: asOptionalNumber(raw.withdrawal_fee_percent, raw.withdrawal_fee),
     daily_limit: asOptionalNumber(raw.daily_limit),
-    monthly_limit: asOptionalNumber(raw.monthly_limit),
+    monthly_limit: asOptionalNumber(raw.monthly_limit, raw.monthly_spending_limit, raw.card_monthly_limit),
     min_funding: asOptionalNumber(raw.min_funding, raw.minimum_funding),
-    supports_3ds: asOptionalBoolean(raw.supports_3ds, raw.three_ds),
+    supports_3ds: supports3ds,
     supports_apple_pay: asOptionalBoolean(raw.supports_apple_pay, raw.apple_pay),
     supports_google_pay: asOptionalBoolean(raw.supports_google_pay, raw.google_pay),
     authentication: asString(raw.authentication),
     image: firstText(raw.image, raw.card_image, raw.design_image, raw.preview_image, raw.logo),
-    features: featurePayload.map((feature) => typeof feature === 'string' ? feature : asString((feature as UnknownRecord)?.name)).filter(Boolean),
+    features: featureNames.filter(Boolean),
     decline_free_attempts_per_day: asOptionalNumber(raw.decline_free_attempts_per_day),
     decline_fee_per_attempt: asOptionalNumber(raw.decline_fee_per_attempt),
     decline_max_attempts_per_day: asOptionalNumber(raw.decline_max_attempts_per_day),

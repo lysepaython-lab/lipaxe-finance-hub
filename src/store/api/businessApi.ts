@@ -376,7 +376,7 @@ export const businessApi = api.injectEndpoints({
       }),
       invalidatesTags: ['Wallet', 'Transactions', 'Crypto'],
     }),
-    cryptoDepositAddress: b.mutation<CryptoDepositAddress, { symbol: string; network: string; wallet_id: string; amount?: number }>({
+    cryptoDepositAddress: b.mutation<CryptoDepositAddress, { symbol: string; network: string; wallet_id: string; expected_amount?: number }>({
       query: (body) => ({
         url: '/cryptos/deposit-address/',
         method: 'POST',

@@ -348,7 +348,7 @@ const VirtualCard = () => {
           <CompareRow label="Monthly limit" values={visibleOffers.map((o) => (
             Number(o.monthly_limit || 0) > 0
               ? money(o.monthly_limit!, o.currency)
-              : <Badge variant="secondary" className="text-[10px] sm:text-xs">Configurable</Badge>
+              : <Badge variant="secondary" className="text-[10px] sm:text-xs">Set by card plan</Badge>
           ))} />
           <CompareRow label="Verdict" values={visibleOffers.map((o) => (
             <Badge variant="secondary" className="max-w-[150px] truncate text-[10px] sm:text-xs">{o.card_type || o.description || offerLabel(o)}</Badge>

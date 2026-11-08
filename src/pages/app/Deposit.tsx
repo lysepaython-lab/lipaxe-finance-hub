@@ -13,7 +13,7 @@ import {
   useElectronicDepositMutation,
 } from '@/store/api/walletApi';
 import { usePaymentMethodsDepositQuery, type PaymentMethod, type WalletV2 } from '@/store/api/platformApi';
-import { useCryptoDepositAddressMutation, useCryptoNetworksQuery } from '@/store/api/businessApi';
+import { useCryptoAssetsQuery, useCryptoDepositAddressMutation, useCryptoNetworksQuery } from '@/store/api/businessApi';
 import { Loader2, Check, ShieldCheck, Copy } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatMoney } from '@/lib/format';
@@ -41,18 +41,20 @@ const paymentMethodLogo = (method: PaymentMethod) => {
  */
 const Deposit = () => {
   const { t } = useTranslation();
-  const { data: methods } = usePaymentMethodsDepositQuery();
+  const { data: methods, isLoading: methodsLoading } = usePaymentMethodsDepositQuery();
   const [deposit, { isLoading: l1 }] = useDepositMutation();
   const [afripayDeposit, { isLoading: lAfripay }] = useAfripayDepositMutation();
   const [afripayDepositConfirm, { isLoading: lAfripayConfirm }] = useAfripayDepositConfirmMutation();
   const [cardDeposit, { isLoading: l2 }] = useCardDepositMutation();
   const [elecDeposit, { isLoading: l3 }] = useElectronicDepositMutation();
   const [cryptoDepositAddress, { isLoading: l4 }] = useCryptoDepositAddressMutation();
+  const { data: cryptoAssets = [], isLoading: cryptoAssetsLoading } = useCryptoAssetsQuery();
   const pin = usePinGate();
 
   const [walletId, setWalletId] = useState<string>();
   const [wallet, setWallet] = useState<WalletV2 | undefined>();
   const [methodId, setMethodId] = useState('');
+  const [cryptoSymbol, setCryptoSymbol] = useState('');
   const [amount, setAmount] = useState('500');
   const [fields, setFields] = useState<DynamicFields>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -63,18 +65,27 @@ const Deposit = () => {
   const [pendingAfripayTxId, setPendingAfripayTxId] = useState<string | null>(null);
   const status = useTransactionPolling(txId);
 
-  const allMethods = methods || [];
+  const allMethods = useMemo(() => methods || [], [methods]);
+  const cryptoMethods = allMethods.filter((m) => m.payment_type?.name === 'Cryptos');
   const selectedMethod = allMethods.find((m) => m.id === methodId);
-  const cryptoSym = selectedMethod?.payment_type?.name === 'Cryptos' ? 'USDT' : '';
-  const { data: networks } = useCryptoNetworksQuery(cryptoSym, { skip: !cryptoSym });
+  const isCryptoDeposit = Boolean(cryptoSymbol);
+  const cryptoSym = isCryptoDeposit ? cryptoSymbol : '';
+  const { data: networks, isLoading: networksLoading, isError: networksError } = useCryptoNetworksQuery(cryptoSym, { skip: !cryptoSym });
+  const availableNetworks = (networks || []).filter((network) => network.deposit_enabled !== false);
 
   const grouped = useMemo(() => {
     const map: Record<string, PaymentMethod[]> = {};
-    allMethods.forEach((m) => {
+    allMethods.filter((m) => m.payment_type?.name !== 'Cryptos').forEach((m) => {
       const key = m.payment_type?.name || 'Other';
       (map[key] = map[key] || []).push(m);
     });
-    return map;
+    return Object.fromEntries(
+      Object.entries(map).sort(([a], [b]) => {
+        const order = ['Mobile Payment', 'Bank Transfer', 'Electronic'];
+        return (order.indexOf(a) === -1 ? order.length : order.indexOf(a)) -
+          (order.indexOf(b) === -1 ? order.length : order.indexOf(b));
+      }),
+    );
   }, [allMethods]);
 
   const amt = parseFloat(amount) || 0;
@@ -97,8 +108,9 @@ const Deposit = () => {
       if (!/^\d{13,16}$/.test(num)) return 'Numéro de carte invalide';
       if (!/^\d{2}\/\d{2}$/.test(fields.card_validity || '')) return 'Validité invalide (MM/AA)';
     }
-    if (typeName === 'Cryptos') {
+    if (isCryptoDeposit) {
       if (!fields.network) return 'Sélectionnez un réseau';
+      if (wallet?.currency?.toUpperCase() !== cryptoSymbol.toUpperCase()) return `Sélectionnez un portefeuille ${cryptoSymbol}`;
     }
     return null;
   };
@@ -111,16 +123,16 @@ const Deposit = () => {
     if (!submitThrottle.tryAcquire()) { toast.error('Trop de tentatives.'); return; }
     setErrors({});
     try {
-      const typeName = selectedMethod?.payment_type?.name;
+      const typeName = isCryptoDeposit ? 'Cryptos' : selectedMethod?.payment_type?.name;
       if (typeName === 'Cryptos') {
         // Backend returns a deposit address that the user funds externally.
         const r = await cryptoDepositAddress({
           expected_amount: amt,
-          symbol: 'USDT',
+          symbol: cryptoSymbol,
           wallet_id: walletId!,
           network: fields.network!,
         }).unwrap();
-        setCryptoAddress({ address: r.address, network: r.network || fields.network!, symbol: r.symbol || 'USDT' });
+        setCryptoAddress({ address: r.address, network: r.network || fields.network!, symbol: r.symbol || cryptoSymbol });
         toast.success('Adresse de dépôt générée');
         setDone(true);
         return;
@@ -205,7 +217,7 @@ const Deposit = () => {
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!walletId) { toast.error(t('deposit.selectWallet')); return; }
-    if (!methodId) { toast.error(t('deposit.selectMethod')); return; }
+    if (!methodId && !isCryptoDeposit) { toast.error(t('deposit.selectMethod')); return; }
     pin.guard(submit);
   };
 
@@ -268,10 +280,86 @@ const Deposit = () => {
 
             <div className="space-y-3">
               <Label>{t('deposit.selectMethod')}</Label>
-              {Object.keys(grouped).length === 0 ? (
-                <p className="text-sm text-muted-foreground py-4 text-center">Chargement…</p>
-              ) : (
-                Object.entries(grouped).map(([type, list]) => (
+              {methodsLoading && <p className="text-sm text-muted-foreground py-2 text-center">Chargement des moyens de dépôt…</p>}
+              {cryptoMethods.length > 0 && (
+                    <section className="space-y-3 rounded-2xl border border-primary/20 bg-primary/[0.035] p-4" aria-label="Crypto deposits">
+                      <div>
+                        <h2 className="font-semibold">Dépôt en crypto</h2>
+                        <p className="mt-1 text-sm text-muted-foreground">Choisissez un actif, puis son réseau de dépôt.</p>
+                      </div>
+                      {cryptoAssetsLoading ? (
+                        <p className="py-2 text-sm text-muted-foreground">Chargement des actifs…</p>
+                      ) : (
+                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                          {cryptoAssets.map((asset) => {
+                            const logo = resolveMediaUrl(asset.logo_url || asset.logo);
+                            return (
+                              <motion.button
+                                key={asset.symbol}
+                                type="button"
+                                whileTap={{ scale: 0.98 }}
+                                onClick={() => {
+                                  setCryptoSymbol(asset.symbol);
+                                  setMethodId(cryptoMethods[0]?.id || '');
+                                  setFields({});
+                                }}
+                                aria-pressed={cryptoSymbol === asset.symbol}
+                                className={cn(
+                                  'flex min-h-14 items-center gap-3 rounded-xl border-2 p-3 text-left transition-colors',
+                                  cryptoSymbol === asset.symbol ? 'border-primary bg-primary/10' : 'border-input bg-background hover:border-primary/40',
+                                )}
+                              >
+                                {logo ? (
+                                  <img src={logo} alt="" className="h-8 w-8 rounded-full object-cover" />
+                                ) : (
+                                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
+                                    {asset.symbol.slice(0, 3)}
+                                  </span>
+                                )}
+                                <span className="min-w-0">
+                                  <span className="block text-sm font-semibold">{asset.symbol}</span>
+                                  <span className="block truncate text-xs text-muted-foreground">{asset.name}</span>
+                                </span>
+                              </motion.button>
+                            );
+                          })}
+                        </div>
+                      )}
+                      {isCryptoDeposit && (
+                        <div className="space-y-2 border-t border-border/70 pt-3">
+                          <Label>Réseau pour {cryptoSymbol}</Label>
+                          {networksLoading ? (
+                            <p className="rounded-lg bg-background/70 p-3 text-sm text-muted-foreground">Chargement des réseaux disponibles…</p>
+                          ) : networksError ? (
+                            <p className="rounded-lg bg-background/70 p-3 text-sm text-destructive">Impossible de charger les réseaux. Réessayez dans un instant.</p>
+                          ) : availableNetworks.length === 0 ? (
+                            <p className="rounded-lg bg-background/70 p-3 text-sm text-muted-foreground">
+                              Aucun réseau de dépôt n’est actuellement disponible pour {cryptoSymbol}.
+                            </p>
+                          ) : (
+                            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                              {availableNetworks.map((network) => (
+                                <button
+                                  key={network.id}
+                                  type="button"
+                                  onClick={() => setFields((current) => ({ ...current, network: network.id }))}
+                                  aria-pressed={fields.network === network.id}
+                                  className={cn(
+                                    'flex min-h-12 items-center justify-between gap-3 rounded-xl border-2 px-3 py-2 text-left text-sm transition-colors',
+                                    fields.network === network.id ? 'border-primary bg-primary/10' : 'border-input bg-background hover:border-primary/40',
+                                  )}
+                                >
+                                  <span className="font-medium">{network.name}</span>
+                                  <span className="text-xs text-muted-foreground">{network.native_symbol || network.symbol || network.id.toUpperCase()}</span>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </section>
+              )}
+              {Object.entries(grouped).map(([type, list]) => (
                   <div key={type} className="space-y-2">
                     <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">{type}</p>
                     <div className="grid sm:grid-cols-2 gap-2">
@@ -281,7 +369,7 @@ const Deposit = () => {
                           type="button"
                           whileHover={{ y: -1 }}
                           whileTap={{ scale: 0.98 }}
-                          onClick={() => { setMethodId(m.id); setFields({}); }}
+                          onClick={() => { setCryptoSymbol(''); setMethodId(m.id); setFields({}); }}
                           className={cn(
                             'rounded-xl border-2 p-3 text-left transition-colors',
                             methodId === m.id ? 'border-primary bg-primary/5' : 'border-input hover:border-primary/40',
@@ -301,32 +389,13 @@ const Deposit = () => {
                       ))}
                     </div>
                   </div>
-                ))
+              ))}
+              {!methodsLoading && !cryptoMethods.length && !Object.keys(grouped).length && (
+                <p className="text-sm text-muted-foreground py-4 text-center">Aucun moyen de dépôt n’est disponible pour le moment.</p>
               )}
             </div>
 
-            {selectedMethod?.payment_type?.name === 'Cryptos' && networks && networks.length > 0 && (
-              <div className="space-y-2">
-                <Label>Réseau</Label>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {networks.map((n) => (
-                    <button
-                      key={n.id}
-                      type="button"
-                      onClick={() => setFields((f) => ({ ...f, network: n.id }))}
-                      className={cn(
-                        'rounded-lg border-2 p-2 text-xs font-semibold transition-colors',
-                        fields.network === n.id ? 'border-primary bg-primary/5' : 'border-input hover:border-primary/40',
-                      )}
-                    >
-                      {n.name}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <PaymentMethodFields method={selectedMethod} values={fields} onChange={(p) => setFields((f) => ({ ...f, ...p }))} context="deposit" />
+            {!isCryptoDeposit && <PaymentMethodFields method={selectedMethod} values={fields} onChange={(p) => setFields((f) => ({ ...f, ...p }))} context="deposit" />}
 
             {pendingAfripayTxId && (
               <div className="space-y-2 rounded-xl border border-primary/20 bg-primary/5 p-4">
@@ -368,7 +437,7 @@ const Deposit = () => {
               {errors.amount && <p className="text-xs text-destructive">{errors.amount}</p>}
             </div>
 
-            <div className="rounded-xl bg-muted/40 p-4 space-y-2 text-sm">
+            {!isCryptoDeposit && <div className="rounded-xl bg-muted/40 p-4 space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">{t('deposit.amount')}</span>
                 <span className="tabular">{formatMoney(amt, wallet?.currency || 'USD')}</span>
@@ -385,7 +454,7 @@ const Deposit = () => {
                 <span>{t('deposit.youReceive')}</span>
                 <span className="tabular text-primary">{formatMoney(amt, wallet?.currency || 'USD')}</span>
               </div>
-            </div>
+            </div>}
 
             <Button
               type="submit"

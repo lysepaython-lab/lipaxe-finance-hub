@@ -56,14 +56,19 @@ const handlePlatformStatus = (result: unknown, apiCtx: Parameters<BaseQueryFn>[1
   if (version) apiCtx.dispatch(setBackendVersion(version));
 
   const error = (result as { error?: FetchBaseQueryError })?.error;
-  if (error?.status === 503) {
-    const data = (error.data || {}) as {
-      detail?: string;
-      message?: string;
-      retry_after?: number;
-      version?: string;
-      status?: string;
-    };
+  const data = (error?.data || {}) as {
+    status?: string;
+    detail?: string;
+    message?: string;
+    retry_after?: number;
+    version?: string;
+  };
+  const maintenanceHeader = readHeader(result, 'X-Lipaxe-Maintenance');
+  const isPlatformMaintenance = maintenanceHeader === '1' || data.status === 'maintenance';
+
+  // A service-specific 503 (for example, an unavailable crypto network) must
+  // not block the entire Finance Hub.
+  if (isPlatformMaintenance) {
     apiCtx.dispatch(
       setMaintenance({
         message: data.message || data.detail || 'Lipaxe est momentanement en maintenance.',
@@ -74,7 +79,7 @@ const handlePlatformStatus = (result: unknown, apiCtx: Parameters<BaseQueryFn>[1
     return;
   }
 
-  if (!error && readHeader(result, 'X-Lipaxe-Maintenance') !== '1') {
+  if (!error || maintenanceHeader === '0') {
     apiCtx.dispatch(clearMaintenance());
   }
 };

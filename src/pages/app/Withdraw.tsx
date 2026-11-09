@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useWithdrawMutation } from '@/store/api/walletApi';
-import { useCryptoNetworksQuery, useCryptoWithdrawMutation } from '@/store/api/businessApi';
+import { useCryptoAssetsQuery, useCryptoNetworksQuery, useCryptoWithdrawMutation } from '@/store/api/businessApi';
 import { usePaymentMethodsWithdrawalQuery, type PaymentMethod, type WalletV2 } from '@/store/api/platformApi';
 import { Loader2, Check, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
@@ -35,12 +35,14 @@ const Withdraw = () => {
   const user = useAppSelector((s) => s.auth.user);
   const [withdraw, { isLoading }] = useWithdrawMutation();
   const [cryptoWithdraw, { isLoading: cryptoLoading }] = useCryptoWithdrawMutation();
+  const { data: cryptoAssets = [], isLoading: cryptoAssetsLoading } = useCryptoAssetsQuery();
   const { data: methods } = usePaymentMethodsWithdrawalQuery();
   const pin = usePinGate();
 
   const [walletId, setWalletId] = useState<string>();
   const [wallet, setWallet] = useState<WalletV2 | undefined>();
   const [methodId, setMethodId] = useState('');
+  const [cryptoSymbol, setCryptoSymbol] = useState('');
   const [amount, setAmount] = useState('200');
   const [fields, setFields] = useState<DynamicFields>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -50,13 +52,16 @@ const Withdraw = () => {
 
   const allMethods = methods || [];
   const selectedMethod = allMethods.find((m) => m.id === methodId);
-  const cryptoSym = selectedMethod?.payment_type?.name === 'Cryptos' ? 'USDT' : '';
-  const { data: networks } = useCryptoNetworksQuery(cryptoSym, { skip: !cryptoSym });
+  const isCryptoWithdraw = Boolean(cryptoSymbol);
+  const { data: networks = [], isLoading: networksLoading } = useCryptoNetworksQuery(
+    { symbol: cryptoSymbol, purpose: 'withdraw' },
+    { skip: !isCryptoWithdraw },
+  );
 
   // Group methods by payment_type.name
   const grouped = useMemo(() => {
     const map: Record<string, PaymentMethod[]> = {};
-    allMethods.forEach((m) => {
+    allMethods.filter((m) => m.payment_type?.name !== 'Cryptos').forEach((m) => {
       const key = m.payment_type?.name || 'Other';
       (map[key] = map[key] || []).push(m);
     });
@@ -84,9 +89,10 @@ const Withdraw = () => {
       if (!/^\d{13,16}$/.test(num)) return 'Numéro de carte invalide';
       if (!/^\d{2}\/\d{2}$/.test(fields.card_validity || '')) return 'Validité invalide (MM/AA)';
     }
-    if (typeName === 'Cryptos') {
+    if (isCryptoWithdraw) {
       if (!fields.destination_address || fields.destination_address.length < 10) return 'Adresse crypto invalide';
       if (!fields.network) return 'Sélectionnez un réseau';
+      if (wallet?.currency?.toUpperCase() !== cryptoSymbol.toUpperCase()) return `Sélectionnez un portefeuille ${cryptoSymbol}`;
     }
     return null;
   };
@@ -104,9 +110,9 @@ const Withdraw = () => {
     setErrors({});
     try {
       const typeName = selectedMethod?.payment_type?.name;
-      if (typeName === 'Cryptos') {
+      if (isCryptoWithdraw) {
         const r = await cryptoWithdraw({
-          symbol: 'USDT',
+          symbol: cryptoSymbol,
           network: fields.network!,
           address: sanitizeText(fields.destination_address!),
           amount: amt,
@@ -149,7 +155,7 @@ const Withdraw = () => {
     e.preventDefault();
     if (!kycOk) { toast.error('Vérification KYC requise pour les retraits.'); return; }
     if (!walletId) { toast.error(t('withdraw.selectWallet')); return; }
-    if (!methodId) { toast.error(t('deposit.selectMethod')); return; }
+    if (!methodId && !isCryptoWithdraw) { toast.error(t('deposit.selectMethod')); return; }
     pin.guard(submit);
   };
 
@@ -197,11 +203,48 @@ const Withdraw = () => {
               label={t('withdraw.selectWallet')}
               value={walletId}
               onChange={(id, w) => { setWalletId(id); setWallet(w); }}
+              filterCurrency={isCryptoWithdraw ? cryptoSymbol : undefined}
             />
 
             <div className="space-y-3">
               <Label>{t('deposit.selectMethod')}</Label>
-              {Object.keys(grouped).length === 0 ? (
+              {(cryptoAssetsLoading || cryptoAssets.length > 0) && (
+                <section className="space-y-3 rounded-2xl border border-primary/20 bg-primary/[0.035] p-4" aria-label="Crypto withdrawals">
+                  <div>
+                    <h2 className="font-semibold">Retrait en crypto</h2>
+                    <p className="mt-1 text-sm text-muted-foreground">Choisissez l’actif, puis le réseau de destination.</p>
+                  </div>
+                  {cryptoAssetsLoading ? (
+                    <p className="py-2 text-sm text-muted-foreground">Chargement des actifs…</p>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                      {cryptoAssets.map((asset) => (
+                        <button
+                          key={asset.symbol}
+                          type="button"
+                          onClick={() => { setCryptoSymbol(asset.symbol); setMethodId(''); setFields({}); }}
+                          aria-pressed={cryptoSymbol === asset.symbol}
+                          className={cn(
+                            'flex min-h-12 items-center gap-2 rounded-xl border-2 p-3 text-left text-sm transition-colors',
+                            cryptoSymbol === asset.symbol ? 'border-primary bg-primary/10' : 'border-input bg-background hover:border-primary/40',
+                          )}
+                        >
+                            {asset.logo_url || asset.logo ? (
+                              <img src={resolveMediaUrl(asset.logo_url || asset.logo)} alt="" className="h-7 w-7 rounded-full object-cover" />
+                            ) : (
+                              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">
+                                {asset.symbol.slice(0, 3)}
+                              </span>
+                            )}
+                            <span className="font-semibold">{asset.symbol}</span>
+                          <span className="truncate text-xs text-muted-foreground">{asset.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </section>
+              )}
+              {Object.keys(grouped).length === 0 && !cryptoAssets.length ? (
                 <p className="text-sm text-muted-foreground py-4 text-center">Chargement…</p>
               ) : (
                 Object.entries(grouped).map(([type, list]) => (
@@ -238,10 +281,14 @@ const Withdraw = () => {
               )}
             </div>
 
-            {selectedMethod?.payment_type?.name === 'Cryptos' && networks && (
+            {isCryptoWithdraw && (
               <div className="space-y-2">
                 <Label>Réseau</Label>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {networksLoading ? (
+                  <p className="text-sm text-muted-foreground">Chargement des réseaux de retrait…</p>
+                ) : networks.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">Aucun réseau de retrait n’est disponible pour cet actif.</p>
+                ) : <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   {networks.map((n) => (
                     <button
                       key={n.id}
@@ -255,11 +302,11 @@ const Withdraw = () => {
                       {n.name}
                     </button>
                   ))}
-                </div>
+                </div>}
               </div>
             )}
 
-            <PaymentMethodFields method={selectedMethod} values={fields} onChange={(p) => setFields((f) => ({ ...f, ...p }))} context="withdraw" />
+            {!isCryptoWithdraw && <PaymentMethodFields method={selectedMethod} values={fields} onChange={(p) => setFields((f) => ({ ...f, ...p }))} context="withdraw" />}
 
             <div className="space-y-2">
               <Label>{t('withdraw.amount')}</Label>
@@ -279,7 +326,7 @@ const Withdraw = () => {
               )}
             </div>
 
-            <div className="rounded-xl bg-muted/40 p-4 space-y-2 text-sm">
+            {!isCryptoWithdraw && <div className="rounded-xl bg-muted/40 p-4 space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">{t('withdraw.amount')}</span>
                 <span className="tabular">{formatMoney(amt, wallet?.currency || 'USD')}</span>
@@ -297,12 +344,12 @@ const Withdraw = () => {
               {insufficient && (
                 <p className="text-xs text-destructive">{t('transfer.insufficientBalance')}</p>
               )}
-            </div>
+            </div>}
 
             <Button
               type="submit"
               className="w-full h-12 bg-gradient-brand shadow-brand text-base rounded-xl"
-              disabled={isLoading || cryptoLoading || busy || insufficient || !kycOk}
+              disabled={isLoading || cryptoLoading || busy || insufficient || !kycOk || (isCryptoWithdraw && (!networks.length || networksLoading || !fields.network))}
             >
               {(isLoading || cryptoLoading || busy) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}
               {t('withdraw.confirm')}

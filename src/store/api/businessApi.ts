@@ -133,6 +133,10 @@ export interface CryptoNetwork {
   withdrawal_enabled?: boolean;
   deposit_enabled?: boolean;
 }
+export interface CryptoNetworksQuery {
+  symbol: string;
+  purpose?: 'all' | 'deposit' | 'withdraw';
+}
 export interface CryptoDepositAddress {
   id?: string;
   address: string;
@@ -358,8 +362,9 @@ export const businessApi = api.injectEndpoints({
         }),
       providesTags: ['Crypto'],
     }),
-    cryptoNetworks: b.query<CryptoNetwork[], string>({
-      query: (symbol) => `/crypto-market/rates/${encodeURIComponent(symbol)}/networks/`,
+    cryptoNetworks: b.query<CryptoNetwork[], CryptoNetworksQuery>({
+      query: ({ symbol, purpose = 'all' }) =>
+        `/crypto-market/rates/${encodeURIComponent(symbol)}/networks/?purpose=${purpose}`,
     }),
     cryptoQuote: b.mutation<CryptoQuote, { symbol: string; side: 'buy' | 'sell'; fiat_wallet_id: string; crypto_wallet_id: string; network?: string; fiat_amount?: number; crypto_amount?: number }>({
       query: (body) => ({

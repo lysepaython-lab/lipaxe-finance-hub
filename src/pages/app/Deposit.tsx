@@ -66,12 +66,13 @@ const Deposit = () => {
   const status = useTransactionPolling(txId);
 
   const allMethods = useMemo(() => methods || [], [methods]);
-  const cryptoMethods = allMethods.filter((m) => m.payment_type?.name === 'Cryptos');
   const selectedMethod = allMethods.find((m) => m.id === methodId);
   const isCryptoDeposit = Boolean(cryptoSymbol);
   const cryptoSym = isCryptoDeposit ? cryptoSymbol : '';
-  const { data: networks, isLoading: networksLoading, isError: networksError } = useCryptoNetworksQuery(cryptoSym, { skip: !cryptoSym });
-  const availableNetworks = (networks || []).filter((network) => network.deposit_enabled !== false);
+  const { data: availableNetworks = [], isLoading: networksLoading, isError: networksError } = useCryptoNetworksQuery(
+    { symbol: cryptoSym, purpose: 'deposit' },
+    { skip: !cryptoSym },
+  );
 
   const grouped = useMemo(() => {
     const map: Record<string, PaymentMethod[]> = {};
@@ -281,7 +282,7 @@ const Deposit = () => {
             <div className="space-y-3">
               <Label>{t('deposit.selectMethod')}</Label>
               {methodsLoading && <p className="text-sm text-muted-foreground py-2 text-center">Chargement des moyens de dépôt…</p>}
-              {cryptoMethods.length > 0 && (
+              {(cryptoAssetsLoading || cryptoAssets.length > 0) && (
                     <section className="space-y-3 rounded-2xl border border-primary/20 bg-primary/[0.035] p-4" aria-label="Crypto deposits">
                       <div>
                         <h2 className="font-semibold">Dépôt en crypto</h2>
@@ -300,7 +301,7 @@ const Deposit = () => {
                                 whileTap={{ scale: 0.98 }}
                                 onClick={() => {
                                   setCryptoSymbol(asset.symbol);
-                                  setMethodId(cryptoMethods[0]?.id || '');
+                                  setMethodId('');
                                   setFields({});
                                 }}
                                 aria-pressed={cryptoSymbol === asset.symbol}
@@ -390,7 +391,7 @@ const Deposit = () => {
                     </div>
                   </div>
               ))}
-              {!methodsLoading && !cryptoMethods.length && !Object.keys(grouped).length && (
+              {!methodsLoading && !cryptoAssetsLoading && !cryptoAssets.length && !Object.keys(grouped).length && (
                 <p className="text-sm text-muted-foreground py-4 text-center">Aucun moyen de dépôt n’est disponible pour le moment.</p>
               )}
             </div>

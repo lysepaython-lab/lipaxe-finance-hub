@@ -68,7 +68,7 @@ const modeTitle = (mode: CryptoMode, symbol: string) => {
 const Cryptos = () => {
   const { t } = useTranslation();
   const { data: assets, isLoading } = useCryptoAssetsQuery();
-  const { data: networks } = useCryptoNetworksQuery('USDT');
+  const [mode, setMode] = useState<CryptoMode>('buy');
   const [depositAddr, { isLoading: addrLoading }] = useCryptoDepositAddressMutation();
   const [withdraw, { isLoading: wdLoading }] = useCryptoWithdrawMutation();
   const [quoteCrypto, { isLoading: quoteLoading }] = useCryptoQuoteMutation();
@@ -76,9 +76,8 @@ const Cryptos = () => {
   const pin = usePinGate();
 
   const [open, setOpen] = useState(false);
-  const [mode, setMode] = useState<CryptoMode>('buy');
   const [symbol, setSymbol] = useState('USDT');
-  const [network, setNetwork] = useState('trc20');
+  const [network, setNetwork] = useState('');
   const [walletId, setWalletId] = useState<string>();
   const [fiatWalletId, setFiatWalletId] = useState<string>();
   const [cryptoWalletId, setCryptoWalletId] = useState<string>();
@@ -88,8 +87,11 @@ const Cryptos = () => {
   const [quote, setQuote] = useState<CryptoQuote | null>(null);
   const [copied, setCopied] = useState(false);
 
-  const { data: symbolNetworks } = useCryptoNetworksQuery(symbol, { skip: !symbol });
-  const activeNetworks = symbolNetworks || networks || [];
+  const networkPurpose = mode === 'deposit' ? 'deposit' : mode === 'withdraw' ? 'withdraw' : 'all';
+  const { data: activeNetworks = [], isLoading: networksLoading } = useCryptoNetworksQuery(
+    { symbol, purpose: networkPurpose },
+    { skip: !symbol },
+  );
 
   const openMode = (nextMode: CryptoMode, nextSymbol: string) => {
     setMode(nextMode);
@@ -246,7 +248,7 @@ const Cryptos = () => {
           </DialogHeader>
 
           <div className="max-h-[calc(92vh-148px)] overflow-y-auto p-7">
-            <Tabs value={mode} onValueChange={(value) => { setMode(value as CryptoMode); setQuote(null); setGenerated(null); }}>
+            <Tabs value={mode} onValueChange={(value) => { setMode(value as CryptoMode); setNetwork(''); setQuote(null); setGenerated(null); }}>
               <TabsList className="grid w-full grid-cols-4 rounded-2xl">
                 <TabsTrigger value="buy" className="rounded-xl">Achat</TabsTrigger>
                 <TabsTrigger value="sell" className="rounded-xl">Vente</TabsTrigger>
@@ -281,7 +283,13 @@ const Cryptos = () => {
 
               <div className="space-y-2">
                 <Label>Reseau</Label>
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {networksLoading ? (
+                  <p className="text-sm text-muted-foreground">Chargement des réseaux disponibles…</p>
+                ) : activeNetworks.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    {mode === 'deposit' ? 'Aucun réseau de dépôt n’est configuré pour cet actif.' : mode === 'withdraw' ? 'Aucun réseau de retrait n’est disponible pour cet actif.' : 'Aucun réseau configuré pour cet actif.'}
+                  </p>
+                ) : <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                   {activeNetworks.map((item) => (
                     <button
                       key={item.id}
@@ -296,7 +304,7 @@ const Cryptos = () => {
                       <span className="min-w-0 truncate">{item.name}</span>
                     </button>
                   ))}
-                </div>
+                </div>}
               </div>
 
               <div className="space-y-2">
@@ -321,7 +329,7 @@ const Cryptos = () => {
 
               <TabsContent value="deposit" className="m-0">
                 {!generated ? (
-                  <Button onClick={handleGenerate} disabled={addrLoading} className="w-full bg-gradient-brand shadow-brand">
+                  <Button onClick={handleGenerate} disabled={addrLoading || networksLoading || activeNetworks.length === 0 || !network} className="w-full bg-gradient-brand shadow-brand">
                     {addrLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Generer l'adresse de depot
                   </Button>
@@ -363,7 +371,7 @@ const Cryptos = () => {
               </>
             )}
             {mode === 'withdraw' && (
-              <Button onClick={handleWithdraw} disabled={wdLoading} className="rounded-2xl bg-primary text-primary-foreground shadow-brand hover:bg-primary/90">
+              <Button onClick={handleWithdraw} disabled={wdLoading || networksLoading || activeNetworks.length === 0 || !network} className="rounded-2xl bg-primary text-primary-foreground shadow-brand hover:bg-primary/90">
                 {wdLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Envoyer
               </Button>

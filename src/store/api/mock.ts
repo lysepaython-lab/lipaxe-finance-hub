@@ -1204,11 +1204,12 @@ export async function mockHandler(url: string, method: string, body: any): Promi
     const sym = url.split('/').filter(Boolean)[2];
     return ok(CRYPTO_NETWORKS[sym] || []);
   }
-  if (url === '/api/cryptos/deposit-address/' && method === 'POST') {
-    const address = body.network === 'TRC20' ? 'TR' + Math.random().toString(36).slice(2, 32).toUpperCase()
-      : body.network === 'ERC20' ? '0x' + Math.random().toString(16).slice(2, 42)
+  if ((url === '/api/cryptos/deposit-address/' || url === '/crypto-market/deposit-address/') && method === 'POST') {
+    const network = String(body.network || '').toLowerCase();
+    const address = network === 'trc20' ? 'T' + Math.random().toString(36).slice(2, 34).toUpperCase()
+      : ['erc20', 'bep20'].includes(network) ? '0x' + Math.random().toString(16).slice(2, 42)
       : '1' + Math.random().toString(36).slice(2, 30);
-    return ok({ address, network: body.network, symbol: body.symbol, qr_payload: `${body.symbol}:${address}?amount=${body.amount}` });
+    return ok({ address, network: body.network, symbol: body.symbol, qr_payload: `${body.symbol}:${address}?network=${body.network}` });
   }
   if (url === '/api/cryptos/withdraw/' && method === 'POST') {
     const w = wallets.find((x) => x.id === body.wallet_id);

@@ -70,7 +70,10 @@ const CardDetail = () => {
     wallet_id: fundWallet || '',
     amount: Number(fundAmount),
   }, { skip: !fundOpen || fundMode !== 'recharge' || !id || !fundWallet || !(Number(fundAmount) > 0) });
-  const { data: withdrawalRequestData } = useScarabPayCardWithdrawalRequestQuery({ cardId: id }, {
+  const {
+    data: withdrawalRequestData,
+    isError: withdrawalRequestError,
+  } = useScarabPayCardWithdrawalRequestQuery({ cardId: id }, {
     skip: !id || !isScarabPay,
     pollingInterval: isScarabPay ? 30_000 : 0,
   });
@@ -87,7 +90,7 @@ const CardDetail = () => {
   });
   const withdrawalRequest = withdrawalRequestData?.request;
   const withdrawalPreview = withdrawalRequestData?.preview;
-  const withdrawalOpenStatus = withdrawalRequest?.status === 'pending' || withdrawalRequest?.status === 'needs_review';
+  const withdrawalOpenStatus = !withdrawalRequestError && (withdrawalRequest?.status === 'pending' || withdrawalRequest?.status === 'needs_review');
   const fullCardBalanceCents = Math.round(Number(withdrawalPreview?.card_balance ?? card?.balance ?? 0) * 100);
   const enteredWithdrawalCents = Math.round(Number(withdrawalAmount || 0) * 100);
   const minimumWithdrawalCents = Math.round(Number(withdrawalPreview?.minimum_withdrawal ?? 1) * 100);
@@ -394,13 +397,21 @@ const CardDetail = () => {
               )}
               {isScarabPay && withdrawalRequest && (
                 <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 text-sm">
-                  <div className="font-semibold">Card withdrawal · {withdrawalRequest.status === 'needs_review' ? 'under review' : withdrawalRequest.status === 'pending' ? 'processing' : withdrawalRequest.status === 'completed' ? 'completed' : 'failed'}</div>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="font-semibold">{withdrawalRequestError ? 'Last confirmed withdrawal status' : 'Card withdrawal'} · {withdrawalRequest.status === 'needs_review' ? 'under review' : withdrawalRequest.status === 'pending' ? 'processing' : withdrawalRequest.status === 'completed' ? 'completed' : 'failed'}</div>
+                  </div>
                   <p className="mt-1 text-muted-foreground">
                     {withdrawalRequest.status === 'pending' && `${withdrawalRequest.amount} USD requested. Your wallet will be credited when processing is complete.`}
                     {withdrawalRequest.status === 'needs_review' && 'This request is being checked before any wallet credit is made.'}
                     {withdrawalRequest.status === 'completed' && `${withdrawalRequest.credited_amount || '0.00'} ${withdrawalRequest.wallet_currency || 'USD'} credited to your selected wallet.`}
                     {withdrawalRequest.status === 'failed' && 'The withdrawal could not be completed. No funds were credited.'}
                   </p>
+                  {withdrawalRequestError && <p className="mt-2 text-amber-700 dark:text-amber-300">We couldn’t refresh this status. The displayed status is from the last successful update.</p>}
+                </div>
+              )}
+              {isScarabPay && withdrawalRequestError && !withdrawalRequest && (
+                <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm" role="status">
+                  <p className="text-amber-800 dark:text-amber-200">Withdrawal status is temporarily unavailable. You can still use the card actions; the status will update when the service responds again.</p>
                 </div>
               )}
               <div className="flex items-center justify-between rounded-2xl bg-muted/45 px-3 py-2 text-sm">
@@ -497,15 +508,13 @@ const CardDetail = () => {
               <div className="flex justify-between gap-4"><span className="text-muted-foreground">{t('common.fee', { defaultValue: 'Fee' })}</span><span>{withdrawalQuote ? formatMoney(Number(withdrawalQuote.fee), withdrawalQuote.currency) : '—'}</span></div>
               <div className="flex justify-between gap-4 border-t border-border pt-2 font-semibold"><span>Wallet credit</span><span>{withdrawalQuote ? formatMoney(Number(withdrawalQuote.wallet_credit), withdrawalQuote.currency) : '—'}</span></div>
             </div>
-            {!withdrawalQuoteLoading && !withdrawalQuote && (
+            {!withdrawalQuoteLoading && !withdrawalQuote && (withdrawalQuoteError || !withdrawalWallet || withdrawalAmountIsValid) && (
               <p className="text-xs text-muted-foreground" role="status">
                 {withdrawalQuoteError
                   ? 'We could not calculate this amount. Please try again.'
                   : !withdrawalWallet
                     ? 'Choose a destination wallet to calculate the fee and wallet credit.'
-                    : !withdrawalAmountIsValid
-                      ? 'Enter an amount within the minimum and maximum limits to see the fee and wallet credit.'
-                      : 'The estimate is not available yet.'}
+                    : 'The estimate is not available yet.'}
               </p>
             )}
           </div>

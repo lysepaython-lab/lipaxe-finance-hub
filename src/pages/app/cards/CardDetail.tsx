@@ -70,13 +70,20 @@ const CardDetail = () => {
     wallet_id: fundWallet || '',
     amount: Number(fundAmount),
   }, { skip: !fundOpen || fundMode !== 'recharge' || !id || !fundWallet || !(Number(fundAmount) > 0) });
-  const { data: withdrawalRequestData } = useScarabPayCardWithdrawalRequestQuery({
+  const { data: withdrawalRequestData } = useScarabPayCardWithdrawalRequestQuery({ cardId: id }, {
+    skip: !id || !isScarabPay,
+    pollingInterval: isScarabPay ? 30_000 : 0,
+  });
+  const {
+    currentData: withdrawalQuoteData,
+    isFetching: withdrawalQuoteLoading,
+    isError: withdrawalQuoteError,
+  } = useScarabPayCardWithdrawalRequestQuery({
     cardId: id,
     walletId: withdrawalWallet,
     amount: withdrawalAmount,
   }, {
-    skip: !id || !isScarabPay,
-    pollingInterval: isScarabPay ? 30_000 : 0,
+    skip: !withdrawalOpen || !id || !isScarabPay || !withdrawalWallet || !withdrawalAmount,
   });
   const withdrawalRequest = withdrawalRequestData?.request;
   const withdrawalPreview = withdrawalRequestData?.preview;
@@ -85,7 +92,7 @@ const CardDetail = () => {
   const enteredWithdrawalCents = Math.round(Number(withdrawalAmount || 0) * 100);
   const minimumWithdrawalCents = Math.round(Number(withdrawalPreview?.minimum_withdrawal ?? 1) * 100);
   const withdrawalAmountIsValid = enteredWithdrawalCents >= minimumWithdrawalCents && enteredWithdrawalCents <= fullCardBalanceCents;
-  const withdrawalQuote = withdrawalPreview?.quote;
+  const withdrawalQuote = withdrawalQuoteData?.preview?.quote;
   const pin = usePinGate();
   const detailsVisible = isScarabPay ? Boolean(revealedDetails) : reveal;
   const activeReveal = isScarabPay ? revealedDetails : null;
@@ -407,38 +414,41 @@ const CardDetail = () => {
             </CardContent>
           </Card>
 
-          <Card className="border-border/60">
-            <CardHeader>
-              <div className="flex items-center justify-between gap-3">
-                <CardTitle className="font-display text-2xl sm:text-3xl">Transactions</CardTitle>
-                {cardTxError && <Button variant="outline" size="sm" onClick={() => void refetchCardTx()}>Retry</Button>}
-              </div>
-            </CardHeader>
-            <CardContent className="min-w-0 space-y-2 p-4 pt-0 sm:p-5 sm:pt-0">
-              {cardTxLoading && <div className="space-y-2" aria-live="polite"><Skeleton className="h-14 w-full" /><Skeleton className="h-14 w-full" /></div>}
-              {cardTxError && <p role="alert" className="py-4 text-center text-sm text-muted-foreground">Unable to load card activity. Try again.</p>}
-              {(cardTx || []).map((tx) => (
-                <div key={tx.id} className="flex min-w-0 items-center justify-between gap-3 rounded-2xl bg-muted/35 px-3 py-2 text-sm">
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate font-semibold">{tx.description}</div>
-                    <div className="text-xs text-muted-foreground">{formatDate(tx.createdAt)}</div>
-                  </div>
-                  <span className="max-w-[96px] shrink-0 truncate text-right font-semibold tabular sm:max-w-none">{formatMoney(tx.amount, tx.currency)}</span>
-                </div>
-              ))}
-              {!cardTxLoading && !cardTxError && (cardTx || []).length === 0 && <p className="py-8 text-center text-sm text-muted-foreground">No card activity yet.</p>}
-            </CardContent>
-          </Card>
         </div>
       </div>
 
+      <Card className="min-w-0 border-border/60">
+        <CardHeader>
+          <div className="flex items-center justify-between gap-3">
+            <CardTitle className="font-display text-2xl sm:text-3xl">Transactions</CardTitle>
+            {cardTxError && <Button variant="outline" size="sm" onClick={() => void refetchCardTx()}>Retry</Button>}
+          </div>
+        </CardHeader>
+        <CardContent className="grid min-w-0 gap-2 p-4 pt-0 sm:grid-cols-2 sm:p-5 sm:pt-0 xl:grid-cols-3">
+          {cardTxLoading && <div className="space-y-2 sm:col-span-2 xl:col-span-3" aria-live="polite"><Skeleton className="h-14 w-full" /><Skeleton className="h-14 w-full" /></div>}
+          {cardTxError && <p role="alert" className="py-4 text-center text-sm text-muted-foreground sm:col-span-2 xl:col-span-3">Unable to load card activity. Try again.</p>}
+          {(cardTx || []).map((tx) => (
+            <div key={tx.id} className="flex min-w-0 items-center justify-between gap-3 rounded-2xl bg-muted/35 px-3 py-3 text-sm">
+              <div className="min-w-0 flex-1">
+                <div className="truncate font-semibold">{tx.description}</div>
+                <div className="text-xs text-muted-foreground">{formatDate(tx.createdAt)}</div>
+              </div>
+              <span className="shrink-0 text-right font-semibold tabular-nums">{formatMoney(tx.amount, tx.currency)}</span>
+            </div>
+          ))}
+          {!cardTxLoading && !cardTxError && (cardTx || []).length === 0 && <p className="py-8 text-center text-sm text-muted-foreground sm:col-span-2 xl:col-span-3">No card activity yet.</p>}
+        </CardContent>
+      </Card>
+
       <Dialog open={fundOpen} onOpenChange={setFundOpen}>
-        <DialogContent className="max-w-md rounded-3xl">
-          <DialogHeader>
+        <DialogContent className="flex h-[min(90dvh,760px)] max-h-[calc(100dvh-1rem)] max-w-md flex-col gap-0 overflow-hidden rounded-3xl p-0">
+          <DialogHeader className="shrink-0 border-b border-border px-6 pb-4 pt-6 pr-12">
             <DialogTitle className="font-display">{fundMode === 'recharge' ? 'Recharge card' : 'Withdraw from card'}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            <WalletSelector label="Wallet" value={fundWallet} onChange={(walletId) => setFundWallet(walletId)} />
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-6 py-4">
+            <div className="max-h-56 overflow-y-auto overscroll-contain pr-1">
+              <WalletSelector label="Wallet" value={fundWallet} onChange={(walletId) => setFundWallet(walletId)} />
+            </div>
             <div className="space-y-2">
               <Label>Amount</Label>
               <Input type="number" min={0} value={fundAmount} onChange={(event) => setFundAmount(event.target.value)} />
@@ -450,20 +460,20 @@ const CardDetail = () => {
                 <div className="flex justify-between gap-4 border-t border-border pt-2 font-semibold"><span>Total</span><span>{formatMoney(Number(rechargeQuote.total), rechargeQuote.currency)}</span></div>
               </div>
             )}
-            <div className="flex justify-end gap-3 pt-2">
-              <Button variant="outline" onClick={() => setFundOpen(false)}>Cancel</Button>
-              <Button onClick={submitFund} disabled={fundMode === 'recharge' && (!rechargeQuote || rechargeQuoteLoading)} className="bg-primary text-primary-foreground hover:bg-primary/90">Confirm</Button>
-            </div>
+          </div>
+          <div className="flex shrink-0 justify-end gap-3 border-t border-border bg-background px-6 py-4">
+            <Button variant="outline" onClick={() => setFundOpen(false)}>Cancel</Button>
+            <Button onClick={submitFund} disabled={fundMode === 'recharge' && (!rechargeQuote || rechargeQuoteLoading)} className="bg-primary text-primary-foreground hover:bg-primary/90">Confirm</Button>
           </div>
         </DialogContent>
       </Dialog>
 
       <Dialog open={withdrawalOpen} onOpenChange={setWithdrawalOpen}>
-        <DialogContent className="max-w-lg rounded-3xl">
-          <DialogHeader>
+        <DialogContent className="flex h-[min(90dvh,760px)] max-h-[calc(100dvh-1rem)] max-w-lg flex-col gap-0 overflow-hidden rounded-3xl p-0">
+          <DialogHeader className="shrink-0 border-b border-border px-6 py-5 pr-12">
             <DialogTitle className="font-display">Withdraw to wallet</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-5">
             <div className="space-y-2">
               <Label htmlFor="scarabpay-withdrawal-amount">Amount to withdraw (USD)</Label>
               <Input
@@ -477,22 +487,35 @@ const CardDetail = () => {
                 onChange={(event) => setWithdrawalAmount(event.target.value)}
                 placeholder="0.00"
               />
-              <p className="text-xs text-muted-foreground">Minimum {formatMoney(Number(withdrawalPreview?.minimum_withdrawal ?? 1), 'USD')}.</p>
+              <p className="text-xs text-muted-foreground">Minimum {formatMoney(Number(withdrawalPreview?.minimum_withdrawal ?? 1), 'USD')}. Maximum {formatMoney(fullCardBalanceCents / 100, 'USD')}.</p>
             </div>
-            <WalletSelector label="Destination wallet" value={withdrawalWallet} onChange={(walletId) => setWithdrawalWallet(walletId)} />
+            <div className="max-h-56 overflow-y-auto overscroll-contain pr-1">
+              <WalletSelector label="Destination wallet" value={withdrawalWallet} onChange={(walletId) => setWithdrawalWallet(walletId)} />
+            </div>
             <div className="space-y-2 rounded-2xl border border-border bg-muted/30 p-4 text-sm">
               <div className="flex justify-between gap-4"><span>Amount</span><span className="font-medium">{formatMoney(enteredWithdrawalCents / 100, 'USD')}</span></div>
               <div className="flex justify-between gap-4"><span className="text-muted-foreground">{t('common.fee', { defaultValue: 'Fee' })}</span><span>{withdrawalQuote ? formatMoney(Number(withdrawalQuote.fee), withdrawalQuote.currency) : '—'}</span></div>
               <div className="flex justify-between gap-4 border-t border-border pt-2 font-semibold"><span>Wallet credit</span><span>{withdrawalQuote ? formatMoney(Number(withdrawalQuote.wallet_credit), withdrawalQuote.currency) : '—'}</span></div>
             </div>
-            <div className="flex justify-end gap-3 pt-1">
+            {!withdrawalQuoteLoading && !withdrawalQuote && (
+              <p className="text-xs text-muted-foreground" role="status">
+                {withdrawalQuoteError
+                  ? 'We could not calculate this amount. Please try again.'
+                  : !withdrawalWallet
+                    ? 'Choose a destination wallet to calculate the fee and wallet credit.'
+                    : !withdrawalAmountIsValid
+                      ? 'Enter an amount within the minimum and maximum limits to see the fee and wallet credit.'
+                      : 'The estimate is not available yet.'}
+              </p>
+            )}
+          </div>
+          <div className="flex shrink-0 justify-end gap-3 border-t border-border bg-background px-6 py-4">
               <Button variant="outline" onClick={() => setWithdrawalOpen(false)}>Cancel</Button>
               <Button onClick={submitCardWithdrawalRequest} disabled={withdrawalRequestMutation.isLoading || !withdrawalWallet || !withdrawalAmountIsValid || !withdrawalQuote}>
                 {withdrawalRequestMutation.isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Continue to PIN
               </Button>
             </div>
-          </div>
         </DialogContent>
       </Dialog>
 

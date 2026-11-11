@@ -76,6 +76,7 @@ const CardDetail = () => {
   } = useScarabPayCardWithdrawalRequestQuery({ cardId: id }, {
     skip: !id || !isScarabPay,
     pollingInterval: isScarabPay ? 30_000 : 0,
+    refetchOnMountOrArgChange: true,
   });
   const {
     currentData: withdrawalQuoteData,
@@ -352,7 +353,7 @@ const CardDetail = () => {
                 {!isScarabPay && <Button variant="outline" onClick={() => openFund('withdraw')} disabled={!canMoveFunds}>
                   Withdrawal
                 </Button>}
-                {isScarabPay && <Button variant="outline" onClick={() => { setWithdrawalAmount(''); setWithdrawalOpen(true); }} disabled={card.status !== 'active' || withdrawalOpenStatus || !withdrawalPreview}>
+                {isScarabPay && <Button variant="outline" onClick={() => { setWithdrawalAmount(''); setWithdrawalOpen(true); }} disabled={card.status !== 'active' || withdrawalOpenStatus}>
                   <Banknote className="mr-2 h-4 w-4" /> {withdrawalOpenStatus ? 'Retrait en cours' : 'Retirer vers mon wallet'}
                 </Button>}
                 {isScarabPay && <Button variant="destructive" onClick={() => setTerminateOpen(true)} disabled={!['active', 'frozen'].includes(card.status) || withdrawalOpenStatus}>

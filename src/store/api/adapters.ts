@@ -446,6 +446,13 @@ export const normalizeUserCard = (payload: unknown) => {
       (raw.virtual_card as UnknownRecord | undefined)?.card_image,
       (raw.virtual_card as UnknownRecord | undefined)?.design_image,
     ),
+    product_name: firstText(
+      raw.product_name,
+      raw.offer_name,
+      raw.card_product_name,
+      (raw.virtual_card as UnknownRecord | undefined)?.name,
+      (raw.virtual_card as UnknownRecord | undefined)?.card_name,
+    ),
     provider: asString(raw.provider).toLowerCase(),
     provider_mode: asString(raw.provider_mode).toLowerCase(),
     provider_decline_count: asNumber(raw.provider_decline_count),
@@ -474,12 +481,12 @@ export const normalizeCardTransaction = (payload: unknown) => {
         : 'pending'
   ) as 'completed' | 'pending' | 'failed';
   return {
-    id: asString(raw.id),
-    amount: asNumber(raw.amount),
-    currency: asString(raw.currency, 'USD'),
-    description: asString(raw.description ?? raw.remark, 'Card transaction'),
+    id: asString(raw.id ?? raw.trans_id ?? raw.reference ?? raw.transaction_id),
+    amount: raw.amount != null ? asNumber(raw.amount) : asNumber(raw.amount_minor) / 100,
+    currency: asString(raw.currency ?? raw.currency_code, 'USD'),
+    description: asString(raw.description ?? raw.merchant_name ?? raw.name ?? raw.remark ?? raw.type, 'Card transaction'),
     status,
-    createdAt: asString(raw.created_at ?? raw.timestamp),
+    createdAt: asString(raw.created_at ?? raw.occurred_at ?? raw.created ?? raw.timestamp ?? raw.date),
   };
 };
 

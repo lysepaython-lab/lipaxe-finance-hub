@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, CreditCard, Eye, EyeOff, Loader2, Snowflake, XCircle, AlertTriangle, Banknote } from 'lucide-react';
+import { ArrowLeft, CreditCard, Eye, EyeOff, Loader2, Snowflake, XCircle, Banknote } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { PageHeader } from '@/components/PageHeader';
 import { Button } from '@/components/ui/button';
@@ -22,6 +22,7 @@ import {
   useMyCardsQuery,
   useRevealScarabPayCardMutation,
   useRechargeCardMutation,
+  useRechargeCardQuoteQuery,
   useWithdrawCardMutation,
   useTerminateScarabPayCardMutation,
   useScarabPayCardWithdrawalRequestQuery,
@@ -31,17 +32,14 @@ import {
 import { formatDate, formatMoney } from '@/lib/format';
 import { toast } from 'sonner';
 
-const apiMessage = (error: unknown, fallback: string) => {
-  const data = (error as { data?: { detail?: string; message?: string; error?: string } })?.data;
-  return data?.message || data?.detail || data?.error || fallback;
-};
+const apiMessage = (_error: unknown, fallback: string) => fallback;
 
 const notifyOperation = (result: { status?: string; message?: string; detail?: string; reference?: string }, success: string) => {
   if (result?.status === 'pending') {
-    toast.warning(result.message || `Operation en verification fournisseur. Reference: ${result.reference || '-'}`);
+    toast.warning('Your request is being processed. You can check its status in your activity.');
     return;
   }
-  toast.success(result?.message || result?.detail || success);
+  toast.success(success);
 };
 
 const CardDetail = () => {
@@ -50,7 +48,7 @@ const CardDetail = () => {
   const { data: cards, isLoading } = useMyCardsQuery();
   const card = useMemo(() => (cards || []).find((item) => item.id === id) || null, [cards, id]);
   const isScarabPay = card?.provider === 'scarabpay';
-  const { data: cardTx } = useCardTransactionsQuery(id, { skip: !id });
+  const { data: cardTx, isLoading: cardTxLoading, isError: cardTxError, refetch: refetchCardTx } = useCardTransactionsQuery(id, { skip: !id });
   const [reveal, setReveal] = useState(false);
   const [revealedDetails, setRevealedDetails] = useState<RevealedCardDetails | null>(null);
   const [fundOpen, setFundOpen] = useState(false);
@@ -69,7 +67,16 @@ const CardDetail = () => {
   const [terminateScarabPayCard] = useTerminateScarabPayCardMutation();
   const [requestScarabPayCardWithdrawal, withdrawalRequestMutation] = useRequestScarabPayCardWithdrawalMutation();
   const [simulateScarabPayCard, simulationMutation] = useSimulateScarabPayCardMutation();
-  const { data: withdrawalRequestData } = useScarabPayCardWithdrawalRequestQuery(id, {
+  const { data: rechargeQuote, isFetching: rechargeQuoteLoading } = useRechargeCardQuoteQuery({
+    card_id: id,
+    wallet_id: fundWallet || '',
+    amount: Number(fundAmount),
+  }, { skip: !fundOpen || fundMode !== 'recharge' || !id || !fundWallet || !(Number(fundAmount) > 0) });
+  const { data: withdrawalRequestData } = useScarabPayCardWithdrawalRequestQuery({
+    cardId: id,
+    walletId: withdrawalWallet,
+    amount: withdrawalAmount,
+  }, {
     skip: !id || !isScarabPay,
     pollingInterval: isScarabPay ? 30_000 : 0,
   });
@@ -79,10 +86,8 @@ const CardDetail = () => {
   const fullCardBalanceCents = Math.round(Number(withdrawalPreview?.card_balance ?? card?.balance ?? 0) * 100);
   const enteredWithdrawalCents = Math.round(Number(withdrawalAmount || 0) * 100);
   const minimumWithdrawalCents = Math.round(Number(withdrawalPreview?.minimum_withdrawal ?? 1) * 100);
-  const withdrawalFeeBps = withdrawalPreview?.withdrawal_fee_bps ?? 100;
-  const estimatedWithdrawalFeeCents = Math.ceil((enteredWithdrawalCents * withdrawalFeeBps) / 10000);
-  const estimatedWalletCreditCents = Math.max(0, enteredWithdrawalCents - estimatedWithdrawalFeeCents);
   const withdrawalAmountIsValid = enteredWithdrawalCents >= minimumWithdrawalCents && enteredWithdrawalCents <= fullCardBalanceCents;
+  const withdrawalQuote = withdrawalPreview?.quote;
   const pin = usePinGate();
   const detailsVisible = isScarabPay ? Boolean(revealedDetails) : reveal;
   const activeReveal = isScarabPay ? revealedDetails : null;
@@ -170,11 +175,11 @@ const CardDetail = () => {
 
   const submitCardWithdrawalRequest = () => {
     if (!card || !withdrawalWallet) {
-      toast.error('Sélectionnez un wallet USD de destination.');
+      toast.error('Select a destination wallet.');
       return;
     }
     if (!withdrawalAmountIsValid) {
-      toast.error(`Le montant doit être au moins de ${withdrawalPreview?.minimum_withdrawal ?? '1.00'} USD et ne pas dépasser le solde disponible.`);
+      toast.error('Check the amount and try again.');
       return;
     }
     pin.guard(async (pinCode) => {
@@ -186,7 +191,7 @@ const CardDetail = () => {
           amount: Number(withdrawalAmount),
           pin: pinCode,
         }).unwrap();
-        toast.success(result.message || 'Votre demande a été transmise à notre équipe.');
+        toast.success('Your request has been submitted. You can follow its status in your activity.');
         setWithdrawalOpen(false);
       } catch (error) {
         toast.error(apiMessage(error, 'Impossible d’envoyer la demande.'));
@@ -312,6 +317,7 @@ const CardDetail = () => {
             muted={card.status === 'frozen'}
             className="mx-auto w-full max-w-[390px] lg:max-w-none"
           />
+          {card.product_name && <Badge variant="secondary" className="mx-auto block w-fit">{card.product_name}</Badge>}
           {detailsVisible && (
             <div className="grid min-w-0 grid-cols-1 gap-3 rounded-3xl border border-border bg-muted/30 p-4 text-sm sm:grid-cols-2">
               <div className="min-w-0">
@@ -369,24 +375,24 @@ const CardDetail = () => {
               </div>
               {isScarabPay && card.provider_decline_limit > 0 && card.provider_decline_count > 0 && (
                 <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-900 dark:text-amber-200">
-                  {`Refus émetteur : ${card.provider_decline_count}/${card.provider_decline_limit}. Lipaxe gèle la carte dès un refus pour solde insuffisant. ScarabPay peut facturer certains refus répétés et fermer la carte au seuil prévu; vérifiez le solde avant de la réactiver.`}
+                  {`A card payment was declined (${card.provider_decline_count}/${card.provider_decline_limit}). The card may be temporarily frozen for your protection. Check its balance before reactivating it.`}
                 </div>
               )}
               {isScarabPay && isFrozen && card.is_freezon_by_system && (
                 <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-900 dark:text-amber-200">
-                  Carte gelée automatiquement après un refus pour solde insuffisant. Rechargez-la, puis réactivez-la lorsque le nouveau solde est visible. Aucun frais Lipaxe de réactivation ne s’applique à ce gel préventif.
+                  Card temporarily frozen after a declined payment. Add funds, then reactivate it when the updated balance is available.
                 </div>
               )}
               {isScarabPay && Number(card.daily_limit || 0) > 0 && (
-                <div className={`rounded-2xl border p-3 text-sm ${card.is_daily_limit_frozen ? 'border-amber-500/30 bg-amber-500/10 text-amber-900 dark:text-amber-200' : 'border-primary/20 bg-primary/5'}`}>
+                <div className="rounded-2xl border border-primary/20 bg-primary/5 p-3 text-sm">
                   <div className="flex flex-wrap items-center justify-between gap-2 font-semibold">
                     <span>Daily spending cap</span>
                     <span>{formatMoney(Number(card.daily_spend_today || 0), card.currency)} / {formatMoney(Number(card.daily_limit), card.currency)}</span>
                   </div>
                   <p className="mt-1 text-muted-foreground">
                     {card.is_daily_limit_frozen
-                      ? 'Daily cap reached. The card will be reactivated automatically after the daily reset.'
-                      : `${formatMoney(Number(card.daily_limit_remaining ?? card.daily_limit), card.currency)} remaining today. Lipaxe applies this cap using transaction updates reported by the issuer.`}
+                      ? 'Daily cap reached. New card payments will be declined until the daily reset.'
+                      : `${formatMoney(Number(card.daily_limit_remaining ?? card.daily_limit), card.currency)} remaining today.`}
                   </p>
                 </div>
               )}
@@ -405,12 +411,12 @@ const CardDetail = () => {
               )}
               {isScarabPay && withdrawalRequest && (
                 <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 text-sm">
-                  <div className="font-semibold">Retrait carte · {withdrawalRequest.status === 'needs_review' ? 'vérification requise' : withdrawalRequest.status === 'pending' ? 'en cours' : withdrawalRequest.status === 'completed' ? 'terminé' : 'échoué'}</div>
+                  <div className="font-semibold">Card withdrawal · {withdrawalRequest.status === 'needs_review' ? 'under review' : withdrawalRequest.status === 'pending' ? 'processing' : withdrawalRequest.status === 'completed' ? 'completed' : 'failed'}</div>
                   <p className="mt-1 text-muted-foreground">
-                    {withdrawalRequest.status === 'pending' && `${withdrawalRequest.amount} USD demandé. Le crédit de votre wallet attend la confirmation de ScarabPay.`}
-                    {withdrawalRequest.status === 'needs_review' && 'Le montant net doit être vérifié avant tout crédit. Aucun montant n’est ajouté tant que le rapprochement n’est pas confirmé.'}
-                    {withdrawalRequest.status === 'completed' && `${withdrawalRequest.credited_amount || '0.00'} USD ont été crédités sur votre wallet Lipaxe.`}
-                    {withdrawalRequest.status === 'failed' && 'ScarabPay n’a pas exécuté ce retrait. Aucun crédit n’a été effectué.'}
+                    {withdrawalRequest.status === 'pending' && `${withdrawalRequest.amount} USD requested. Your wallet will be credited when processing is complete.`}
+                    {withdrawalRequest.status === 'needs_review' && 'This request is being checked before any wallet credit is made.'}
+                    {withdrawalRequest.status === 'completed' && `${withdrawalRequest.credited_amount || '0.00'} ${withdrawalRequest.wallet_currency || 'USD'} credited to your selected wallet.`}
+                    {withdrawalRequest.status === 'failed' && 'The withdrawal could not be completed. No funds were credited.'}
                   </p>
                 </div>
               )}
@@ -427,9 +433,14 @@ const CardDetail = () => {
 
           <Card className="border-border/60">
             <CardHeader>
-              <CardTitle className="font-display text-2xl sm:text-3xl">Transactions</CardTitle>
+              <div className="flex items-center justify-between gap-3">
+                <CardTitle className="font-display text-2xl sm:text-3xl">Transactions</CardTitle>
+                {cardTxError && <Button variant="outline" size="sm" onClick={() => void refetchCardTx()}>Retry</Button>}
+              </div>
             </CardHeader>
             <CardContent className="min-w-0 space-y-2 p-4 pt-0 sm:p-5 sm:pt-0">
+              {cardTxLoading && <div className="space-y-2" aria-live="polite"><Skeleton className="h-14 w-full" /><Skeleton className="h-14 w-full" /></div>}
+              {cardTxError && <p role="alert" className="py-4 text-center text-sm text-muted-foreground">Unable to load card activity. Try again.</p>}
               {(cardTx || []).map((tx) => (
                 <div key={tx.id} className="flex min-w-0 items-center justify-between gap-3 rounded-2xl bg-muted/35 px-3 py-2 text-sm">
                   <div className="min-w-0 flex-1">
@@ -439,7 +450,7 @@ const CardDetail = () => {
                   <span className="max-w-[96px] shrink-0 truncate text-right font-semibold tabular sm:max-w-none">{formatMoney(tx.amount, tx.currency)}</span>
                 </div>
               ))}
-              {(cardTx || []).length === 0 && <p className="py-8 text-center text-sm text-muted-foreground">Aucune transaction carte.</p>}
+              {!cardTxLoading && !cardTxError && (cardTx || []).length === 0 && <p className="py-8 text-center text-sm text-muted-foreground">No card activity yet.</p>}
             </CardContent>
           </Card>
         </div>
@@ -456,9 +467,16 @@ const CardDetail = () => {
               <Label>Amount</Label>
               <Input type="number" min={0} value={fundAmount} onChange={(event) => setFundAmount(event.target.value)} />
             </div>
+            {fundMode === 'recharge' && rechargeQuote && (
+              <div className="space-y-2 rounded-2xl border border-border bg-muted/30 p-4 text-sm">
+                <div className="flex justify-between gap-4"><span className="text-muted-foreground">Amount to add</span><span>{formatMoney(Number(rechargeQuote.amount), rechargeQuote.currency)}</span></div>
+                <div className="flex justify-between gap-4"><span className="text-muted-foreground">{t('common.fee', { defaultValue: 'Fee' })}</span><span>{formatMoney(Number(rechargeQuote.fee), rechargeQuote.currency)}</span></div>
+                <div className="flex justify-between gap-4 border-t border-border pt-2 font-semibold"><span>Total</span><span>{formatMoney(Number(rechargeQuote.total), rechargeQuote.currency)}</span></div>
+              </div>
+            )}
             <div className="flex justify-end gap-3 pt-2">
               <Button variant="outline" onClick={() => setFundOpen(false)}>Cancel</Button>
-              <Button onClick={submitFund} className="bg-primary text-primary-foreground hover:bg-primary/90">Confirm</Button>
+              <Button onClick={submitFund} disabled={fundMode === 'recharge' && (!rechargeQuote || rechargeQuoteLoading)} className="bg-primary text-primary-foreground hover:bg-primary/90">Confirm</Button>
             </div>
           </div>
         </DialogContent>
@@ -467,20 +485,11 @@ const CardDetail = () => {
       <Dialog open={withdrawalOpen} onOpenChange={setWithdrawalOpen}>
         <DialogContent className="max-w-lg rounded-3xl">
           <DialogHeader>
-            <DialogTitle className="font-display">Withdraw the card balance</DialogTitle>
+            <DialogTitle className="font-display">Withdraw to wallet</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm">
-              <div className="flex items-start gap-3">
-                <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
-                <div>
-                  <p className="font-semibold">Retrait partiel ou total, sans résilier la carte.</p>
-                  <p className="mt-1 text-muted-foreground">ScarabPay facture 1 % en production, déduit du montant retiré. En sandbox, les opérations sont gratuites. Le wallet Lipaxe sera crédité uniquement après confirmation signée du montant net.</p>
-                </div>
-              </div>
-            </div>
             <div className="space-y-2">
-              <Label htmlFor="scarabpay-withdrawal-amount">Montant à retirer (USD)</Label>
+              <Label htmlFor="scarabpay-withdrawal-amount">Amount to withdraw (USD)</Label>
               <Input
                 id="scarabpay-withdrawal-amount"
                 type="number"
@@ -492,19 +501,17 @@ const CardDetail = () => {
                 onChange={(event) => setWithdrawalAmount(event.target.value)}
                 placeholder="0.00"
               />
-              <p className="text-xs text-muted-foreground">Solde disponible : {formatMoney(Number(withdrawalPreview?.card_balance ?? card.balance), 'USD')}. Minimum : {formatMoney(Number(withdrawalPreview?.minimum_withdrawal ?? 1), 'USD')}. ScarabPay limite les retraits à un par minute et par carte.</p>
+              <p className="text-xs text-muted-foreground">Minimum {formatMoney(Number(withdrawalPreview?.minimum_withdrawal ?? 1), 'USD')}.</p>
             </div>
-            <WalletSelector label="USD destination wallet" value={withdrawalWallet} onChange={(walletId) => setWithdrawalWallet(walletId)} filterCurrency="USD" />
+            <WalletSelector label="Destination wallet" value={withdrawalWallet} onChange={(walletId) => setWithdrawalWallet(walletId)} />
             <div className="space-y-2 rounded-2xl border border-border bg-muted/30 p-4 text-sm">
-              <div className="flex justify-between gap-4"><span className="text-muted-foreground">Card balance</span><span className="font-medium">{formatMoney(Number(withdrawalPreview?.card_balance ?? card.balance), 'USD')}</span></div>
-                <div className="flex justify-between gap-4 border-t border-border pt-2"><span>Montant demandé</span><span className="font-medium">{formatMoney(enteredWithdrawalCents / 100, 'USD')}</span></div>
-                <div className="flex justify-between gap-4"><span className="text-muted-foreground">Frais ScarabPay estimés ({withdrawalFeeBps / 100} %)</span><span>{formatMoney(estimatedWithdrawalFeeCents / 100, 'USD')}</span></div>
-                <div className="flex justify-between gap-4 border-t border-border pt-2 font-semibold"><span>Crédit estimé sur le wallet</span><span>{formatMoney(estimatedWalletCreditCents / 100, 'USD')}</span></div>
-                <p className="text-xs text-muted-foreground">Le montant final est celui du webhook signé ScarabPay; si le montant reçu diffère de l’estimation, Lipaxe crédite le montant confirmé et conserve le détail pour rapprochement.</p>
+              <div className="flex justify-between gap-4"><span>Amount</span><span className="font-medium">{formatMoney(enteredWithdrawalCents / 100, 'USD')}</span></div>
+              <div className="flex justify-between gap-4"><span className="text-muted-foreground">{t('common.fee', { defaultValue: 'Fee' })}</span><span>{withdrawalQuote ? formatMoney(Number(withdrawalQuote.fee), withdrawalQuote.currency) : '—'}</span></div>
+              <div className="flex justify-between gap-4 border-t border-border pt-2 font-semibold"><span>Wallet credit</span><span>{withdrawalQuote ? formatMoney(Number(withdrawalQuote.wallet_credit), withdrawalQuote.currency) : '—'}</span></div>
             </div>
             <div className="flex justify-end gap-3 pt-1">
               <Button variant="outline" onClick={() => setWithdrawalOpen(false)}>Cancel</Button>
-              <Button onClick={submitCardWithdrawalRequest} disabled={withdrawalRequestMutation.isLoading || !withdrawalWallet || !withdrawalAmountIsValid}>
+              <Button onClick={submitCardWithdrawalRequest} disabled={withdrawalRequestMutation.isLoading || !withdrawalWallet || !withdrawalAmountIsValid || !withdrawalQuote}>
                 {withdrawalRequestMutation.isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Continue to PIN
               </Button>
@@ -519,7 +526,7 @@ const CardDetail = () => {
             <DialogTitle className="font-display">Terminate this card?</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">This action cannot be undone. ScarabPay may return an eligible remaining balance after its termination fee; Lipaxe will credit it to your USD wallet after provider confirmation.</p>
+            <p className="text-sm text-muted-foreground">This action cannot be undone. Any eligible remaining balance will be credited to your selected wallet after processing, less applicable fees.</p>
             <div className="space-y-2">
               <Label htmlFor="termination-reason">Reason</Label>
               <select id="termination-reason" value={terminationReason} onChange={(event) => setTerminationReason(event.target.value as typeof terminationReason)} className="h-11 w-full rounded-xl border border-input bg-background px-3 text-sm">

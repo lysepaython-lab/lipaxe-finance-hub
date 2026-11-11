@@ -62,6 +62,7 @@ export interface UserCard {
   currency: string;
   status: 'active' | 'frozen' | 'inactive' | 'pending';
   image?: string;
+  product_name?: string;
   provider?: string;
   provider_mode?: string;
   provider_decline_count?: number;
@@ -103,25 +104,52 @@ export interface CardWithdrawalRequest {
   id: number;
   status: 'pending' | 'needs_review' | 'completed' | 'failed';
   amount: string;
-  provider_fee?: string;
-  expected_credit?: string;
+  fee?: string;
   credited_amount: string | null;
+  wallet_currency?: string;
   wallet_id: string;
   requested_at: string;
   completed_at?: string | null;
 }
 export interface CardWithdrawalPreview {
-  mode: 'sandbox' | 'live' | 'test' | string;
   card_balance: string;
-  withdrawal_fee_bps: number;
   minimum_withdrawal: string;
   maximum_withdrawal: string;
+  quote?: {
+    currency: string;
+    amount_usd: string;
+    fee: string;
+    wallet_credit: string;
+    exchange_rate: string;
+  } | null;
+}
+export interface RechargeCardQuote {
+  currency: string;
+  amount: string;
+  fee: string;
+  total: string;
+  exchange_rate: string;
 }
 export interface ScarabPayKycStatus {
   status: 'success' | 'unavailable';
   kyc_status: 'not_started' | 'unsubmitted' | 'pending' | 'review' | 'approved' | 'rejected' | string;
   mode: 'sandbox' | 'live' | string;
 }
+
+const cardTransactionItems = (payload: unknown): unknown[] => {
+  if (Array.isArray(payload)) return payload;
+  if (!payload || typeof payload !== 'object') return [];
+  const record = payload as Record<string, unknown>;
+  for (const key of ['data', 'transactions', 'items', 'results']) {
+    const candidate = record[key];
+    if (Array.isArray(candidate)) return candidate;
+    if (candidate && typeof candidate === 'object') {
+      const nested = cardTransactionItems(candidate);
+      if (nested.length) return nested;
+    }
+  }
+  return [];
+};
 
 export const cardApi = api.injectEndpoints({
   endpoints: (b) => ({
@@ -143,7 +171,7 @@ export const cardApi = api.injectEndpoints({
     cardTransactions: b.query<CardTx[], string>({
       query: (cardId) => `/cards/${cardId}/transactions/`,
       transformResponse: (response: unknown) =>
-        unwrapData<unknown[]>(response, []).map((item) => normalizeCardTransaction(item)),
+        cardTransactionItems(response).map((item) => normalizeCardTransaction(item)),
       providesTags: (_r, _e, id) => [{ type: 'CardTx', id }],
     }),
     revealScarabPayCard: b.mutation<RevealedCardDetails, { card_id: string; pin: string }>({
@@ -166,6 +194,12 @@ export const cardApi = api.injectEndpoints({
       transformResponse: (response: unknown) => response as CardOperationResult,
       invalidatesTags: ['Cards', 'Wallet'],
     }),
+    rechargeCardQuote: b.query<RechargeCardQuote, { card_id: string; wallet_id: string; amount: number }>({
+      query: ({ card_id, wallet_id, amount }) => ({
+        url: '/cards/recharge-cards/',
+        params: { card_id, wallet_id, amount },
+      }),
+    }),
     withdrawCard: b.mutation<CardOperationResult, { card_id: string; amount: number; wallet_id: string }>({
       query: (body) => ({
         url: '/cards/withdrawal-card/',
@@ -185,9 +219,12 @@ export const cardApi = api.injectEndpoints({
       transformResponse: (response: unknown) => response as CardOperationResult,
       invalidatesTags: ['Cards', 'Wallet'],
     }),
-    scarabPayCardWithdrawalRequest: b.query<{ request: CardWithdrawalRequest | null; preview: CardWithdrawalPreview }, string>({
-      query: (cardId) => `/cards/${encodeURIComponent(cardId)}/withdraw/`,
-      providesTags: (_r, _e, id) => [{ type: 'Cards', id: `withdrawal-${id}` }],
+    scarabPayCardWithdrawalRequest: b.query<{ request: CardWithdrawalRequest | null; preview: CardWithdrawalPreview }, { cardId: string; walletId?: string; amount?: string }>({
+      query: ({ cardId, walletId, amount }) => ({
+        url: `/cards/${encodeURIComponent(cardId)}/withdraw/`,
+        params: { ...(walletId ? { wallet_id: walletId } : {}), ...(amount ? { amount } : {}) },
+      }),
+      providesTags: (_r, _e, arg) => [{ type: 'Cards', id: `withdrawal-${arg.cardId}` }],
     }),
     requestScarabPayCardWithdrawal: b.mutation<CardOperationResult & { request?: CardWithdrawalRequest }, { card_id: string; wallet_id: string; amount: number; pin: string }>({
       query: ({ card_id, ...body }) => ({ url: `/cards/${encodeURIComponent(card_id)}/withdraw/`, method: 'POST', body }),
@@ -209,6 +246,7 @@ export const {
   useRevealScarabPayCardMutation,
   useOrderCardMutation,
   useRechargeCardMutation,
+  useRechargeCardQuoteQuery,
   useWithdrawCardMutation,
   useFreezeCardMutation,
   useTerminateScarabPayCardMutation,

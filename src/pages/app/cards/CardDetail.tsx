@@ -27,7 +27,6 @@ import {
   useTerminateScarabPayCardMutation,
   useScarabPayCardWithdrawalRequestQuery,
   useRequestScarabPayCardWithdrawalMutation,
-  useSimulateScarabPayCardMutation,
 } from '@/store/api/cardApi';
 import { formatDate, formatMoney } from '@/lib/format';
 import { toast } from 'sonner';
@@ -66,7 +65,6 @@ const CardDetail = () => {
   const [revealScarabPayCard, revealRequest] = useRevealScarabPayCardMutation();
   const [terminateScarabPayCard] = useTerminateScarabPayCardMutation();
   const [requestScarabPayCardWithdrawal, withdrawalRequestMutation] = useRequestScarabPayCardWithdrawalMutation();
-  const [simulateScarabPayCard, simulationMutation] = useSimulateScarabPayCardMutation();
   const { data: rechargeQuote, isFetching: rechargeQuoteLoading } = useRechargeCardQuoteQuery({
     card_id: id,
     wallet_id: fundWallet || '',
@@ -195,25 +193,6 @@ const CardDetail = () => {
         setWithdrawalOpen(false);
       } catch (error) {
         toast.error(apiMessage(error, 'Impossible d’envoyer la demande.'));
-      }
-    });
-  };
-
-  const simulateSandboxPurchase = () => {
-    if (!card || card.provider_mode !== 'sandbox') return;
-    pin.guard(async (pinCode) => {
-      if (!pinCode) return;
-      try {
-        const result = await simulateScarabPayCard({
-          card_id: card.id,
-          type: 'purchase',
-          amount: 1,
-          pin: pinCode,
-          merchant_name: 'Lipaxe Test Store',
-        }).unwrap();
-        notifyOperation(result, 'Test sandbox effectué. Actualisez les transactions pour voir le résultat.');
-      } catch (error) {
-        toast.error(apiMessage(error, 'La simulation sandbox a échoué.'));
       }
     });
   };
@@ -365,9 +344,6 @@ const CardDetail = () => {
                 </Button>}
                 {isScarabPay && <Button variant="outline" onClick={() => { setWithdrawalAmount(''); setWithdrawalOpen(true); }} disabled={card.status !== 'active' || withdrawalOpenStatus || !withdrawalPreview}>
                   <Banknote className="mr-2 h-4 w-4" /> {withdrawalOpenStatus ? 'Retrait en cours' : 'Retirer vers mon wallet'}
-                </Button>}
-                {isScarabPay && card.provider_mode === 'sandbox' && <Button variant="outline" onClick={simulateSandboxPurchase} disabled={simulationMutation.isLoading || card.status !== 'active'}>
-                  {simulationMutation.isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Tester un paiement sandbox
                 </Button>}
                 {isScarabPay && <Button variant="destructive" onClick={() => setTerminateOpen(true)} disabled={!['active', 'frozen'].includes(card.status) || withdrawalOpenStatus}>
                   <XCircle className="mr-2 h-4 w-4" /> Terminate card

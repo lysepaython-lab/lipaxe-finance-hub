@@ -15,6 +15,13 @@ import {
 import { generateSecret, buildOtpAuthUrl, verifyToken, generateBackupCodes } from '@/lib/totp';
 import { useAppSelector } from '@/store/hooks';
 
+const getApiErrorDetail = (error: unknown): string | undefined => {
+  if (!error || typeof error !== 'object' || !('data' in error)) return undefined;
+  const data = error.data;
+  if (!data || typeof data !== 'object' || !('detail' in data)) return undefined;
+  return typeof data.detail === 'string' ? data.detail : undefined;
+};
+
 /**
  * Two-Factor Authentication setup card (TOTP).
  * Backend remains the source of truth — the local TOTP helpers only let the
@@ -50,7 +57,7 @@ export const TwoFactorSetup = () => {
       const s = r?.secret || generateSecret();
       const c = r?.backup_codes?.length ? r.backup_codes : generateBackupCodes();
       setSecret(s); setCodes(c); setStep('setup');
-    } catch (e: any) {
+    } catch {
       const s = generateSecret();
       setSecret(s); setCodes(generateBackupCodes()); setStep('setup');
     }
@@ -66,8 +73,8 @@ export const TwoFactorSetup = () => {
       toast.success('2FA activée');
       setStep('codes');
       refetch();
-    } catch (e: any) {
-      setError(e?.data?.detail || 'Impossible d\'activer la 2FA');
+    } catch (error: unknown) {
+      setError(getApiErrorDetail(error) || 'Impossible d\'activer la 2FA');
     }
   };
 
@@ -77,8 +84,8 @@ export const TwoFactorSetup = () => {
       toast.success('2FA désactivée');
       setDisableToken(''); setStep('idle');
       refetch();
-    } catch (e: any) {
-      toast.error(e?.data?.detail || 'Code invalide');
+    } catch (error: unknown) {
+      toast.error(getApiErrorDetail(error) || 'Code invalide');
     }
   };
 

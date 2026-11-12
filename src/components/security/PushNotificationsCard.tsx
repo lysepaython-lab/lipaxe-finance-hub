@@ -44,8 +44,8 @@ export const PushNotificationsCard = () => {
       setPerm('granted');
       toast.success('Notifications push activées');
       showLocalNotification('Lipaxe', 'Vous recevrez les alertes importantes ici.', { tag: 'welcome' });
-    } catch (e: any) {
-      toast.error(e?.message || 'Impossible d\'activer');
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : 'Impossible d\'activer');
     } finally { setBusy(false); }
   };
 

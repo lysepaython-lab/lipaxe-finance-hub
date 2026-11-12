@@ -16,6 +16,13 @@ import { toast } from 'sonner';
 type ResetStep = 'email' | 'otp' | 'password';
 
 const OTP_LENGTH = 6;
+
+const getApiErrorDetail = (error: unknown): string | undefined => {
+  if (!error || typeof error !== 'object' || !('data' in error)) return undefined;
+  const data = error.data;
+  if (!data || typeof data !== 'object' || !('detail' in data)) return undefined;
+  return typeof data.detail === 'string' ? data.detail : undefined;
+};
 const RESEND_COOLDOWN = 30;
 
 const ForgotPassword = () => {
@@ -63,8 +70,8 @@ const ForgotPassword = () => {
       setStep('otp');
       setCooldown(RESEND_COOLDOWN);
       toast.success(res.detail || (resend ? t('auth.codeResent') : t('auth.otpSent')));
-    } catch (error: any) {
-      toast.error(error?.data?.detail || t('common.error'));
+    } catch (error: unknown) {
+      toast.error(getApiErrorDetail(error) || t('common.error'));
     }
   };
 
@@ -102,8 +109,8 @@ const ForgotPassword = () => {
       }).unwrap();
       toast.success(t('auth.passwordUpdated'));
       navigate('/login');
-    } catch (error: any) {
-      const message = error?.data?.detail || t('common.error');
+    } catch (error: unknown) {
+      const message = getApiErrorDetail(error) || t('common.error');
       toast.error(message);
       if (String(message).toLowerCase().includes('otp') || String(message).toLowerCase().includes('code')) {
         setErrors({ otp: message });

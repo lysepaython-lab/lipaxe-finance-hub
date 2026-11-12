@@ -23,7 +23,9 @@ const read = <T>(key: string, fallback: T): T => {
 const write = (key: string, value: unknown) => {
   try {
     localStorage.setItem(key, JSON.stringify(value));
-  } catch {}
+  } catch {
+    // Local security hints are optional when browser storage is unavailable.
+  }
 };
 
 export const localDevices = {

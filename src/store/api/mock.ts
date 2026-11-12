@@ -39,7 +39,7 @@ let user: User = {
 // PIN required for sensitive actions. Demo PIN: 12345
 let userPin: string = '12345';
 
-let wallets: Wallet[] = [
+const wallets: Wallet[] = [
   { id: 'w_usd', currency: 'USD', symbol: '$', balance: 12480.55, available: 12180.55, pending: 300 },
   { id: 'w_eur', currency: 'EUR', symbol: '€', balance: 4320.10, available: 4320.10, pending: 0 },
   { id: 'w_gbp', currency: 'GBP', symbol: '£', balance: 1875.00, available: 1875.00, pending: 0 },
@@ -48,7 +48,7 @@ let wallets: Wallet[] = [
 
 const now = Date.now();
 const day = 86400000;
-let transactions: Tx[] = [
+const transactions: Tx[] = [
   { id: 't1', type: 'deposit', direction: 'in', amount: 1250, currency: 'USD', status: 'completed', description: 'Card top-up', counterparty: 'Visa •• 4242', reference: 'DEP-9821', createdAt: new Date(now - day).toISOString(), wallet_id: 'w_usd' },
   { id: 't2', type: 'transfer', direction: 'out', amount: 480, currency: 'EUR', status: 'completed', description: 'To Marie Dubois', counterparty: '@marie.d', reference: 'TRF-7710', createdAt: new Date(now - day * 2).toISOString(), fee: 0, wallet_id: 'w_eur' },
   { id: 't3', type: 'withdrawal', direction: 'out', amount: 200, currency: 'USD', status: 'pending', description: 'Bank withdrawal', counterparty: 'Chase •• 8821', reference: 'WD-5512', createdAt: new Date(now - day * 3).toISOString(), fee: 1.5, wallet_id: 'w_usd' },
@@ -58,18 +58,18 @@ let transactions: Tx[] = [
   { id: 't7', type: 'transfer', direction: 'out', amount: 75, currency: 'USD', status: 'failed', description: 'To @sam', counterparty: '@sam', reference: 'TRF-7560', createdAt: new Date(now - day * 9).toISOString(), wallet_id: 'w_usd' },
 ];
 
-let activity: Activity[] = [
+const activity: Activity[] = [
   { id: 'a1', action: 'Signed in', ip: '192.168.1.4', device: 'Chrome on macOS', createdAt: new Date(now - day).toISOString() },
   { id: 'a2', action: 'Password updated', ip: '192.168.1.4', device: 'Chrome on macOS', createdAt: new Date(now - day * 6).toISOString() },
   { id: 'a3', action: 'New device authorized', ip: '10.0.0.12', device: 'Safari on iPhone', createdAt: new Date(now - day * 10).toISOString() },
 ];
 
-let cards: UserCard[] = [
+const cards: UserCard[] = [
   { id: 'vc1', brand: 'Visa', number_masked: '•••• •••• •••• 4242', name_on_card: 'ALEX MORGAN', exp: '12/27', balance: 482.5, currency: 'USD', status: 'active' },
   { id: 'vc2', brand: 'Mastercard', number_masked: '•••• •••• •••• 9908', name_on_card: 'ALEX MORGAN', exp: '08/26', balance: 1240, currency: 'USD', status: 'active' },
 ];
 
-let notifications: Notif[] = [
+const notifications: Notif[] = [
   { id: 'n1', title: 'Payment received', body: 'You received $950 from John K.', level: 'success', priority: 'normal', read: false, createdAt: new Date(now - day).toISOString(), link: '/app/transactions' },
   { id: 'n2', title: 'KYC required', body: 'Verify your identity to unlock higher limits.', level: 'warning', priority: 'high', read: false, createdAt: new Date(now - day * 2).toISOString(), link: '/app/kyc' },
   { id: 'n3', title: 'New device', body: 'Sign-in from Safari on iPhone.', level: 'info', priority: 'low', read: true, createdAt: new Date(now - day * 5).toISOString(), link: '/app/activity' },
@@ -84,7 +84,7 @@ interface Tontine {
   next_beneficiary?: string; next_payout_at?: string;
   status: 'active' | 'completed';
 }
-let tontines: Tontine[] = [
+const tontines: Tontine[] = [
   {
     id: 'tn1', name: 'Famille Lipaxe', contribution: 50, currency: 'USD', frequency: 'monthly', duration_months: 6, selection: 'ordered',
     members: [
@@ -228,7 +228,7 @@ const SAVINGS_PLANS: SavingsPlan[] = [
   },
 ];
 
-let savingsAccounts: SavingsAccount[] = [
+const savingsAccounts: SavingsAccount[] = [
   {
     id: 'sav_1',
     name: 'Loyer septembre',
@@ -413,7 +413,7 @@ const YIELD_VAULT_PLANS: YieldVaultPlan[] = [
   },
 ];
 
-let yieldVaultPositions: YieldVaultPosition[] = [
+const yieldVaultPositions: YieldVaultPosition[] = [
   {
     id: 'yv_pos_1',
     name: 'BIF Liquidity 30J',
@@ -457,7 +457,7 @@ interface FestiEvent {
   id: string; name: string; date: string; price: number; currency: string;
   attendees: number; cover: string; organizer: string;
 }
-let festiEvents: FestiEvent[] = [
+const festiEvents: FestiEvent[] = [
   { id: 'e1', name: 'Lipaxe Summit 2025', date: '2025-03-14', price: 49, currency: 'USD', attendees: 312, cover: 'from-violet-500 to-fuchsia-600', organizer: 'Lipaxe' },
   { id: 'e2', name: 'Afro Fintech Night', date: '2025-04-02', price: 25, currency: 'USD', attendees: 145, cover: 'from-amber-500 to-rose-600', organizer: 'AfroPay' },
   { id: 'e3', name: 'Web3 & Money', date: '2025-05-10', price: 79, currency: 'USD', attendees: 580, cover: 'from-sky-500 to-emerald-600', organizer: 'CryptoCorp' },

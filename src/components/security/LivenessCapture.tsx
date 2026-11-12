@@ -13,6 +13,21 @@ import { cn } from '@/lib/utils';
 
 type Step = 'idle' | 'connecting' | 'ready' | 'processing' | 'success' | 'failed';
 type LivenessAction = 'blink' | 'smile' | 'mouth' | 'left' | 'right' | 'fallback';
+interface LivenessServerMessage {
+  type?: string;
+  status?: string;
+  message?: string;
+  current_challenge?: { instruction?: string };
+  challenge?: { instruction?: string };
+  progress?: { completed_challenges?: number; total_challenges?: number };
+  next_challenge?: { instruction?: string };
+  result?: Partial<LivenessResult>;
+  is_live?: boolean;
+  blink_valid?: boolean;
+  blinks_detected?: boolean;
+  head_movement?: boolean;
+  smile_detected?: boolean;
+}
 
 export interface LivenessResult {
   is_live: boolean;
@@ -160,7 +175,7 @@ export const LivenessCapture = ({ open, onOpenChange, onSuccess }: LivenessCaptu
   const isPreparingActionRef = useRef(false);
   const isSendingFrameRef = useRef(false);
   const activeChallengeRef = useRef(0);
-  const handleServerMessageRef = useRef<(data: any) => void>(() => {});
+  const handleServerMessageRef = useRef<(data: LivenessServerMessage) => void>(() => {});
 
   const [step, setStep] = useState<Step>('idle');
   const [attempts, setAttempts] = useState(0);
@@ -435,9 +450,9 @@ export const LivenessCapture = ({ open, onOpenChange, onSuccess }: LivenessCaptu
         setChallengeText(t('kyc.livenessKeepTrying', { action }));
       }, ACTION_EXECUTION_MS);
     }, ACTION_PREPARE_MS);
-  }, [clearExecutionTimeout, clearPrepareTimeout, closeSocket, setPreparingAction, startChallengeCountdown, startFrameSending, stopFrameSending, t]);
+  }, [clearExecutionTimeout, clearPrepareTimeout, setPreparingAction, startChallengeCountdown, startFrameSending, stopFrameSending, t]);
 
-  const handleServerMessage = useCallback((data: any) => {
+  const handleServerMessage = useCallback((data: LivenessServerMessage) => {
     if (data.type === 'liveness_started') {
       setStep('ready');
       setProgress(10);
@@ -537,7 +552,7 @@ export const LivenessCapture = ({ open, onOpenChange, onSuccess }: LivenessCaptu
 
       ws.onmessage = (event) => {
         try {
-          handleServerMessageRef.current(JSON.parse(event.data));
+          handleServerMessageRef.current(JSON.parse(event.data) as LivenessServerMessage);
         } catch {
           clearPrepareTimeout();
           clearExecutionTimeout();

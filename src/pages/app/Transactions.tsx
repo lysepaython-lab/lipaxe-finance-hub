@@ -21,6 +21,9 @@ const shortRef = (value?: string) => {
   return `${text.slice(0, 14)}...`;
 };
 
+const isTransactionFilter = (value: string): value is 'all' | 'deposit' | 'withdrawal' | 'transfer' =>
+  value === 'all' || value === 'deposit' || value === 'withdrawal' || value === 'transfer';
+
 const Transactions = () => {
   const { t } = useTranslation();
   const { data, isLoading } = useTransactionsQuery();
@@ -56,7 +59,7 @@ const Transactions = () => {
 
       <Card className="shadow-elegant border-border/60">
         <CardHeader className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <Tabs value={filter} onValueChange={(v: any) => setFilter(v)}>
+          <Tabs value={filter} onValueChange={(value) => { if (isTransactionFilter(value)) setFilter(value); }}>
             <TabsList>
               <TabsTrigger value="all">{t('tx.all')}</TabsTrigger>
               <TabsTrigger value="deposit">{t('tx.deposit')}</TabsTrigger>

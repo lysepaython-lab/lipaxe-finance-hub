@@ -18,8 +18,12 @@ export function useDeviceRegistration() {
       try {
         const device_id = await getDeviceId();
         if (cancelled) return;
-        registerDevice({ device_id, label: getDeviceLabel() }).catch(() => {});
-      } catch {}
+        registerDevice({ device_id, label: getDeviceLabel() }).catch(() => {
+          // Device registration is best-effort; authentication must remain usable.
+        });
+      } catch {
+        // Fingerprinting can be unavailable in restricted browser contexts.
+      }
     })();
     return () => { cancelled = true; };
   }, [token, registerDevice]);

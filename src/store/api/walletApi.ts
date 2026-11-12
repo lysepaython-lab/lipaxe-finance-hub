@@ -90,7 +90,9 @@ const saveQrCache = (entry: { token: string; amount: number; currency: string; s
       QR_CACHE_KEY,
       JSON.stringify([entry, ...current.filter((item) => item.token !== entry.token)].slice(0, 20)),
     );
-  } catch {}
+  } catch {
+    // The QR cache is an optimization; the API remains authoritative.
+  }
 };
 
 const getQrCache = (token: string) => {

@@ -12,7 +12,9 @@ export interface PendingVerification {
 
 export function setPendingVerification(p: Omit<PendingVerification, 'createdAt'>) {
   const value: PendingVerification = { ...p, createdAt: Date.now() };
-  try { localStorage.setItem(KEY, JSON.stringify(value)); } catch {}
+  try { localStorage.setItem(KEY, JSON.stringify(value)); } catch {
+    // Verification can continue in memory when browser storage is unavailable.
+  }
 }
 
 export function getPendingVerification(): PendingVerification | null {
@@ -31,7 +33,9 @@ export function getPendingVerification(): PendingVerification | null {
 }
 
 export function clearPendingVerification() {
-  try { localStorage.removeItem(KEY); } catch {}
+  try { localStorage.removeItem(KEY); } catch {
+    // There is no persistent value to clear when storage is blocked.
+  }
 }
 
 export function updatePendingEmail(newEmail: string) {

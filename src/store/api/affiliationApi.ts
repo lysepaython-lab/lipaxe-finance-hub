@@ -34,15 +34,18 @@ export interface AffiliateDiscountCode {
 const normalizeDiscountCodes = (response: unknown): AffiliateDiscountCode[] => {
   const source = (response as { data?: unknown })?.data ?? response;
   if (!Array.isArray(source)) return [];
-  return source.map((item: any) => ({
-    id: String(item.id),
-    code: item.code || '',
-    percent: Number(item.percent || 0),
-    usage_limit: Number(item.usage_limit || 0),
-    used_count: Number(item.used_count || 0),
-    is_active: Boolean(item.is_active),
-    createdAt: item.created_at || item.createdAt || '',
-  }));
+  return source.map((value): AffiliateDiscountCode => {
+    const item = value && typeof value === 'object' ? value as Record<string, unknown> : {};
+    return {
+      id: String(item.id ?? ''),
+      code: typeof item.code === 'string' ? item.code : '',
+      percent: Number(item.percent ?? 0),
+      usage_limit: Number(item.usage_limit ?? 0),
+      used_count: Number(item.used_count ?? 0),
+      is_active: Boolean(item.is_active),
+      createdAt: typeof item.created_at === 'string' ? item.created_at : typeof item.createdAt === 'string' ? item.createdAt : '',
+    };
+  });
 };
 
 export const affiliationApi = api.injectEndpoints({

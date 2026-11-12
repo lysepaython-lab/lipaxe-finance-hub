@@ -1,4 +1,3 @@
-import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { FaCreditCard, FaWifi, FaMobileAlt, FaLock } from 'react-icons/fa';
 import { useTranslation } from 'react-i18next';
@@ -82,13 +81,11 @@ export const AuthLayout = ({
         <AnimatedBackground className="opacity-40 lg:hidden" />
 
         <header className="relative flex items-center justify-between p-4 sm:p-6">
-          <Link
+          <Logo
             to="/"
             className="transition-opacity hover:opacity-80 lg:hidden"
-            aria-label={t('auth.backHome')}
-          >
-            <Logo />
-          </Link>
+            textClassName="sr-only"
+          />
           <div className="ml-auto flex items-center gap-2">
             <LanguageSwitcher />
             <ThemeToggle />

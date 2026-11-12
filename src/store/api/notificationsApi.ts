@@ -1,5 +1,6 @@
 import { api } from './baseApi';
 import { normalizeNotification, unwrapData } from './adapters';
+import type { FetchBaseQueryError } from '@reduxjs/toolkit/query';
 
 export interface AppNotification {
   id: string;
@@ -31,7 +32,7 @@ export const notificationsApi = api.injectEndpoints({
     markRead: b.mutation<{ detail: string }, { id: string }>({
       async queryFn({ id }, _api, _extraOptions, baseQuery) {
         const attempts = [{ id }, { notification_id: id }, { _id: id }];
-        let lastError: unknown = null;
+        let lastError: FetchBaseQueryError | undefined;
         for (const body of attempts) {
           const result = await baseQuery({
             url: '/auth/notifications/makeasread/',
@@ -41,7 +42,7 @@ export const notificationsApi = api.injectEndpoints({
           if (!('error' in result)) return { data: { detail: 'Notification lue' } };
           lastError = result.error;
         }
-        return { error: lastError as any };
+        return { error: lastError ?? { status: 'CUSTOM_ERROR', error: 'Notification update failed' } };
       },
       invalidatesTags: ['Notifications'],
     }),

@@ -1,4 +1,4 @@
-import { Copy, Globe, LayoutDashboard, LogOut, Moon, Repeat, Send, Settings, ShieldCheck, Sun, User as UserIcon, Users2, CreditCard as CardIcon } from 'lucide-react';
+import { Copy, Globe, LayoutDashboard, LockKeyhole, LogOut, Moon, Repeat, Send, Settings, ShieldCheck, Sun, User as UserIcon, Users2, CreditCard as CardIcon } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { logout } from '@/store/slices/authSlice';
 import { NotificationsInbox } from './security/NotificationsInbox';
@@ -14,6 +14,8 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { setLanguage } from '@/store/slices/uiSlice';
 import { toast } from 'sonner';
 import { FEATURES } from '@/config/features';
+import { useGetKycDataQuery } from '@/store/api/kycApi';
+import { getKycState } from '@/lib/kycStatus';
 
 const mainNav = [
   { to: '/app', key: 'dashboard', icon: LayoutDashboard, match: ['/app'] },
@@ -30,6 +32,8 @@ export const Topbar = () => {
   const location = useLocation();
   const { t, i18n } = useTranslation();
   const user = useAppSelector((s) => s.auth.user);
+  const { data: kycData } = useGetKycDataQuery();
+  const kycState = getKycState(kycData, user);
   const currentLanguage = useAppSelector((s) => s.ui.language);
   const { theme, toggle } = useTheme();
 
@@ -57,6 +61,22 @@ export const Topbar = () => {
           const isActive = item.match.some((match) => (
             match === '/app' ? location.pathname === '/app' : location.pathname.startsWith(match)
           ));
+          const locked = !kycState.verified && item.key !== 'dashboard';
+          if (locked) {
+            return (
+              <span key={item.to} title={t('kyc.menuLockedHint')}>
+                <button
+                  type="button"
+                  disabled
+                  aria-disabled="true"
+                  className="flex cursor-not-allowed items-center gap-2 rounded-2xl px-3.5 py-2 text-sm font-semibold text-primary-foreground/55"
+                >
+                  <span className="relative"><Icon className="h-4 w-4" /><LockKeyhole className="absolute -bottom-1 -right-2 h-2.5 w-2.5 rounded-full bg-primary" /></span>
+                  <span className="whitespace-nowrap">{t(`nav.${item.key}`)}</span>
+                </button>
+              </span>
+            );
+          }
           return (
             <Link
               key={item.to}

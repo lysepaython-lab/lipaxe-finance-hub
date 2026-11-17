@@ -1,145 +1,27 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CountryFlag } from 'currency-code-to-country-flag';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useFxQuoteMutation, useLookupRecipientMutation, useTransactionsQuery, useTransferMutation, type RecipientLookup } from '@/store/api/walletApi';
-import { usePaymentMethodsDepositQuery, usePaymentMethodsInternationalQuery, usePaymentMethodsWithdrawalQuery, type WalletV2 } from '@/store/api/platformApi';
-import { Loader2, Check, ArrowDown, Search, ShieldCheck, Globe2, QrCode } from 'lucide-react';
+import { useLookupRecipientMutation, useTransactionsQuery, useTransferMutation, type RecipientLookup } from '@/store/api/walletApi';
+import type { WalletV2 } from '@/store/api/platformApi';
+import { Loader2, Check, Search, ShieldCheck, QrCode } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatMoney } from '@/lib/format';
 import { WalletSelector } from '@/components/security/WalletSelector';
-import { CountryPicker } from '@/components/security/CountryPicker';
 import { PinModal, usePinGate } from '@/components/security/PinModal';
 import { AsyncStatusPill } from '@/components/security/AsyncStatus';
-import { PaymentMethodMark } from '@/lib/moneyVisuals';
 import { useSubmitOnce } from '@/hooks/useSubmitOnce';
 import { useTransactionPolling } from '@/hooks/useTransactionPolling';
 import { sanitizeText, Throttle } from '@/lib/security';
 import { transferSchema } from '@/lib/validation';
 
 const submitThrottle = new Throttle(8, 60_000);
-
-const iso2ToIso3: Record<string, string> = {
-  BI: 'BDI',
-  CD: 'COD',
-  CG: 'COG',
-  RW: 'RWA',
-  TZ: 'TZA',
-  UG: 'UGA',
-  KE: 'KEN',
-  SN: 'SEN',
-  CI: 'CIV',
-  CM: 'CMR',
-  GH: 'GHA',
-  NG: 'NGA',
-};
-
-const cryptoCurrencyIcon: Record<string, string> = {
-  BTC: '₿',
-  USDT: '₮',
-  USDC: '◎',
-};
-
-const currencyForCountry: Record<string, string> = {
-  BI: 'BIF',
-  CD: 'CDF',
-  RW: 'RWF',
-  TZ: 'TZS',
-  UG: 'UGX',
-  KE: 'KES',
-  SN: 'XOF',
-  CI: 'XOF',
-  CM: 'XAF',
-  GH: 'GHS',
-  NG: 'NGN',
-  GB: 'GBP',
-  US: 'USD',
-};
-
-const countryPhoneRules: Record<string, { dial: string; min: number; max: number; example: string }> = {
-  BI: { dial: '257', min: 11, max: 11, example: '+257 71 234 567' },
-  CD: { dial: '243', min: 12, max: 12, example: '+243 978 384 983' },
-  CG: { dial: '242', min: 12, max: 12, example: '+242 06 123 4567' },
-  RW: { dial: '250', min: 12, max: 12, example: '+250 78 123 4567' },
-  TZ: { dial: '255', min: 12, max: 12, example: '+255 712 345 678' },
-  UG: { dial: '256', min: 12, max: 12, example: '+256 712 345 678' },
-  KE: { dial: '254', min: 12, max: 12, example: '+254 712 345 678' },
-  SN: { dial: '221', min: 12, max: 12, example: '+221 77 123 45 67' },
-  CI: { dial: '225', min: 13, max: 13, example: '+225 07 12 34 56 78' },
-  CM: { dial: '237', min: 12, max: 12, example: '+237 6 71 23 45 67' },
-  GH: { dial: '233', min: 12, max: 12, example: '+233 24 123 4567' },
-  NG: { dial: '234', min: 13, max: 13, example: '+234 801 234 5678' },
-};
-
-const codeValue = (value?: string | null) => String(value || '').trim().toUpperCase();
-
-const methodSupportsCountry = (method: { countries?: { country?: { alpha_2?: string; isoCode?: string; name?: string } }[] }, countryCode: string) => {
-  const selectedAlpha2 = codeValue(countryCode);
-  const selectedAlpha3 = codeValue(iso2ToIso3[selectedAlpha2]);
-  if (!selectedAlpha2 || !method.countries?.length) return false;
-
-  return method.countries.some((entry) => {
-    const country = entry.country || {};
-    const alpha2 = codeValue(country.alpha_2);
-    const isoCode = codeValue(country.isoCode);
-    return alpha2 === selectedAlpha2 || isoCode === selectedAlpha2 || isoCode === selectedAlpha3;
-  });
-};
-
-const CurrencyFlagMark = ({ currency }: { currency?: string }) => {
-  const code = codeValue(currency);
-  if (cryptoCurrencyIcon[code]) {
-    return (
-      <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
-        {cryptoCurrencyIcon[code]}
-      </span>
-    );
-  }
-  if (!code) return <span className="inline-flex h-6 w-6 rounded-full bg-muted" />;
-  return <CountryFlag currency={code} size="24" ratio="square" className="rounded-full shadow-sm" />;
-};
-
-const normalizeGlobalPhone = (countryCode: string, value: string) => {
-  const selectedAlpha2 = codeValue(countryCode);
-  const rule = countryPhoneRules[selectedAlpha2];
-  let digits = String(value || '').replace(/\D/g, '');
-
-  if (digits.startsWith('00')) digits = digits.slice(2);
-  if (rule && !digits.startsWith(rule.dial)) {
-    digits = `${rule.dial}${digits.replace(/^0+/, '')}`;
-  }
-
-  if (rule && (!digits.startsWith(rule.dial) || digits.length < rule.min || digits.length > rule.max)) {
-    return {
-      ok: false,
-      value: digits,
-      message: `Numéro invalide pour ${selectedAlpha2}. Exemple : ${rule.example}`,
-    };
-  }
-
-  if (!rule && (digits.length < 10 || digits.length > 15)) {
-    return {
-      ok: false,
-      value: digits,
-      message: 'Numéro de téléphone invalide pour le pays sélectionné.',
-    };
-  }
-
-  return { ok: true, value: digits, message: '' };
-};
-
-const inferCountryFromPhone = (value: string) => {
-  const digits = String(value || '').replace(/\D/g, '').replace(/^00/, '');
-  return Object.entries(countryPhoneRules).find(([, rule]) => digits.startsWith(rule.dial))?.[0] || '';
-};
 
 type RecentRecipientSuggestion = {
   id: string;
@@ -151,21 +33,13 @@ type RecentRecipientSuggestion = {
 
 const Transfer = () => {
   const { t } = useTranslation();
-  const [params] = useSearchParams();
-  const { data: internationalMethods } = usePaymentMethodsInternationalQuery();
-  const { data: depositMethods } = usePaymentMethodsDepositQuery();
-  const { data: withdrawalMethods } = usePaymentMethodsWithdrawalQuery();
   const { data: transactions = [] } = useTransactionsQuery();
   const pin = usePinGate();
 
-  const [kind, setKind] = useState<'internal' | 'international'>(params.get('intl') ? 'international' : 'internal');
   const [walletId, setWalletId] = useState<string>();
   const [wallet, setWallet] = useState<WalletV2 | undefined>();
   const [recipient, setRecipient] = useState('');
   const [recipientInfo, setRecipientInfo] = useState<RecipientLookup | null>(null);
-  const [countryTo, setCountryTo] = useState('');
-  const [countryToName, setCountryToName] = useState('');
-  const [methodId, setMethodId] = useState('');
   const [amount, setAmount] = useState('100');
   const [note, setNote] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -174,20 +48,8 @@ const Transfer = () => {
   const [recipientSuggestions, setRecipientSuggestions] = useState<RecentRecipientSuggestion[]>([]);
   const status = useTransactionPolling(txId);
 
-  const [getQuote, { data: quote, isLoading: quoting }] = useFxQuoteMutation();
   const [transfer, { isLoading }] = useTransferMutation();
   const [lookup, { isLoading: looking }] = useLookupRecipientMutation();
-
-  const intlMethods = useMemo(() => {
-    if (internationalMethods?.length) return internationalMethods;
-    const fallbackMethods = withdrawalMethods?.length ? withdrawalMethods : depositMethods || [];
-    return fallbackMethods.filter((method) => method.is_international !== false && method.type !== 'crypto');
-  }, [internationalMethods, withdrawalMethods, depositMethods]);
-
-  const intlMethodsForCountry = useMemo(() => {
-    if (!countryTo) return [];
-    return intlMethods.filter((method) => methodSupportsCountry(method, countryTo));
-  }, [intlMethods, countryTo]);
 
   const recentInternalRecipients = useMemo(() => {
     const seen = new Set<string>();
@@ -203,22 +65,8 @@ const Transfer = () => {
       .slice(0, 6);
   }, [transactions]);
 
-  const recentInternationalRecipients = useMemo(() => {
-    const seen = new Set<string>();
-    return transactions
-      .filter((tx) => tx.type === 'transfer' && tx.direction === 'out' && tx.counterparty?.trim())
-      .filter((tx) => /\d{6,}/.test(tx.counterparty))
-      .filter((tx) => {
-        const key = tx.counterparty.trim().toLowerCase();
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      })
-      .slice(0, 6);
-  }, [transactions]);
-
   // Reset recipient info when input changes
-  useEffect(() => { setRecipientInfo(null); }, [recipient, kind]);
+  useEffect(() => { setRecipientInfo(null); }, [recipient]);
 
   useEffect(() => {
     let cancelled = false;
@@ -265,26 +113,7 @@ const Transfer = () => {
     };
   }, [lookup, recentInternalRecipients]);
 
-  useEffect(() => {
-    setRecipient('');
-    setRecipientInfo(null);
-    setErrors({});
-  }, [kind, countryTo]);
-
-  // Auto-quote international
-  useEffect(() => {
-    const amt = parseFloat(amount);
-    if (kind === 'international' && countryTo && amt > 0 && wallet) {
-      const id = setTimeout(() => {
-        getQuote({ from: wallet.currency, to: currencyForCountry[countryTo.toUpperCase()] || 'USD', amount: amt });
-      }, 300);
-      return () => clearTimeout(id);
-    }
-  }, [amount, wallet, countryTo, kind, getQuote]);
-
-  const fee = kind === 'international' ? (quote?.fee ?? 0) : 0;
-  const receive = kind === 'international' ? (quote?.receive ?? 0) : (parseFloat(amount) || 0);
-  const total = (parseFloat(amount) || 0) + fee;
+  const total = parseFloat(amount) || 0;
   const insufficient = wallet ? total > wallet.available : false;
 
   const doLookup = async (recipientValue = recipient) => {
@@ -305,36 +134,13 @@ const Transfer = () => {
     await doLookup(value);
   };
 
-  const applyRecentInternationalRecipient = (value: string) => {
-    const detectedCountry = inferCountryFromPhone(value);
-    if (detectedCountry) {
-      setCountryTo(detectedCountry);
-      setCountryToName('');
-      setMethodId('');
-    }
-    setRecipient(value);
-    setErrors((current) => ({ ...current, recipient: '' }));
-  };
-
   const doTransfer = async () => {
     const fromAccount = wallet?.id || '';
-    if (kind === 'international' && !countryTo) {
-      setErrors({ country: t('transfer.selectCountryRequired') });
-      toast.error(t('transfer.selectCountryRequired'));
-      return;
-    }
-    const globalPhone = kind === 'international' ? normalizeGlobalPhone(countryTo, recipient) : null;
-    if (globalPhone && !globalPhone.ok) {
-      setErrors({ recipient: globalPhone.message });
-      toast.error(globalPhone.message);
-      return;
-    }
-    const toAccount = kind === 'internal' ? sanitizeText(recipient) : globalPhone?.value || '';
     const payload = {
       amount: parseFloat(amount) || 0,
       from_account: fromAccount,
-      to_account: toAccount,
-      payment_method: kind === 'international' ? methodId : 'internal',
+      to_account: sanitizeText(recipient),
+      payment_method: 'internal',
       wallet_id: walletId || '',
     };
     const parsed = transferSchema.safeParse(payload);
@@ -349,13 +155,12 @@ const Transfer = () => {
     setErrors({});
     try {
       const tx = await transfer({
-        kind,
+        kind: 'internal',
         amount: payload.amount,
         from_account: payload.from_account,
         to_account: payload.to_account,
         payment_method: payload.payment_method,
         wallet_id: payload.wallet_id,
-        toCurrency: kind === 'international' ? quote?.to : undefined,
         note: note ? sanitizeText(note) : undefined,
       }).unwrap();
       setTxId(tx.id);
@@ -373,21 +178,7 @@ const Transfer = () => {
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!walletId) { toast.error(t('transfer.selectWallet')); return; }
-    if (kind === 'internal' && !recipientInfo) { toast.error('Vérifiez le destinataire d’abord.'); return; }
-    if (kind === 'international') {
-      if (!countryTo) {
-        setErrors({ country: t('transfer.selectCountryRequired') });
-        toast.error(t('transfer.selectCountryRequired'));
-        return;
-      }
-      if (!methodId) { toast.error(t('deposit.selectMethod')); return; }
-      const phone = normalizeGlobalPhone(countryTo, recipient);
-      if (!phone.ok) {
-        setErrors({ recipient: phone.message });
-        toast.error(phone.message);
-        return;
-      }
-    }
+    if (!recipientInfo) { toast.error('Vérifiez le destinataire d’abord.'); return; }
     pin.guard(submit);
   };
 
@@ -421,7 +212,6 @@ const Transfer = () => {
 
       <div className="grid gap-2 sm:grid-cols-3">
         {[
-          { to: '/app/transfer/international', label: t('nav.internationalTransfer'), icon: Globe2 },
           { to: '/app/transfer/qr', label: t('nav.transferQr'), icon: QrCode },
         ].map((item) => (
           <Link
@@ -435,12 +225,9 @@ const Transfer = () => {
         ))}
       </div>
 
-      <Tabs value={kind} onValueChange={(v) => setKind(v as 'internal' | 'international')}>
-        <TabsList className="grid grid-cols-2 w-full">
-          <TabsTrigger value="internal">{t('transfer.internal')}</TabsTrigger>
-          <TabsTrigger value="international">{t('transfer.international')}</TabsTrigger>
-        </TabsList>
-      </Tabs>
+      <div className="rounded-xl border border-border/60 bg-card px-4 py-3 text-sm font-semibold text-primary">
+        {t('transfer.internal')}
+      </div>
 
       <Card className="shadow-elegant border-border/60">
         <CardContent className="p-6">
@@ -451,7 +238,6 @@ const Transfer = () => {
               onChange={(id, w) => { setWalletId(id); setWallet(w); }}
             />
 
-            {kind === 'internal' && (
             <div className="space-y-2">
               <Label>{t('transfer.recipient')}</Label>
               <div className="flex gap-2">
@@ -462,11 +248,9 @@ const Transfer = () => {
                   className="h-11 rounded-xl"
                   maxLength={64}
                 />
-                {kind === 'internal' && (
-                  <Button type="button" variant="outline" onClick={doLookup} disabled={looking || !recipient}>
-                    {looking ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-                  </Button>
-                )}
+                <Button type="button" variant="outline" onClick={doLookup} disabled={looking || !recipient}>
+                  {looking ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                </Button>
               </div>
               {recipientSuggestions.length > 0 && (
                 <div className="space-y-2 rounded-2xl border border-border/60 bg-muted/20 p-3">
@@ -519,96 +303,6 @@ const Transfer = () => {
                 )}
               </AnimatePresence>
             </div>
-            )}
-
-            {kind === 'international' && (
-              <>
-                <CountryPicker
-                  label={t('transfer.country')}
-                  value={countryTo}
-                  onChange={(c, name) => { setCountryTo(c); setCountryToName(name); setMethodId(''); }}
-                  placeholder={t('transfer.selectCountryPlaceholder')}
-                  paymentMethods={intlMethods}
-                />
-                {errors.country && <p className="-mt-1 text-xs text-destructive">{errors.country}</p>}
-
-                <div className="space-y-2">
-                  <Label>{t('transfer.globalRecipientPhone')}</Label>
-                  <Input
-                    inputMode="tel"
-                    placeholder={countryPhoneRules[codeValue(countryTo)]?.example || t('transfer.globalRecipientPhonePlaceholder')}
-                    value={recipient}
-                    onChange={(e) => {
-                      setRecipient(e.target.value);
-                      setErrors((current) => ({ ...current, recipient: '' }));
-                    }}
-                    className="h-11 rounded-xl"
-                    maxLength={24}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    {countryTo
-                      ? t('transfer.globalPhoneHint', { country: countryToName || countryTo })
-                      : t('transfer.selectCountryFirst')}
-                  </p>
-                  {errors.recipient && <p className="text-xs text-destructive">{errors.recipient}</p>}
-                </div>
-
-                {recentInternationalRecipients.length > 0 && (
-                  <div className="space-y-2 rounded-2xl border border-border/60 bg-muted/20 p-3">
-                    <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                      {t('transfer.recentRecipients')}
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {recentInternationalRecipients.map((tx) => (
-                        <button
-                          key={tx.id}
-                          type="button"
-                          onClick={() => applyRecentInternationalRecipient(tx.counterparty)}
-                          className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-3 py-2 text-left text-sm font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-primary/5"
-                        >
-                          <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-[11px] font-bold text-primary">
-                            {tx.counterparty.replace(/\D/g, '').slice(-2) || 'P2'}
-                          </span>
-                          <span className="max-w-[220px] truncate">{tx.counterparty}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                <div className="space-y-2">
-                  <Label>{t('deposit.selectMethod')}</Label>
-                  <div className="grid sm:grid-cols-2 gap-2">
-                    {intlMethodsForCountry.map((m) => (
-                      <button
-                        key={m.id}
-                        type="button"
-                        onClick={() => setMethodId(m.id)}
-                        className={`rounded-xl border-2 p-3 text-left text-sm transition-colors ${methodId === m.id ? 'border-primary bg-primary/5' : 'border-input hover:border-primary/40'}`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <PaymentMethodMark
-                            logo={m.icon}
-                            name={[m.name, m.provider, m.correspondent].filter(Boolean).join(' ')}
-                            currency={wallet?.currency}
-                            className="h-8 w-8"
-                          />
-                          <div>
-                            <div className="font-semibold">{m.name}</div>
-                            <div className="text-xs text-muted-foreground capitalize">{m.type}</div>
-                          </div>
-                        </div>
-                      </button>
-                    ))}
-                    {intlMethodsForCountry.length === 0 && (
-                      <div className="rounded-xl border border-dashed border-border bg-muted/30 p-4 text-sm text-muted-foreground sm:col-span-2">
-                        Aucune méthode disponible pour ce pays.
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </>
-            )}
 
             <div className="space-y-2">
               <Label>{t('transfer.fromCurrency')}</Label>
@@ -622,20 +316,6 @@ const Transfer = () => {
               {errors.amount && <p className="text-xs text-destructive">{errors.amount}</p>}
             </div>
 
-            {kind === 'international' && (
-              <>
-                <div className="flex justify-center"><ArrowDown className="h-5 w-5 text-muted-foreground" /></div>
-                <div className="space-y-2">
-                  <Label>{t('transfer.toCurrency')}</Label>
-                  <Input
-                    readOnly
-                    value={quoting ? '…' : receive.toFixed(2)}
-                    className="text-2xl font-display font-bold h-14 tabular text-success rounded-xl"
-                  />
-                </div>
-              </>
-            )}
-
             <div className="space-y-2">
               <Label>{t('transfer.note')}</Label>
               <Textarea
@@ -648,23 +328,13 @@ const Transfer = () => {
             </div>
 
             <div className="rounded-xl bg-muted/40 p-4 space-y-2 text-sm">
-              {kind === 'international' && quote && (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">{t('transfer.rate')}</span>
-                  <span className="tabular">1 {quote.from} = {quote.rate} {quote.to}</span>
-                </div>
-              )}
               <div className="flex justify-between">
-                  <span className="text-muted-foreground">{t('transfer.totalFees')}</span>
-                <span className="inline-flex items-center gap-2 tabular">
-                  <CurrencyFlagMark currency={wallet?.currency || 'USD'} />
-                  {formatMoney(fee, wallet?.currency || 'USD')}
-                </span>
+                <span className="text-muted-foreground">{t('transfer.totalFees')}</span>
+                <span className="tabular">{formatMoney(0, wallet?.currency || 'USD')}</span>
               </div>
               <div className="border-t border-border pt-2 flex justify-between font-semibold">
                 <span>{t('transfer.totalCost')}</span>
-                <span className={`inline-flex items-center gap-2 tabular ${insufficient ? 'text-destructive' : 'text-primary'}`}>
-                  <CurrencyFlagMark currency={wallet?.currency || 'USD'} />
+                <span className={`tabular ${insufficient ? 'text-destructive' : 'text-primary'}`}>
                   {formatMoney(total, wallet?.currency || 'USD')}
                 </span>
               </div>
@@ -673,7 +343,7 @@ const Transfer = () => {
             <Button
               type="submit"
               className="w-full h-12 bg-gradient-brand shadow-brand text-base rounded-xl"
-              disabled={isLoading || busy || quoting || insufficient}
+              disabled={isLoading || busy || insufficient}
             >
               {(isLoading || busy) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}
               {t('transfer.confirm')}

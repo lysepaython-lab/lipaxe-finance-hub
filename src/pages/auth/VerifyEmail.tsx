@@ -21,7 +21,7 @@ import {
 import { isSafeRedirect } from '@/lib/security';
 import { toast } from 'sonner';
 
-const RESEND_COOLDOWN = 30;
+const RESEND_COOLDOWN = 60;
 const OTP_LENGTH = 6;
 
 const VerifyEmail = () => {
@@ -37,7 +37,7 @@ const VerifyEmail = () => {
   const [email, setEmail] = useState(initialEmail);
   const [otp, setOtp] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [cooldown, setCooldown] = useState(0);
+  const [cooldown, setCooldown] = useState(() => (initialUserId ? RESEND_COOLDOWN : 0));
   const [editOpen, setEditOpen] = useState(false);
   const submittingRef = useRef(false);
   const [verifyEmail, { isLoading: verifying }] = useVerifyEmailMutation();

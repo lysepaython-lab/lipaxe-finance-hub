@@ -7,10 +7,10 @@ import {
   Briefcase,
   CreditCard,
   Gift,
-  Globe2,
   History,
   Landmark,
   LayoutDashboard,
+  LockKeyhole,
   Menu,
   PartyPopper,
   PiggyBank,
@@ -58,7 +58,6 @@ const groups: Group[] = [
     key: 'transfers',
     items: [
       { to: '/app/transfer', key: 'internalTransfer', icon: Send },
-      { to: '/app/transfer/international', key: 'internationalTransfer', icon: Globe2 },
       { to: '/app/transfer/qr', key: 'transferQr', icon: QrCode },
     ],
   },
@@ -92,11 +91,35 @@ const groups: Group[] = [
   },
 ];
 
-const NavItem = ({ item, compact = false }: { item: Item; compact?: boolean }) => {
+const NavItem = ({ item, compact = false, locked = false }: { item: Item; compact?: boolean; locked?: boolean }) => {
   const { t } = useTranslation();
   const { pathname } = useLocation();
   const active = item.end ? pathname === item.to : pathname.startsWith(item.to);
   const Icon = item.icon;
+
+  if (locked) {
+    return (
+      <span className="block rounded-2xl" title={t('kyc.menuLockedHint')}>
+        <button
+          type="button"
+          disabled
+          aria-disabled="true"
+          className={cn(
+            compact
+              ? 'flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left text-sm font-semibold'
+              : 'relative flex min-w-[104px] flex-col items-center justify-center gap-1.5 rounded-2xl px-3 py-2.5 text-xs font-semibold',
+            'cursor-not-allowed text-muted-foreground/65 opacity-75',
+          )}
+        >
+          <span className="relative">
+            <Icon className="h-5 w-5" />
+            <LockKeyhole className="absolute -bottom-1 -right-2 h-3 w-3 rounded-full bg-background" />
+          </span>
+          <span className="whitespace-nowrap">{t(`nav.${item.key}`)}</span>
+        </button>
+      </span>
+    );
+  }
 
   return (
     <NavLink
@@ -141,9 +164,7 @@ export const AppSidebar = () => {
             </SheetHeader>
             <div className="space-y-6">
               {groups.map((group) => {
-                const visibleItems = group.items.filter((item) => (
-                  isFeatureEnabled(item.feature) && (item.key !== 'kyc' || !kycState.locked)
-                ));
+                const visibleItems = group.items.filter((item) => isFeatureEnabled(item.feature));
                 if (!visibleItems.length) return null;
                 return (
                   <section key={group.key} className="space-y-2">
@@ -151,7 +172,11 @@ export const AppSidebar = () => {
                       {t(`nav.${group.key}`, group.key)}
                     </p>
                     <div className="grid gap-1">
-                      {visibleItems.map((item) => <NavItem key={item.to} item={item} compact />)}
+                      {visibleItems.map((item) => {
+                        const availableBeforeKyc = ['dashboard', 'transactions', 'profile', 'kyc', 'notifications', 'security', 'settings'].includes(item.key);
+                        const locked = !kycState.verified && !availableBeforeKyc;
+                        return <NavItem key={item.to} item={item} compact locked={locked} />;
+                      })}
                     </div>
                   </section>
                 );

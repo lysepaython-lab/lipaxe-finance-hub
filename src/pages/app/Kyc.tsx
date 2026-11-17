@@ -157,6 +157,7 @@ const Kyc = () => {
   const [backCapture, setBackCapture] = useState<CapturedFile>({ name: '', file: null });
   const [addressProofCapture, setAddressProofCapture] = useState<CapturedFile>({ name: '', file: null });
   const [selfieCapture, setSelfieCapture] = useState<CapturedFile>({ name: '', file: null });
+  const [showStepErrors, setShowStepErrors] = useState(false);
   const phoneValidation = useMemo(
     () => validatePhoneForCountry(kyc.personal.phone, kyc.address.country, countries),
     [countries, kyc.address.country, kyc.personal.phone],
@@ -195,18 +196,62 @@ const Kyc = () => {
     if (step === 3) return true;
     return true;
   };
+  const getMissingFields = (step: number) => {
+    if (step === 0) {
+      const missing = [
+        [!kyc.personal.dob?.trim(), t('kyc.dob')],
+        [!kyc.personal.gender, t('kyc.gender')],
+        [!kyc.personal.nationality?.trim(), t('kyc.nationality')],
+        [!kyc.personal.phone?.trim() || !phoneValidation.valid, t('kyc.phone')],
+        [!kyc.personal.employmentStatus?.trim(), t('kyc.employmentStatus')],
+        [!kyc.personal.purposeOfAccount, t('kyc.purposeOfAccount')],
+        [!kyc.personal.sourceOfFunds, t('kyc.sourceOfFunds')],
+        [!kyc.personal.annualIncome?.trim(), t('kyc.annualIncome')],
+        [!kyc.personal.expectedMonthlyVolume?.trim(), t('kyc.expectedMonthlyVolume')],
+        [!kyc.address.country?.trim(), t('kyc.country')],
+        [!kyc.address.street?.trim(), t('kyc.street')],
+        [!kyc.address.city?.trim(), t('kyc.city')],
+        [!kyc.address.province?.trim(), t('kyc.province')],
+        [!kyc.address.postalCode?.trim(), t('kyc.postalCode')],
+        [!kyc.personal.consentAccepted, t('kyc.consent')],
+      ] as const;
+      return missing.filter(([isMissing]) => isMissing).map(([, label]) => label);
+    }
+    if (step === 1) {
+      const missing = [
+        [!kyc.document.type, t('kyc.idType')],
+        [!kyc.document.idNumber?.trim(), t('kyc.idNumber')],
+        [!frontCapture.file, kyc.document.type === 'passport' ? t('kyc.uploadPassportPage') : t('kyc.uploadFront')],
+        [kyc.document.type !== 'passport' && !backCapture.file, t('kyc.uploadBack')],
+        [!addressProofCapture.file, t('kyc.addressProofTitle')],
+      ] as const;
+      return missing.filter(([isMissing]) => isMissing).map(([, label]) => label);
+    }
+    if (step === 2 && !(kyc.selfie.cameraCaptured && kyc.selfie.policyAccepted)) {
+      return [t('kyc.cameraSelfieTitle')];
+    }
+    return [];
+  };
   const next = () => {
     if (!isStepValid(kyc.step)) {
-      toast.error('Veuillez completer cette etape avant de continuer.');
+      setShowStepErrors(true);
       return;
     }
+    setShowStepErrors(false);
     dispatch(setStep(Math.min(kyc.step + 1, steps.length - 1)));
   };
-  const back = () => dispatch(setStep(Math.max(kyc.step - 1, 0)));
+  const back = () => {
+    setShowStepErrors(false);
+    dispatch(setStep(Math.max(kyc.step - 1, 0)));
+  };
 
   const onSubmit = async () => {
     if (![0, 1, 2, 3].every((step) => isStepValid(step))) {
-      toast.error('Completer toutes les etapes KYC avant de soumettre.');
+      const firstInvalidStep = [0, 1, 2].find((step) => !isStepValid(step));
+      if (firstInvalidStep !== undefined) {
+        dispatch(setStep(firstInvalidStep));
+        setShowStepErrors(true);
+      }
       return;
     }
     try {
@@ -389,20 +434,30 @@ const Kyc = () => {
       <Card className="shadow-elegant border-border/60">
         <CardContent className="p-6 space-y-5">
           {kyc.step === 0 && (
-            <IdentityStep countries={countries} />
+            <IdentityStep countries={countries} showErrors={showStepErrors} />
           )}
           {kyc.step === 1 && (
             <DocumentsStep
               onFrontCapture={setFrontCapture}
               onBackCapture={setBackCapture}
               onAddressProofCapture={setAddressProofCapture}
+              showErrors={showStepErrors}
             />
           )}
           {kyc.step === 2 && (
             <SelfieWithIdStep onCapture={setSelfieCapture} />
           )}
           {kyc.step === 3 && (
-            <ManualReviewStep />
+            <ManualReviewStep addressProofName={addressProofCapture.name} />
+          )}
+
+          {showStepErrors && getMissingFields(kyc.step).length > 0 && (
+            <div role="alert" className="rounded-2xl border border-destructive/25 bg-destructive/[0.06] p-4">
+              <p className="text-sm font-semibold text-destructive">{t('kyc.requiredFieldsTitle')}</p>
+              <ul className="mt-2 grid gap-1 text-sm text-foreground sm:grid-cols-2">
+                {getMissingFields(kyc.step).map((field) => <li key={field}>• {field}</li>)}
+              </ul>
+            </div>
           )}
 
           <div className="flex justify-between pt-4">
@@ -411,7 +466,7 @@ const Kyc = () => {
               {t('kyc.back')}
             </Button>
             {kyc.step < steps.length - 1 ? (
-              <Button onClick={next} className="bg-gradient-brand shadow-brand" disabled={!isStepValid(kyc.step)}>
+              <Button onClick={next} className="bg-gradient-brand shadow-brand" disabled={isLoading}>
                 {t('kyc.next')}
                 <ChevronRight className="h-4 w-4 ml-1" />
               </Button>
@@ -430,7 +485,7 @@ const Kyc = () => {
 
 /* ----------------------------- Step components ---------------------------- */
 
-const IdentityStep = ({ countries }: { countries?: IncountryEntry[] }) => {
+const IdentityStep = ({ countries, showErrors }: { countries?: IncountryEntry[]; showErrors: boolean }) => {
   const { t } = useTranslation();
   const dispatch = useAppDispatch();
   const personal = useAppSelector((s) => s.kyc.personal);
@@ -439,8 +494,15 @@ const IdentityStep = ({ countries }: { countries?: IncountryEntry[] }) => {
   const selectedDialCode = cleanDialCode(selectedCountry?.phone_code || selectedCountry?.dialling_code);
   const phoneValidation = validatePhoneForCountry(personal.phone, address.country, countries);
   const hasPhoneInput = Boolean(personal.phone.trim());
+  const invalid = (value?: string | boolean) => showErrors && !String(value || '').trim();
+  const invalidClass = 'border-destructive focus-visible:ring-destructive/20';
   return (
     <div className="space-y-5">
+      <section className="space-y-4">
+        <div>
+          <h2 className="font-display text-lg font-semibold">{t('kyc.personalDetailsGroup')}</h2>
+          <p className="text-xs text-muted-foreground">{t('kyc.personalDetailsHint')}</p>
+        </div>
       <div className="grid gap-3 md:grid-cols-2">
         <div className="space-y-2">
           <Label>{t('kyc.dob')}</Label>
@@ -449,35 +511,16 @@ const IdentityStep = ({ countries }: { countries?: IncountryEntry[] }) => {
             value={personal.dob}
             max={new Date().toISOString().split('T')[0]}
             onChange={(e) => dispatch(updatePersonal({ dob: e.target.value }))}
-            className="h-11 rounded-xl"
+            aria-invalid={invalid(personal.dob)}
+            className={cn('h-11 rounded-xl', invalid(personal.dob) && invalidClass)}
           />
-        </div>
-        <div className="space-y-2">
-          <Label>{t('kyc.phone')}</Label>
-          <Input
-            value={personal.phone}
-            onChange={(e) => dispatch(updatePersonal({ phone: e.target.value, phoneVerified: false }))}
-            onBlur={() => {
-              if (phoneValidation.valid && phoneValidation.normalized !== personal.phone) {
-                dispatch(updatePersonal({ phone: phoneValidation.normalized, phoneVerified: false }));
-              }
-            }}
-            placeholder={selectedDialCode ? `${selectedDialCode} ...` : '+257 ...'}
-            className="h-11 rounded-xl"
-            maxLength={20}
-          />
-          <div className="rounded-xl border border-border/70 bg-muted/25 px-3 py-2 text-xs">
-            <span className={hasPhoneInput && phoneValidation.valid ? 'text-success font-medium' : 'text-muted-foreground'}>
-              {hasPhoneInput ? phoneValidation.message : `Entrez un numero lie au pays selectionne${selectedDialCode ? ` (${selectedDialCode})` : ''}.`}
-            </span>
-          </div>
         </div>
       </div>
       <div className="grid gap-3 md:grid-cols-2">
         <div className="space-y-2">
           <Label>{t('kyc.gender')}</Label>
           <Select value={personal.gender || undefined} onValueChange={(value) => dispatch(updatePersonal({ gender: value }))}>
-            <SelectTrigger className="h-11 rounded-xl">
+            <SelectTrigger aria-invalid={showErrors && !personal.gender} className={cn('h-11 rounded-xl', showErrors && !personal.gender && invalidClass)}>
               <SelectValue placeholder={t('kyc.selectPlaceholder')} />
             </SelectTrigger>
             <SelectContent>
@@ -492,124 +535,104 @@ const IdentityStep = ({ countries }: { countries?: IncountryEntry[] }) => {
           <Input
             value={personal.employmentStatus}
             onChange={(e) => dispatch(updatePersonal({ employmentStatus: e.target.value }))}
-            className="h-11 rounded-xl"
+            aria-invalid={invalid(personal.employmentStatus)}
+            className={cn('h-11 rounded-xl', invalid(personal.employmentStatus) && invalidClass)}
             maxLength={50}
             placeholder={t('kyc.occupationPlaceholder')}
           />
         </div>
       </div>
       <div className="grid gap-3 md:grid-cols-2">
-        <div className="space-y-2">
-          <Label>{t('kyc.purposeOfAccount')}</Label>
-          <Select
-            value={personal.purposeOfAccount || undefined}
-            onValueChange={(value) => dispatch(updatePersonal({ purposeOfAccount: value }))}
-          >
-            <SelectTrigger className="h-11 rounded-xl">
-              <SelectValue placeholder={t('kyc.selectPlaceholder')} />
-            </SelectTrigger>
-            <SelectContent>
-              {PURPOSE_OF_ACCOUNT_OPTIONS.map((value) => (
-                <SelectItem key={value} value={value}>{t(`kyc.purpose_${value}`)}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-2">
-          <Label>{t('kyc.sourceOfFunds')}</Label>
-          <Select
-            value={personal.sourceOfFunds || undefined}
-            onValueChange={(value) => dispatch(updatePersonal({ sourceOfFunds: value }))}
-          >
-            <SelectTrigger className="h-11 rounded-xl">
-              <SelectValue placeholder={t('kyc.selectPlaceholder')} />
-            </SelectTrigger>
-            <SelectContent>
-              {SOURCE_OF_FUNDS_OPTIONS.map((value) => (
-                <SelectItem key={value} value={value}>{t(`kyc.source_${value}`)}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-      <div className="space-y-2">
-        <Label>Revenu annuel estimé</Label>
-        <Input value={personal.annualIncome} onChange={(e) => dispatch(updatePersonal({ annualIncome: e.target.value }))} className="h-11 rounded-xl" maxLength={60} placeholder="Ex. 5 000 USD" />
-      </div>
-      <div className="space-y-2">
-        <Label>{t('kyc.expectedMonthlyVolume')}</Label>
-        <Input
-          value={personal.expectedMonthlyVolume}
-          onChange={(e) => dispatch(updatePersonal({ expectedMonthlyVolume: e.target.value.replace(/[^0-9]/g, '') }))}
-          className="h-11 rounded-xl"
-          inputMode="numeric"
-          maxLength={60}
-          placeholder={t('kyc.expectedMonthlyVolumePlaceholder')}
-        />
-      </div>
-      <label className="flex items-start gap-3 rounded-2xl border border-border bg-muted/30 p-4 text-sm">
-        <input
-          type="checkbox"
-          checked={personal.consentAccepted}
-          onChange={(e) => dispatch(updatePersonal({ consentAccepted: e.target.checked }))}
-          className="mt-1 h-4 w-4 accent-primary"
-        />
-        <span>
-          <span className="font-medium">{t('kyc.consent')}</span>
-        </span>
-      </label>
-      <div className="grid gap-3 md:grid-cols-2">
         <CountryPicker
           label={t('kyc.nationality')}
           value={personal.nationality}
           onChange={(code) => dispatch(updatePersonal({ nationality: code }))}
         />
-        <CountryPicker
-          label={t('kyc.country')}
-          value={address.country}
-          onChange={(code) => dispatch(updateAddress({ country: code }))}
-        />
-      </div>
-      <div className="space-y-2">
-        <Label>{t('kyc.street')}</Label>
-        <Input
-          value={address.street}
-          onChange={(e) => dispatch(updateAddress({ street: e.target.value }))}
-          className="h-11 rounded-xl"
-          maxLength={120}
-        />
-      </div>
-      <div className="grid gap-3 md:grid-cols-2">
         <div className="space-y-2">
-          <Label>{t('kyc.city')}</Label>
+          <Label>{t('kyc.phone')}</Label>
           <Input
-            value={address.city}
-            onChange={(e) => dispatch(updateAddress({ city: e.target.value }))}
-            className="h-11 rounded-xl"
-            maxLength={80}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label>{t('kyc.province')}</Label>
-          <Input
-            value={address.province}
-            onChange={(e) => dispatch(updateAddress({ province: e.target.value }))}
-            className="h-11 rounded-xl"
-            maxLength={100}
-          />
-        </div>
-      </div>
-      <div className="grid gap-3 md:grid-cols-2">
-        <div className="space-y-2">
-          <Label>{t('kyc.postalCode')}</Label>
-          <Input
-            value={address.postalCode}
-            onChange={(e) => dispatch(updateAddress({ postalCode: e.target.value }))}
-            className="h-11 rounded-xl"
+            value={personal.phone}
+            onChange={(e) => dispatch(updatePersonal({ phone: e.target.value, phoneVerified: false }))}
+            onBlur={() => {
+              if (phoneValidation.valid && phoneValidation.normalized !== personal.phone) {
+                dispatch(updatePersonal({ phone: phoneValidation.normalized, phoneVerified: false }));
+              }
+            }}
+            placeholder={selectedDialCode ? `${selectedDialCode} ...` : '+257 ...'}
+            aria-invalid={showErrors && !phoneValidation.valid}
+            className={cn('h-11 rounded-xl', showErrors && !phoneValidation.valid && invalidClass)}
             maxLength={20}
           />
+          <div className="rounded-xl border border-border/70 bg-muted/25 px-3 py-2 text-xs">
+            <span className={hasPhoneInput && phoneValidation.valid ? 'text-success font-medium' : 'text-muted-foreground'}>
+              {hasPhoneInput ? phoneValidation.message : `Entrez un numero lie au pays selectionne${selectedDialCode ? ` (${selectedDialCode})` : ''}.`}
+            </span>
+          </div>
         </div>
       </div>
+      </section>
+
+      <section className="space-y-4 border-t border-border/70 pt-5">
+        <div>
+          <h2 className="font-display text-lg font-semibold">{t('kyc.residenceGroup')}</h2>
+          <p className="text-xs text-muted-foreground">{t('kyc.residenceHint')}</p>
+        </div>
+        <CountryPicker label={t('kyc.country')} value={address.country} onChange={(code) => dispatch(updateAddress({ country: code }))} />
+        <div className="space-y-2">
+          <Label>{t('kyc.street')}</Label>
+          <Input value={address.street} onChange={(e) => dispatch(updateAddress({ street: e.target.value }))} aria-invalid={invalid(address.street)} className={cn('h-11 rounded-xl', invalid(address.street) && invalidClass)} maxLength={120} />
+        </div>
+        <div className="grid gap-3 md:grid-cols-2">
+          <div className="space-y-2">
+            <Label>{t('kyc.city')}</Label>
+            <Input value={address.city} onChange={(e) => dispatch(updateAddress({ city: e.target.value }))} aria-invalid={invalid(address.city)} className={cn('h-11 rounded-xl', invalid(address.city) && invalidClass)} maxLength={80} />
+          </div>
+          <div className="space-y-2">
+            <Label>{t('kyc.province')}</Label>
+            <Input value={address.province} onChange={(e) => dispatch(updateAddress({ province: e.target.value }))} aria-invalid={invalid(address.province)} className={cn('h-11 rounded-xl', invalid(address.province) && invalidClass)} maxLength={100} />
+          </div>
+          <div className="space-y-2">
+            <Label>{t('kyc.postalCode')}</Label>
+            <Input value={address.postalCode} onChange={(e) => dispatch(updateAddress({ postalCode: e.target.value }))} aria-invalid={invalid(address.postalCode)} className={cn('h-11 rounded-xl', invalid(address.postalCode) && invalidClass)} maxLength={20} />
+          </div>
+        </div>
+      </section>
+
+      <section className="space-y-4 border-t border-border/70 pt-5">
+        <div>
+          <h2 className="font-display text-lg font-semibold">{t('kyc.financialProfileGroup')}</h2>
+          <p className="text-xs text-muted-foreground">{t('kyc.financialProfileHint')}</p>
+        </div>
+        <div className="grid gap-3 md:grid-cols-2">
+          <div className="space-y-2">
+            <Label>{t('kyc.purposeOfAccount')}</Label>
+            <Select value={personal.purposeOfAccount || undefined} onValueChange={(value) => dispatch(updatePersonal({ purposeOfAccount: value }))}>
+              <SelectTrigger aria-invalid={showErrors && !personal.purposeOfAccount} className={cn('h-11 rounded-xl', showErrors && !personal.purposeOfAccount && invalidClass)}><SelectValue placeholder={t('kyc.selectPlaceholder')} /></SelectTrigger>
+              <SelectContent>{PURPOSE_OF_ACCOUNT_OPTIONS.map((value) => <SelectItem key={value} value={value}>{t(`kyc.purpose_${value}`)}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label>{t('kyc.sourceOfFunds')}</Label>
+            <Select value={personal.sourceOfFunds || undefined} onValueChange={(value) => dispatch(updatePersonal({ sourceOfFunds: value }))}>
+              <SelectTrigger aria-invalid={showErrors && !personal.sourceOfFunds} className={cn('h-11 rounded-xl', showErrors && !personal.sourceOfFunds && invalidClass)}><SelectValue placeholder={t('kyc.selectPlaceholder')} /></SelectTrigger>
+              <SelectContent>{SOURCE_OF_FUNDS_OPTIONS.map((value) => <SelectItem key={value} value={value}>{t(`kyc.source_${value}`)}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label>{t('kyc.annualIncome')}</Label>
+            <Input value={personal.annualIncome} onChange={(e) => dispatch(updatePersonal({ annualIncome: e.target.value }))} aria-invalid={invalid(personal.annualIncome)} className={cn('h-11 rounded-xl', invalid(personal.annualIncome) && invalidClass)} maxLength={60} placeholder={t('kyc.annualIncomePlaceholder')} />
+          </div>
+          <div className="space-y-2">
+            <Label>{t('kyc.expectedMonthlyVolume')}</Label>
+            <Input value={personal.expectedMonthlyVolume} onChange={(e) => dispatch(updatePersonal({ expectedMonthlyVolume: e.target.value.replace(/[^0-9]/g, '') }))} aria-invalid={invalid(personal.expectedMonthlyVolume)} className={cn('h-11 rounded-xl', invalid(personal.expectedMonthlyVolume) && invalidClass)} inputMode="numeric" maxLength={60} placeholder={t('kyc.expectedMonthlyVolumePlaceholder')} />
+          </div>
+        </div>
+      </section>
+
+      <label className={cn('flex items-start gap-3 rounded-2xl border bg-muted/30 p-4 text-sm', showErrors && !personal.consentAccepted ? 'border-destructive' : 'border-border')}>
+        <input type="checkbox" checked={personal.consentAccepted} onChange={(e) => dispatch(updatePersonal({ consentAccepted: e.target.checked }))} className="mt-1 h-4 w-4 accent-primary" />
+        <span><span className="font-medium">{t('kyc.consent')}</span></span>
+      </label>
     </div>
   );
 };
@@ -618,10 +641,12 @@ const DocumentsStep = ({
   onFrontCapture,
   onBackCapture,
   onAddressProofCapture,
+  showErrors,
 }: {
   onFrontCapture: (capture: CapturedFile) => void;
   onBackCapture: (capture: CapturedFile) => void;
   onAddressProofCapture: (capture: CapturedFile) => void;
+  showErrors: boolean;
 }) => {
   const { t } = useTranslation();
   const dispatch = useAppDispatch();
@@ -646,7 +671,7 @@ const DocumentsStep = ({
             onBackCapture({ name: '', file: null, qualityScore: 0, mrzConfidence: 0, signals: [] });
           }}
         >
-          <SelectTrigger className="h-11 rounded-xl"><SelectValue placeholder="Choisir" /></SelectTrigger>
+          <SelectTrigger aria-invalid={showErrors && !document.type} className={cn('h-11 rounded-xl', showErrors && !document.type && 'border-destructive')}><SelectValue placeholder={t('kyc.selectPlaceholder')} /></SelectTrigger>
           <SelectContent>
             <SelectItem value="passport">{t('kyc.passport')}</SelectItem>
             <SelectItem value="nationalId">{t('kyc.nationalId')}</SelectItem>
@@ -655,13 +680,14 @@ const DocumentsStep = ({
         </Select>
       </div>
       <div className="space-y-2">
-        <Label>Numéro de pièce</Label>
+        <Label>{t('kyc.idNumber')}</Label>
         <Input
           value={document.idNumber}
           onChange={(e) => dispatch(updateDocument({ idNumber: e.target.value }))}
-          className="h-11 rounded-xl"
+          aria-invalid={showErrors && !document.idNumber.trim()}
+          className={cn('h-11 rounded-xl', showErrors && !document.idNumber.trim() && 'border-destructive')}
           maxLength={40}
-          placeholder="Numéro d’identification"
+          placeholder={t('kyc.idNumberPlaceholder')}
         />
       </div>
       <div className="grid md:grid-cols-2 gap-3">
@@ -669,6 +695,7 @@ const DocumentsStep = ({
           label={document.type === 'passport' ? t('kyc.uploadPassportPage') : t('kyc.uploadFront')}
           value={document.frontName}
           documentType={(document.type as DocumentKind) || 'unknown'}
+          showErrors={showErrors && !document.frontName}
           onCapture={(capture) => {
             dispatch(updateDocument({
               frontName: capture.name,
@@ -683,6 +710,7 @@ const DocumentsStep = ({
             label={t('kyc.uploadBack')}
             value={document.backName}
             documentType={(document.type as DocumentKind) || 'unknown'}
+            showErrors={showErrors && !document.backName}
             onCapture={(capture) => {
               dispatch(updateDocument({
                 backName: capture.name,
@@ -694,7 +722,7 @@ const DocumentsStep = ({
           />
         )}
       </div>
-      <AddressProofUpload onCapture={onAddressProofCapture} />
+      <AddressProofUpload onCapture={onAddressProofCapture} showErrors={showErrors} />
     </>
   );
 };
@@ -707,7 +735,7 @@ const ADDRESS_PROOF_TYPES = new Map([
   ['jpeg', 'image/jpeg'],
 ]);
 
-const AddressProofUpload = ({ onCapture }: { onCapture: (capture: CapturedFile) => void }) => {
+const AddressProofUpload = ({ onCapture, showErrors = false }: { onCapture: (capture: CapturedFile) => void; showErrors?: boolean }) => {
   const { t } = useTranslation();
   const inputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
@@ -748,7 +776,7 @@ const AddressProofUpload = ({ onCapture }: { onCapture: (capture: CapturedFile) 
   };
 
   return (
-    <section className="rounded-2xl border border-primary/15 bg-primary/[0.035] p-4 sm:p-5" aria-labelledby="address-proof-title">
+    <section className={cn('rounded-2xl border bg-primary/[0.035] p-4 sm:p-5', showErrors && !file ? 'border-destructive' : 'border-primary/15')} aria-labelledby="address-proof-title">
       <div className="flex items-start gap-3">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
           <ShieldCheck className="h-5 w-5" />
@@ -830,12 +858,16 @@ const DocumentCapture = ({
   value,
   documentType,
   onCapture,
+  showErrors = false,
 }: {
   label: string;
   value: string;
   documentType: DocumentKind;
   onCapture: (capture: CapturedFile) => void;
+  showErrors?: boolean;
 }) => {
+  const { t } = useTranslation();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -853,6 +885,64 @@ const DocumentCapture = ({
   const [isReadyToCapture, setIsReadyToCapture] = useState(false);
   const [analysis, setAnalysis] = useState<AnalyzerResult>(defaultAnalysis);
   const [videoAttached, setVideoAttached] = useState(false);
+  const [uploaded, setUploaded] = useState(false);
+
+  useEffect(() => {
+    if (!preview) return;
+    return () => URL.revokeObjectURL(preview);
+  }, [preview]);
+
+  const chooseImage = async (file?: File) => {
+    if (!file) return;
+    const extension = file.name.split('.').pop()?.toLowerCase();
+    const allowedType = new Map([['jpg', 'image/jpeg'], ['jpeg', 'image/jpeg'], ['png', 'image/png']]);
+    const expectedMime = extension ? allowedType.get(extension) : undefined;
+    if (!expectedMime || (file.type && file.type !== expectedMime)) {
+      toast.error(t('kyc.documentUploadTypeError'));
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+    if (!file.size || file.size > 10 * 1024 * 1024) {
+      toast.error(t('kyc.documentUploadSizeError'));
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+    try {
+      const bytes = new Uint8Array(await file.slice(0, 8).arrayBuffer());
+      const isJpeg = bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
+      const isPng = [137, 80, 78, 71, 13, 10, 26, 10].every((byte, index) => bytes[index] === byte);
+      if ((expectedMime === 'image/jpeg' && !isJpeg) || (expectedMime === 'image/png' && !isPng)) {
+        toast.error(t('kyc.documentUploadTypeError'));
+        if (fileInputRef.current) fileInputRef.current.value = '';
+        return;
+      }
+      const bitmap = await createImageBitmap(file);
+      try {
+        const scale = Math.min(1, 2200 / Math.max(bitmap.width, bitmap.height));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+        canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+        const context = canvas.getContext('2d');
+        if (!context) throw new Error('image_normalization_failed');
+        context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+        const normalizedBlob = await new Promise<Blob>((resolve, reject) => {
+          canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('image_normalization_failed')), 'image/jpeg', 0.94);
+        });
+        const normalizedFile = new File([normalizedBlob], `${file.name.replace(/\.[^.]+$/, '')}.jpg`, {
+          type: 'image/jpeg',
+          lastModified: Date.now(),
+        });
+        setPreview(URL.createObjectURL(normalizedFile));
+        setUploaded(true);
+        setAutoScore(0);
+        onCapture({ name: normalizedFile.name, file: normalizedFile, qualityScore: 0, mrzConfidence: 0, signals: [] });
+      } finally {
+        bitmap.close();
+      }
+    } catch {
+      toast.error(t('kyc.documentUploadReadError'));
+    }
+  };
 
   const getDocumentVideoConstraints = async (): Promise<MediaStreamConstraints['video']> => {
     const devices = await navigator.mediaDevices.enumerateDevices().catch(() => []);
@@ -942,6 +1032,7 @@ const DocumentCapture = ({
       const file = new File([blob], fileName, { type: 'image/jpeg' });
       const dataUrl = URL.createObjectURL(file);
       setPreview(dataUrl);
+      setUploaded(false);
       onCapture({
         name: fileName,
         file,
@@ -1090,6 +1181,8 @@ const DocumentCapture = ({
 
   const reset = () => {
     setPreview(null);
+    setUploaded(false);
+    if (fileInputRef.current) fileInputRef.current.value = '';
     setHint('Placez votre document dans le cadre');
     setAutoScore(0);
     setIsReadyToCapture(false);
@@ -1167,7 +1260,8 @@ const DocumentCapture = ({
   ].join(' • ');
 
   return (
-    <div className="space-y-3 rounded-2xl border border-border/70 bg-card/50 p-4">
+    <div className={cn('space-y-3 rounded-2xl border bg-card/50 p-4', showErrors && !value ? 'border-destructive' : 'border-border/70')}>
+      <input ref={fileInputRef} type="file" accept=".jpg,.jpeg,.png,image/jpeg,image/png" className="sr-only" onChange={(event) => chooseImage(event.currentTarget.files?.[0])} aria-label={t('kyc.documentUploadTitle')} />
       <div className="flex items-center justify-between gap-3">
         <p className="text-sm font-semibold">{label}</p>
         {value && <span className="text-xs font-medium text-success">Capturee</span>}
@@ -1176,16 +1270,17 @@ const DocumentCapture = ({
         <div className="space-y-2">
           <img src={preview} alt={label} className="w-full rounded-xl aspect-[4/3] object-cover" />
           <div className="flex items-center justify-between rounded-xl bg-background/70 px-3 py-2 text-xs">
-            <span className="flex items-center gap-1.5 font-medium">
-              <FileCheck2 className="h-3.5 w-3.5 text-success" />
-              Capture exploitable
-            </span>
-            <span className="font-semibold text-primary">{autoScore}/100</span>
+              <span className="flex items-center gap-1.5 font-medium">
+                <FileCheck2 className="h-3.5 w-3.5 text-success" />
+                {uploaded ? t('kyc.documentUploadSelected') : t('kyc.captureUsable')}
+              </span>
+              {!uploaded && <span className="font-semibold text-primary">{autoScore}/100</span>}
           </div>
           <div className="flex gap-2">
             <Button type="button" variant="outline" size="sm" onClick={reset} className="flex-1">
               <RotateCcw className="h-3.5 w-3.5 mr-1.5" /> Reprendre
             </Button>
+            {uploaded && <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} className="flex-1">{t('kyc.documentUploadReplace')}</Button>}
           </div>
         </div>
       ) : active ? (
@@ -1255,9 +1350,14 @@ const DocumentCapture = ({
           </Button>
         </div>
       ) : (
-        <Button type="button" variant="outline" onClick={start} className="h-16 w-full border-dashed rounded-xl">
-          <Camera className="h-5 w-5 mr-2" /> Ouvrir la camera
-        </Button>
+        <div className="grid gap-2 sm:grid-cols-2">
+          <Button type="button" variant="outline" onClick={start} className="h-12 rounded-xl">
+            <Camera className="mr-2 h-5 w-5" /> {t('kyc.documentUploadUseCamera')}
+          </Button>
+          <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()} className="h-12 rounded-xl border-dashed">
+            <UploadCloud className="mr-2 h-5 w-5" /> {t('kyc.documentUploadTitle')}
+          </Button>
+        </div>
       )}
     </div>
   );
@@ -1318,39 +1418,60 @@ const SelfieWithIdStep = ({
   );
 };
 
-const ReviewStep = () => {
+const ReviewStep = ({ addressProofName }: { addressProofName: string }) => {
   const { t } = useTranslation();
   const kyc = useAppSelector((s) => s.kyc);
-  const rows = [
-    { k: t('kyc.dob'), v: kyc.personal.dob },
-    { k: t('kyc.gender'), v: kyc.personal.gender ? t(`kyc.gender_${kyc.personal.gender}`) : '' },
-    { k: t('kyc.nationality'), v: kyc.personal.nationality },
-    { k: t('kyc.phone'), v: kyc.personal.phone },
-    { k: t('kyc.employmentStatus'), v: kyc.personal.employmentStatus },
-    { k: t('kyc.purposeOfAccount'), v: kyc.personal.purposeOfAccount ? t(`kyc.purpose_${kyc.personal.purposeOfAccount}`) : '' },
-    { k: t('kyc.sourceOfFunds'), v: kyc.personal.sourceOfFunds ? t(`kyc.source_${kyc.personal.sourceOfFunds}`) : '' },
+  const sections = [
     {
-      k: t('kyc.street'),
-      v: `${kyc.address.street}, ${kyc.address.city}, ${kyc.address.province} ${kyc.address.postalCode}, ${kyc.address.country}`,
+      title: t('kyc.personalDetailsGroup'),
+      rows: [
+        { k: t('kyc.dob'), v: kyc.personal.dob },
+        { k: t('kyc.gender'), v: kyc.personal.gender ? t(`kyc.gender_${kyc.personal.gender}`) : '' },
+        { k: t('kyc.nationality'), v: kyc.personal.nationality },
+        { k: t('kyc.phone'), v: kyc.personal.phone },
+        { k: t('kyc.idType'), v: kyc.document.type ? t(`kyc.${kyc.document.type}`) : '' },
+        { k: t('kyc.idNumber'), v: kyc.document.idNumber },
+        { k: t('kyc.documentFile'), v: [kyc.document.frontName, kyc.document.backName].filter(Boolean).join(' · ') },
+      ],
     },
-    { k: t('kyc.idType'), v: kyc.document.type },
-    { k: t('kyc.documentFile'), v: kyc.document.frontName },
-    { k: t('kyc.gateCameraSelfie'), v: kyc.selfie.cameraCaptured ? t('kyc.cameraSelfieVerified') : t('kyc.missing') },
+    {
+      title: t('kyc.residenceGroup'),
+      rows: [
+        { k: t('kyc.street'), v: [kyc.address.street, kyc.address.city, kyc.address.province, kyc.address.postalCode, kyc.address.country].filter(Boolean).join(', ') },
+        { k: t('kyc.addressProofTitle'), v: addressProofName },
+      ],
+    },
+    {
+      title: t('kyc.financialProfileGroup'),
+      rows: [
+        { k: t('kyc.employmentStatus'), v: kyc.personal.employmentStatus },
+        { k: t('kyc.purposeOfAccount'), v: kyc.personal.purposeOfAccount ? t(`kyc.purpose_${kyc.personal.purposeOfAccount}`) : '' },
+        { k: t('kyc.sourceOfFunds'), v: kyc.personal.sourceOfFunds ? t(`kyc.source_${kyc.personal.sourceOfFunds}`) : '' },
+        { k: t('kyc.annualIncome'), v: kyc.personal.annualIncome },
+        { k: t('kyc.expectedMonthlyVolume'), v: kyc.personal.expectedMonthlyVolume },
+        { k: t('kyc.gateCameraSelfie'), v: kyc.selfie.cameraCaptured ? t('kyc.cameraSelfieVerified') : t('kyc.missing') },
+      ],
+    },
   ];
   return (
-    <div className="space-y-3">
+    <div className="space-y-5">
       <h3 className="font-display font-semibold text-lg">{t('kyc.reviewTitle')}</h3>
-      {rows.map((r) => (
-        <div key={r.k} className="flex justify-between text-sm border-b border-border py-2">
-          <span className="text-muted-foreground">{r.k}</span>
-          <span className="font-medium text-right">{r.v || '—'}</span>
-        </div>
+      {sections.map((section) => (
+        <section key={section.title} className="rounded-2xl border border-border/70 bg-muted/15 p-4">
+          <h4 className="mb-2 font-semibold">{section.title}</h4>
+          {section.rows.map((row) => (
+            <div key={row.k} className="flex justify-between gap-4 border-b border-border/70 py-2 text-sm last:border-0">
+              <span className="text-muted-foreground">{row.k}</span>
+              <span className="max-w-[60%] break-words text-right font-medium">{row.v || '—'}</span>
+            </div>
+          ))}
+        </section>
       ))}
     </div>
   );
 };
 
-const ManualReviewStep = () => {
+const ManualReviewStep = ({ addressProofName }: { addressProofName: string }) => {
   const { t } = useTranslation();
   return (
     <div className="space-y-5">
@@ -1361,7 +1482,7 @@ const ManualReviewStep = () => {
           {/* <p className="mt-1 text-sm text-muted-foreground">{t('kyc.manualReviewOnlyBody')}</p> */}
         </div>
       </div>
-      <ReviewStep />
+      <ReviewStep addressProofName={addressProofName} />
     </div>
   );
 };

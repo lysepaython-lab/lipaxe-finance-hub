@@ -390,7 +390,7 @@ export const businessApi = api.injectEndpoints({
     }),
     cryptoWithdraw: b.mutation<CryptoOnchainTransaction, { symbol: string; network: string; address: string; amount: number; wallet_id: string }>({
       query: (body) => ({
-        url: '/cryptos/withdraw/',
+        url: '/crypto-market/withdrawals/',
         method: 'POST',
         body,
       }),

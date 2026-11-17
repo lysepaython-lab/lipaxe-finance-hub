@@ -105,7 +105,7 @@ const AppRoutes = () => (
       <Route path="deposit" element={<Deposit />} />
       <Route path="withdraw" element={<Withdraw />} />
       <Route path="transfer" element={<Transfer />} />
-      <Route path="transfer/international" element={<Transfer />} />
+      <Route path="transfer/international" element={<Navigate to="/app/transfer" replace />} />
       <Route path="transfer/qr" element={<TransferQr />} />
       <Route path="merchant-pay" element={<MerchantPayment />} />
       <Route path="transfer/nfc" element={<Navigate to="/app/transfer" replace />} />

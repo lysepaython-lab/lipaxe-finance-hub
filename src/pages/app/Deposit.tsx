@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,7 +15,8 @@ import {
 } from '@/store/api/walletApi';
 import { usePaymentMethodsDepositQuery, type PaymentMethod, type WalletV2 } from '@/store/api/platformApi';
 import { useCryptoAssetsQuery, useCryptoDepositAddressMutation, useCryptoNetworksQuery } from '@/store/api/businessApi';
-import { Loader2, Check, ShieldCheck, Copy } from 'lucide-react';
+import { Loader2, Check, ShieldCheck, Copy, AlertTriangle } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 import { toast } from 'sonner';
 import { formatMoney } from '@/lib/format';
 import { WalletSelector } from '@/components/security/WalletSelector';
@@ -58,9 +60,10 @@ const Deposit = () => {
   const [amount, setAmount] = useState('500');
   const [fields, setFields] = useState<DynamicFields>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [kycRequired, setKycRequired] = useState(false);
   const [done, setDone] = useState(false);
   const [txId, setTxId] = useState<string | null>(null);
-  const [cryptoAddress, setCryptoAddress] = useState<{ address: string; network: string; symbol: string } | null>(null);
+  const [cryptoAddress, setCryptoAddress] = useState<{ address: string; network: string; symbol: string; qrPayload?: string } | null>(null);
   const [otpCode, setOtpCode] = useState('');
   const [pendingAfripayTxId, setPendingAfripayTxId] = useState<string | null>(null);
   const status = useTransactionPolling(txId);
@@ -117,6 +120,7 @@ const Deposit = () => {
   };
 
   const doDeposit = async () => {
+    setKycRequired(false);
     const parsed = amountSchema.safeParse(amt);
     if (!parsed.success) { setErrors({ amount: parsed.error.issues[0].message }); return; }
     const extra = validateExtra();
@@ -133,7 +137,12 @@ const Deposit = () => {
           wallet_id: walletId!,
           network: fields.network!,
         }).unwrap();
-        setCryptoAddress({ address: r.address, network: r.network || fields.network!, symbol: r.symbol || cryptoSymbol });
+        setCryptoAddress({
+          address: r.address,
+          network: r.network || fields.network!,
+          symbol: r.symbol || cryptoSymbol,
+          qrPayload: r.qr_payload,
+        });
         toast.success('Adresse de dépôt générée');
         setDone(true);
         return;
@@ -181,10 +190,14 @@ const Deposit = () => {
       toast.success(t('deposit.success'));
       setDone(true);
     } catch (e) {
-      const detail = (e as { data?: { detail?: string; message?: string; error?: string } })?.data?.detail
-        || (e as { data?: { detail?: string; message?: string; error?: string } })?.data?.message
-        || (e as { data?: { detail?: string; message?: string; error?: string } })?.data?.error
+      const data = (e as { data?: { detail?: string; message?: string; error?: string; code?: string } })?.data;
+      const detail = data?.detail
+        || data?.message
+        || data?.error
         || t('common.error');
+      if (/kyc|know your customer|identity verification|vérification.{0,20}identité|identité.{0,20}vérification/i.test(`${data?.code || ''} ${detail}`)) {
+        setKycRequired(true);
+      }
       toast.error(detail);
     }
   };
@@ -224,40 +237,82 @@ const Deposit = () => {
 
   const copyAddr = () => {
     if (!cryptoAddress) return;
-    navigator.clipboard.writeText(cryptoAddress.address);
-    toast.success('Adresse copiée');
+    navigator.clipboard.writeText(cryptoAddress.address)
+      .then(() => toast.success(t('deposit.addressCopied')))
+      .catch(() => toast.error(t('common.error')));
   };
 
   if (done) return (
-    <div className="max-w-lg mx-auto">
-      <Card className="text-center p-10 shadow-elegant">
-        <div className="mx-auto h-16 w-16 rounded-full bg-success/10 text-success flex items-center justify-center mb-4">
-          <Check className="h-8 w-8" />
-        </div>
-        <h2 className="font-display text-2xl font-bold">
-          {cryptoAddress ? 'Adresse de dépôt' : t('deposit.success')}
-        </h2>
+    <div className={cn('mx-auto', cryptoAddress ? 'max-w-2xl' : 'max-w-lg')}>
+      <Card className={cn('shadow-elegant', cryptoAddress ? 'overflow-hidden' : 'p-10 text-center')}>
         {cryptoAddress ? (
-          <div className="mt-6 space-y-3 text-left">
-            <p className="text-sm text-muted-foreground text-center">
-              Envoyez <strong>{amt} {cryptoAddress.symbol}</strong> sur le réseau <strong>{cryptoAddress.network}</strong> à :
-            </p>
-            <div className="rounded-xl bg-muted/40 p-3 font-mono text-xs break-all">{cryptoAddress.address}</div>
-            <Button variant="outline" className="w-full" onClick={copyAddr}>
-              <Copy className="mr-2 h-4 w-4" /> Copier l'adresse
-            </Button>
-          </div>
+          <CardContent className="p-5 sm:p-8">
+            <div className="text-center">
+              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-success/10 text-success">
+                <Check className="h-7 w-7" />
+              </div>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Lipaxe · {t('deposit.cryptoReceive')}</p>
+              <h2 className="mt-2 font-display text-2xl font-bold sm:text-3xl">{t('deposit.addressTitle')}</h2>
+              <p className="mx-auto mt-2 max-w-lg text-sm text-muted-foreground">{t('deposit.scanToSend')}</p>
+            </div>
+
+            <div className="mx-auto my-6 w-fit rounded-2xl border border-border bg-white p-3 shadow-sm sm:p-4">
+              <QRCodeSVG
+                value={cryptoAddress.qrPayload || cryptoAddress.address}
+                size={208}
+                level="H"
+                includeMargin
+                title={`${cryptoAddress.symbol} ${cryptoAddress.network} ${t('deposit.depositAddress')}`}
+                className="h-44 w-44 sm:h-52 sm:w-52"
+              />
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="rounded-xl border border-border bg-muted/30 p-4">
+                <p className="text-xs font-medium text-muted-foreground">{t('deposit.network')}</p>
+                <p className="mt-1 font-semibold">{cryptoAddress.network}</p>
+              </div>
+              <div className="rounded-xl border border-border bg-muted/30 p-4">
+                <p className="text-xs font-medium text-muted-foreground">{t('deposit.amount')}</p>
+                <p className="mt-1 font-semibold tabular-nums">{amt.toLocaleString(undefined, { maximumFractionDigits: 8 })} {cryptoAddress.symbol}</p>
+              </div>
+            </div>
+
+            <div className="mt-3 rounded-xl border border-border bg-muted/30 p-4">
+              <p className="text-xs font-medium text-muted-foreground">{t('deposit.depositAddress')}</p>
+              <p className="mt-2 break-all font-mono text-sm leading-6">{cryptoAddress.address}</p>
+              <Button variant="outline" className="mt-3 w-full" onClick={copyAddr}>
+                <Copy className="mr-2 h-4 w-4" /> {t('deposit.copyAddress')}
+              </Button>
+            </div>
+
+            <div className="mt-4 rounded-xl border border-amber-500/25 bg-amber-500/[0.06] p-4 text-left">
+              <div className="flex items-center gap-2 font-semibold">
+                <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600" />
+                {t('deposit.beforeSending')}
+              </div>
+              <ul className="mt-2 list-disc space-y-1.5 pl-5 text-sm text-muted-foreground">
+                <li>{t('deposit.reminderNetwork', { symbol: cryptoAddress.symbol, network: cryptoAddress.network })}</li>
+                <li>{t('deposit.reminderAddress')}</li>
+                <li>{t('deposit.reminderFinal')}</li>
+              </ul>
+            </div>
+          </CardContent>
         ) : (
           <>
-            <p className="text-muted-foreground mt-2">{formatMoney(amt, wallet?.currency || 'USD')} → {wallet?.currency}</p>
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-success/10 text-success">
+              <Check className="h-8 w-8" />
+            </div>
+            <h2 className="mt-4 font-display text-2xl font-bold">{t('deposit.success')}</h2>
+            <p className="mt-2 text-muted-foreground">{formatMoney(amt, wallet?.currency || 'USD')} → {wallet?.currency}</p>
             <div className="my-4"><AsyncStatusPill status={status} /></div>
           </>
         )}
-        <div className="flex gap-3 justify-center mt-6">
+        <div className={cn('flex flex-col justify-center gap-3 sm:flex-row', cryptoAddress ? 'border-t border-border px-5 py-5 sm:px-8' : 'mt-6')}>
           <Button variant="outline" onClick={() => { setDone(false); setTxId(null); setCryptoAddress(null); setFields({}); }}>
-            Nouveau dépôt
+            {t('deposit.newDeposit')}
           </Button>
-          <Button asChild className="bg-gradient-brand"><a href="/app">Retour au tableau de bord</a></Button>
+          <Button asChild className="bg-gradient-brand"><a href="/app">{t('deposit.backToDashboard')}</a></Button>
         </div>
       </Card>
     </div>
@@ -269,6 +324,19 @@ const Deposit = () => {
         <h1 className="font-display text-3xl font-bold">{t('deposit.title')}</h1>
         <p className="text-muted-foreground mt-1">{t('deposit.subtitle')}</p>
       </div>
+
+      {kycRequired && (
+        <div role="alert" className="flex items-start gap-3 rounded-2xl border border-amber-500/25 bg-amber-500/[0.08] p-4 sm:p-5">
+          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+          <div className="min-w-0 flex-1">
+            <p className="font-semibold">{t('deposit.kycRequiredTitle')}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{t('deposit.kycRequiredBody')}</p>
+            <Link to="/app/kyc" className="mt-3 inline-flex items-center rounded-lg font-semibold text-primary underline underline-offset-4">
+              {t('deposit.kycRequiredCta')}
+            </Link>
+          </div>
+        </div>
+      )}
 
       <Card className="shadow-elegant border-border/60">
         <CardContent className="p-6">

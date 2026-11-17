@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { Loader2, ShieldAlert } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { useGetKycDataQuery } from '@/store/api/kycApi';
@@ -7,6 +7,7 @@ import { useMeQuery } from '@/store/api/authApi';
 import { updateUser, logout } from '@/store/slices/authSlice';
 import { getKycState } from '@/lib/kycStatus';
 import { Button } from '@/components/ui/button';
+import { useTranslation } from 'react-i18next';
 
 export const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
   const token = useAppSelector(s => s.auth.accessToken);
@@ -14,11 +15,12 @@ export const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
   const dispatch = useAppDispatch();
   const location = useLocation();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const { data: freshUser, isLoading: isUserLoading, isError: userLoadFailed, refetch } = useMeQuery(undefined, {
     skip: !token,
     refetchOnMountOrArgChange: true,
   });
-  const { data: kycData } = useGetKycDataQuery(undefined, { skip: !token });
+  const { data: kycData, isLoading: isKycLoading } = useGetKycDataQuery(undefined, { skip: !token });
   const currentUser = freshUser || user;
   const kycState = getKycState(kycData, currentUser);
 
@@ -68,8 +70,27 @@ export const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
                             location.pathname.startsWith('/app/notifications') ||
                             location.pathname.startsWith('/app/settings') ||
                             location.pathname.startsWith('/app/profile');
-  if (isAppPath && !kycState.verified && !allowedBeforeKyc) {
-    return <Navigate to="/app" replace />;
+  if (isAppPath && !kycState.verified && !allowedBeforeKyc && !isKycLoading) {
+    return (
+      <div className="grid min-h-screen place-items-center bg-background p-5 sm:p-8">
+        <div className="w-full max-w-lg rounded-3xl border border-amber-500/20 bg-card p-6 text-center shadow-xl sm:p-9">
+          <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-600">
+            <ShieldAlert className="h-7 w-7" />
+          </div>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">Lipaxe · KYC</p>
+          <h1 className="mt-2 font-display text-2xl font-bold">{t('kyc.accessRequiredTitle')}</h1>
+          <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-muted-foreground">
+            {t('kyc.accessRequiredBody')}
+          </p>
+          <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
+            <Button asChild className="bg-gradient-brand shadow-brand">
+              <Link to="/app/kyc">{t('kyc.accessRequiredCta')}</Link>
+            </Button>
+            <Button asChild variant="outline"><Link to="/app">{t('kyc.backToDashboard')}</Link></Button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return children;

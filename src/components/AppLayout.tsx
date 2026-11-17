@@ -6,7 +6,6 @@ import { Topbar } from './Topbar';
 import { SessionTimeoutGuard } from './security/SessionTimeoutGuard';
 import { useNotificationsStream } from '@/hooks/useNotificationsStream';
 import { useDeviceRegistration } from '@/hooks/useDeviceRegistration';
-import { KycStatusBanner } from './KycStatusBanner';
 
 export const AppLayout = () => {
   const location = useLocation();
@@ -17,7 +16,6 @@ export const AppLayout = () => {
       <div className="flex min-h-screen w-full flex-col bg-[radial-gradient(circle_at_top,hsl(var(--primary)/0.08),transparent_32%),linear-gradient(180deg,hsl(var(--background)),hsl(var(--muted)/0.62))]">
         <Topbar />
         <AppSidebar />
-        <KycStatusBanner />
         <main className="mx-auto w-full min-w-0 max-w-[1500px] flex-1 overflow-x-hidden p-3 pb-8 sm:p-4 lg:p-8">
           <motion.div
             key={location.pathname}

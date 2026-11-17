@@ -6,13 +6,11 @@ import { ArrowDownToLine, ArrowUpFromLine, Coins,
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { PinModal, usePinGate } from '@/components/security/PinModal';
 import { type FeatureName, isFeatureEnabled } from '@/config/features';
 
 export const QuickActions = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const pin = usePinGate();
   const actions: Array<{ to: string; label: string; icon: typeof ArrowDownToLine; tone: string; feature?: FeatureName }> = [
     { to: '/app/deposit', label: t('nav.deposit'), icon: ArrowDownToLine, tone: 'from-brand-400/90 to-brand-600' },
     { to: '/app/withdraw', label: t('nav.withdraw'), icon: ArrowUpFromLine, tone: 'from-brand-500 to-brand-700' },
@@ -45,11 +43,7 @@ export const QuickActions = () => {
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.035, duration: 0.25 }}
-              onClick={() => {
-                const needsPin = ['/app/deposit', '/app/withdraw', '/app/transfer', '/app/transfer/qr'].includes(action.to);
-                if (needsPin) pin.guard(() => navigate(action.to));
-                else navigate(action.to);
-              }}
+              onClick={() => navigate(action.to)}
               className="group block w-full min-w-0 text-left"
             >
               <div className={`relative flex min-w-0 items-center gap-2 overflow-hidden rounded-2xl bg-gradient-to-br ${action.tone} px-2.5 py-2.5 text-white shadow-sm transition-smooth hover:-translate-y-0.5 hover:shadow-brand sm:px-3 sm:py-3`}>
@@ -63,7 +57,6 @@ export const QuickActions = () => {
           ))}
         </div>
       </CardContent>
-      <PinModal open={pin.open} onOpenChange={pin.setOpen} onSuccess={pin.onSuccess} />
     </Card>
   );
 };

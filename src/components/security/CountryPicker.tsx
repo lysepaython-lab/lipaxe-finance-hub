@@ -20,11 +20,12 @@ interface CountryPickerProps {
   onChange: (alpha2: string, name: string) => void;
   placeholder?: string;
   label?: string;
+  triggerClassName?: string;
   /** Filter countries to only those served by the given payment methods. */
   paymentMethods?: { countries: { country: { alpha_2?: string; isoCode?: string; name?: string } }[] }[];
 }
 
-export const CountryPicker = ({ value, onChange, placeholder, label, paymentMethods }: CountryPickerProps) => {
+export const CountryPicker = ({ value, onChange, placeholder, label, paymentMethods, triggerClassName }: CountryPickerProps) => {
   const { data: countries, isLoading } = useCountriesQuery();
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState('');
@@ -76,7 +77,7 @@ export const CountryPicker = ({ value, onChange, placeholder, label, paymentMeth
             variant="outline"
             role="combobox"
             disabled={isLoading}
-            className="w-full h-11 rounded-xl justify-between font-normal"
+            className={cn('w-full h-11 rounded-xl justify-between border-border/70 bg-background/80 font-normal shadow-sm focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20', triggerClassName)}
           >
             <span className="flex items-center gap-2">
               <span className="text-lg leading-none">{selected ? flagEmoji(selected.alpha_2) : '??'}</span>

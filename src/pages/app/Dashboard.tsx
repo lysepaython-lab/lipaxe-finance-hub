@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { AlertTriangle, ShieldCheck } from 'lucide-react';
+import { ArrowRight, ClipboardCheck, ShieldAlert } from 'lucide-react';
 import { useAppSelector } from '@/store/hooks';
 import { BalanceCard } from '@/components/dashboard/BalanceCard';
 import { DashboardPromotions } from '@/components/dashboard/DashboardPromotions';
@@ -37,50 +37,36 @@ const Dashboard = () => {
         {salutation} {user?.firstName}
       </div>
       
-      {kycState.needsVerification && (
-        <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl border border-primary/30 bg-gradient-to-r from-primary/12 via-background to-background px-4 sm:px-5 py-4 sm:py-5 shadow-sm">
-          <div className="absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-primary to-emerald-400 sm:w-1.5" />
-          <div className="flex flex-col gap-3 sm:gap-4 pl-1 sm:pl-2">
-            <div className="flex items-start gap-3">
-              <div className="flex h-10 w-10 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl bg-primary/14 text-primary">
-                <ShieldCheck className="h-4 w-4 sm:h-5 sm:w-5" />
-              </div>
-              <div className="flex-1 space-y-1">
-                <p className="font-display text-base sm:text-lg font-semibold">
-                  {kycState.inProgress ? t('dashboard.kycInProgress') : t('dashboard.verifyPrompt')}
-                </p>
-                <p className="text-xs sm:text-sm text-muted-foreground">
-                  {kycState.inProgress ? t('dashboard.kycResume') : t('dashboard.kycNotVerified')}
-                </p>
-              </div>
-            </div>
-
-            <Link to="/app/kyc" className="w-full sm:w-auto">
-              <Button className="w-full sm:w-auto min-w-0 sm:min-w-40 bg-gradient-brand shadow-brand">
-                {kycState.inProgress ? t('dashboard.kycContinue') : t('dashboard.verifyNow')}
-              </Button>
-            </Link>
-          </div>
-        </div>
-      )}
-
-      {kycState.underReview && (
-        <div className="rounded-2xl sm:rounded-3xl border border-amber-400/35 bg-gradient-to-r from-amber-500/12 via-background to-background p-4 sm:p-5 shadow-sm">
-          <div className="flex flex-col gap-3 sm:gap-4">
-            <div className="flex items-start gap-3">
-              <div className="flex h-10 w-10 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl bg-amber-500/14 text-amber-300">
-                <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5" />
-              </div>
-              <div className="flex-1 space-y-1">
-                <p className="font-display text-base sm:text-lg font-semibold">
-                  {t('dashboard.kycPendingTitle')}
-                </p>
-                <p className="text-xs sm:text-sm text-muted-foreground">
-                  {t('dashboard.kycPending')}
-                </p>
-              </div>
+      {(kycState.needsVerification || kycState.underReview) && (
+        <div
+          role="status"
+          className="flex flex-col gap-4 rounded-2xl border border-amber-500/25 bg-amber-500/[0.08] p-4 text-foreground shadow-sm sm:flex-row sm:items-center sm:px-5 sm:py-4"
+        >
+          <div className="flex min-w-0 items-start gap-3">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-500/12 text-amber-600">
+              {kycState.underReview ? <ClipboardCheck className="h-5 w-5" /> : <ShieldAlert className="h-5 w-5" />}
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="font-display text-base font-semibold sm:text-lg">
+                {kycState.underReview
+                  ? t('dashboard.kycPendingTitle')
+                  : kycState.inProgress ? t('dashboard.kycInProgress') : t('kyc.navigationBannerTitle')}
+              </p>
+              <p className="mt-0.5 text-sm leading-relaxed text-muted-foreground">
+                {kycState.underReview
+                  ? t('dashboard.kycPending')
+                  : kycState.inProgress ? t('dashboard.kycResume') : t('kyc.navigationBannerBody')}
+              </p>
             </div>
           </div>
+          <Link to="/app/kyc" className="w-full shrink-0 sm:w-auto">
+            <Button className="w-full gap-2 bg-amber-700 text-white hover:bg-amber-800 sm:w-auto">
+              {kycState.underReview
+                ? t('kyc.viewStatus')
+                : kycState.inProgress ? t('dashboard.kycContinue') : t('dashboard.verifyNow')}
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          </Link>
         </div>
       )}
 

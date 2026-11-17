@@ -394,7 +394,7 @@ const Kyc = () => {
   }
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
+    <div className="mx-auto max-w-4xl space-y-6">
       <div>
         <h1 className="font-display text-3xl font-bold flex items-center gap-2">
           <ShieldCheck className="h-7 w-7 text-primary" /> {t('kyc.title')}
@@ -403,7 +403,7 @@ const Kyc = () => {
       </div>
 
       {/* Stepper */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between rounded-2xl border border-border/60 bg-card/55 px-3 py-4 sm:px-5">
         {steps.map((s, i) => (
           <div key={s} className="flex items-center flex-1 last:flex-none">
             <div
@@ -432,7 +432,7 @@ const Kyc = () => {
       </div>
 
       <Card className="shadow-elegant border-border/60">
-        <CardContent className="p-6 space-y-5">
+        <CardContent className="space-y-5 p-4 sm:p-6 lg:p-7">
           {kyc.step === 0 && (
             <IdentityStep countries={countries} showErrors={showStepErrors} />
           )}
@@ -496,31 +496,30 @@ const IdentityStep = ({ countries, showErrors }: { countries?: IncountryEntry[];
   const hasPhoneInput = Boolean(personal.phone.trim());
   const invalid = (value?: string | boolean) => showErrors && !String(value || '').trim();
   const invalidClass = 'border-destructive focus-visible:ring-destructive/20';
+  const fieldClass = 'h-11 rounded-xl border-border/70 bg-background/80 shadow-sm transition-colors focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20';
   return (
     <div className="space-y-5">
-      <section className="space-y-4">
+      <section className="space-y-4 rounded-2xl border border-border/60 bg-background/35 p-4 sm:p-5">
         <div>
           <h2 className="font-display text-lg font-semibold">{t('kyc.personalDetailsGroup')}</h2>
           <p className="text-xs text-muted-foreground">{t('kyc.personalDetailsHint')}</p>
         </div>
-      <div className="grid gap-3 md:grid-cols-2">
+      <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-2">
-          <Label>{t('kyc.dob')}</Label>
+          <Label className="text-xs font-semibold text-muted-foreground">{t('kyc.dob')}</Label>
           <Input
             type="date"
             value={personal.dob}
             max={new Date().toISOString().split('T')[0]}
             onChange={(e) => dispatch(updatePersonal({ dob: e.target.value }))}
             aria-invalid={invalid(personal.dob)}
-            className={cn('h-11 rounded-xl', invalid(personal.dob) && invalidClass)}
+            className={cn(fieldClass, invalid(personal.dob) && invalidClass)}
           />
         </div>
-      </div>
-      <div className="grid gap-3 md:grid-cols-2">
         <div className="space-y-2">
-          <Label>{t('kyc.gender')}</Label>
+          <Label className="text-xs font-semibold text-muted-foreground">{t('kyc.gender')}</Label>
           <Select value={personal.gender || undefined} onValueChange={(value) => dispatch(updatePersonal({ gender: value }))}>
-            <SelectTrigger aria-invalid={showErrors && !personal.gender} className={cn('h-11 rounded-xl', showErrors && !personal.gender && invalidClass)}>
+            <SelectTrigger aria-invalid={showErrors && !personal.gender} className={cn(fieldClass, showErrors && !personal.gender && invalidClass)}>
               <SelectValue placeholder={t('kyc.selectPlaceholder')} />
             </SelectTrigger>
             <SelectContent>
@@ -530,26 +529,27 @@ const IdentityStep = ({ countries, showErrors }: { countries?: IncountryEntry[];
             </SelectContent>
           </Select>
         </div>
+      </div>
+      <div className="grid gap-3 md:grid-cols-2">
         <div className="space-y-2">
-          <Label>{t('kyc.employmentStatus')}</Label>
+          <Label className="text-xs font-semibold text-muted-foreground">{t('kyc.employmentStatus')}</Label>
           <Input
             value={personal.employmentStatus}
             onChange={(e) => dispatch(updatePersonal({ employmentStatus: e.target.value }))}
             aria-invalid={invalid(personal.employmentStatus)}
-            className={cn('h-11 rounded-xl', invalid(personal.employmentStatus) && invalidClass)}
+            className={cn(fieldClass, invalid(personal.employmentStatus) && invalidClass)}
             maxLength={50}
             placeholder={t('kyc.occupationPlaceholder')}
           />
         </div>
-      </div>
-      <div className="grid gap-3 md:grid-cols-2">
         <CountryPicker
           label={t('kyc.nationality')}
           value={personal.nationality}
           onChange={(code) => dispatch(updatePersonal({ nationality: code }))}
+          triggerClassName="h-11"
         />
         <div className="space-y-2">
-          <Label>{t('kyc.phone')}</Label>
+          <Label className="text-xs font-semibold text-muted-foreground">{t('kyc.phone')}</Label>
           <Input
             value={personal.phone}
             onChange={(e) => dispatch(updatePersonal({ phone: e.target.value, phoneVerified: false }))}
@@ -560,7 +560,7 @@ const IdentityStep = ({ countries, showErrors }: { countries?: IncountryEntry[];
             }}
             placeholder={selectedDialCode ? `${selectedDialCode} ...` : '+257 ...'}
             aria-invalid={showErrors && !phoneValidation.valid}
-            className={cn('h-11 rounded-xl', showErrors && !phoneValidation.valid && invalidClass)}
+            className={cn(fieldClass, showErrors && !phoneValidation.valid && invalidClass)}
             maxLength={20}
           />
           <div className="rounded-xl border border-border/70 bg-muted/25 px-3 py-2 text-xs">
@@ -572,59 +572,59 @@ const IdentityStep = ({ countries, showErrors }: { countries?: IncountryEntry[];
       </div>
       </section>
 
-      <section className="space-y-4 border-t border-border/70 pt-5">
+      <section className="space-y-4 rounded-2xl border border-border/60 bg-background/35 p-4 sm:p-5">
         <div>
           <h2 className="font-display text-lg font-semibold">{t('kyc.residenceGroup')}</h2>
           <p className="text-xs text-muted-foreground">{t('kyc.residenceHint')}</p>
         </div>
-        <CountryPicker label={t('kyc.country')} value={address.country} onChange={(code) => dispatch(updateAddress({ country: code }))} />
+        <CountryPicker label={t('kyc.country')} value={address.country} onChange={(code) => dispatch(updateAddress({ country: code }))} triggerClassName="h-11" />
         <div className="space-y-2">
-          <Label>{t('kyc.street')}</Label>
-          <Input value={address.street} onChange={(e) => dispatch(updateAddress({ street: e.target.value }))} aria-invalid={invalid(address.street)} className={cn('h-11 rounded-xl', invalid(address.street) && invalidClass)} maxLength={120} />
+          <Label className="text-xs font-semibold text-muted-foreground">{t('kyc.street')}</Label>
+          <Input value={address.street} onChange={(e) => dispatch(updateAddress({ street: e.target.value }))} aria-invalid={invalid(address.street)} className={cn(fieldClass, invalid(address.street) && invalidClass)} maxLength={120} />
         </div>
-        <div className="grid gap-3 md:grid-cols-2">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           <div className="space-y-2">
-            <Label>{t('kyc.city')}</Label>
-            <Input value={address.city} onChange={(e) => dispatch(updateAddress({ city: e.target.value }))} aria-invalid={invalid(address.city)} className={cn('h-11 rounded-xl', invalid(address.city) && invalidClass)} maxLength={80} />
+            <Label className="text-xs font-semibold text-muted-foreground">{t('kyc.city')}</Label>
+            <Input value={address.city} onChange={(e) => dispatch(updateAddress({ city: e.target.value }))} aria-invalid={invalid(address.city)} className={cn(fieldClass, invalid(address.city) && invalidClass)} maxLength={80} />
           </div>
           <div className="space-y-2">
-            <Label>{t('kyc.province')}</Label>
-            <Input value={address.province} onChange={(e) => dispatch(updateAddress({ province: e.target.value }))} aria-invalid={invalid(address.province)} className={cn('h-11 rounded-xl', invalid(address.province) && invalidClass)} maxLength={100} />
+            <Label className="text-xs font-semibold text-muted-foreground">{t('kyc.province')}</Label>
+            <Input value={address.province} onChange={(e) => dispatch(updateAddress({ province: e.target.value }))} aria-invalid={invalid(address.province)} className={cn(fieldClass, invalid(address.province) && invalidClass)} maxLength={100} />
           </div>
           <div className="space-y-2">
-            <Label>{t('kyc.postalCode')}</Label>
-            <Input value={address.postalCode} onChange={(e) => dispatch(updateAddress({ postalCode: e.target.value }))} aria-invalid={invalid(address.postalCode)} className={cn('h-11 rounded-xl', invalid(address.postalCode) && invalidClass)} maxLength={20} />
+            <Label className="text-xs font-semibold text-muted-foreground">{t('kyc.postalCode')}</Label>
+            <Input value={address.postalCode} onChange={(e) => dispatch(updateAddress({ postalCode: e.target.value }))} aria-invalid={invalid(address.postalCode)} className={cn(fieldClass, invalid(address.postalCode) && invalidClass)} maxLength={20} />
           </div>
         </div>
       </section>
 
-      <section className="space-y-4 border-t border-border/70 pt-5">
+      <section className="space-y-4 rounded-2xl border border-border/60 bg-background/35 p-4 sm:p-5">
         <div>
           <h2 className="font-display text-lg font-semibold">{t('kyc.financialProfileGroup')}</h2>
           <p className="text-xs text-muted-foreground">{t('kyc.financialProfileHint')}</p>
         </div>
         <div className="grid gap-3 md:grid-cols-2">
           <div className="space-y-2">
-            <Label>{t('kyc.purposeOfAccount')}</Label>
+          <Label className="text-xs font-semibold text-muted-foreground">{t('kyc.purposeOfAccount')}</Label>
             <Select value={personal.purposeOfAccount || undefined} onValueChange={(value) => dispatch(updatePersonal({ purposeOfAccount: value }))}>
-              <SelectTrigger aria-invalid={showErrors && !personal.purposeOfAccount} className={cn('h-11 rounded-xl', showErrors && !personal.purposeOfAccount && invalidClass)}><SelectValue placeholder={t('kyc.selectPlaceholder')} /></SelectTrigger>
+            <SelectTrigger aria-invalid={showErrors && !personal.purposeOfAccount} className={cn(fieldClass, showErrors && !personal.purposeOfAccount && invalidClass)}><SelectValue placeholder={t('kyc.selectPlaceholder')} /></SelectTrigger>
               <SelectContent>{PURPOSE_OF_ACCOUNT_OPTIONS.map((value) => <SelectItem key={value} value={value}>{t(`kyc.purpose_${value}`)}</SelectItem>)}</SelectContent>
             </Select>
           </div>
           <div className="space-y-2">
-            <Label>{t('kyc.sourceOfFunds')}</Label>
+          <Label className="text-xs font-semibold text-muted-foreground">{t('kyc.sourceOfFunds')}</Label>
             <Select value={personal.sourceOfFunds || undefined} onValueChange={(value) => dispatch(updatePersonal({ sourceOfFunds: value }))}>
-              <SelectTrigger aria-invalid={showErrors && !personal.sourceOfFunds} className={cn('h-11 rounded-xl', showErrors && !personal.sourceOfFunds && invalidClass)}><SelectValue placeholder={t('kyc.selectPlaceholder')} /></SelectTrigger>
+            <SelectTrigger aria-invalid={showErrors && !personal.sourceOfFunds} className={cn(fieldClass, showErrors && !personal.sourceOfFunds && invalidClass)}><SelectValue placeholder={t('kyc.selectPlaceholder')} /></SelectTrigger>
               <SelectContent>{SOURCE_OF_FUNDS_OPTIONS.map((value) => <SelectItem key={value} value={value}>{t(`kyc.source_${value}`)}</SelectItem>)}</SelectContent>
             </Select>
           </div>
           <div className="space-y-2">
-            <Label>{t('kyc.annualIncome')}</Label>
-            <Input value={personal.annualIncome} onChange={(e) => dispatch(updatePersonal({ annualIncome: e.target.value }))} aria-invalid={invalid(personal.annualIncome)} className={cn('h-11 rounded-xl', invalid(personal.annualIncome) && invalidClass)} maxLength={60} placeholder={t('kyc.annualIncomePlaceholder')} />
+            <Label className="text-xs font-semibold text-muted-foreground">{t('kyc.annualIncome')}</Label>
+            <Input value={personal.annualIncome} onChange={(e) => dispatch(updatePersonal({ annualIncome: e.target.value }))} aria-invalid={invalid(personal.annualIncome)} className={cn(fieldClass, invalid(personal.annualIncome) && invalidClass)} maxLength={60} placeholder={t('kyc.annualIncomePlaceholder')} />
           </div>
           <div className="space-y-2">
-            <Label>{t('kyc.expectedMonthlyVolume')}</Label>
-            <Input value={personal.expectedMonthlyVolume} onChange={(e) => dispatch(updatePersonal({ expectedMonthlyVolume: e.target.value.replace(/[^0-9]/g, '') }))} aria-invalid={invalid(personal.expectedMonthlyVolume)} className={cn('h-11 rounded-xl', invalid(personal.expectedMonthlyVolume) && invalidClass)} inputMode="numeric" maxLength={60} placeholder={t('kyc.expectedMonthlyVolumePlaceholder')} />
+            <Label className="text-xs font-semibold text-muted-foreground">{t('kyc.expectedMonthlyVolume')}</Label>
+            <Input value={personal.expectedMonthlyVolume} onChange={(e) => dispatch(updatePersonal({ expectedMonthlyVolume: e.target.value.replace(/[^0-9]/g, '') }))} aria-invalid={invalid(personal.expectedMonthlyVolume)} className={cn(fieldClass, invalid(personal.expectedMonthlyVolume) && invalidClass)} inputMode="numeric" maxLength={60} placeholder={t('kyc.expectedMonthlyVolumePlaceholder')} />
           </div>
         </div>
       </section>
@@ -653,7 +653,7 @@ const DocumentsStep = ({
   const document = useAppSelector((s) => s.kyc.document);
   return (
     <>
-      <div className="space-y-2">
+      <div className="space-y-2 rounded-2xl border border-border/60 bg-background/35 p-4 sm:p-5">
         <Label>{t('kyc.idType')}</Label>
         <Select
           value={document.type || undefined}
@@ -671,7 +671,7 @@ const DocumentsStep = ({
             onBackCapture({ name: '', file: null, qualityScore: 0, mrzConfidence: 0, signals: [] });
           }}
         >
-          <SelectTrigger aria-invalid={showErrors && !document.type} className={cn('h-11 rounded-xl', showErrors && !document.type && 'border-destructive')}><SelectValue placeholder={t('kyc.selectPlaceholder')} /></SelectTrigger>
+          <SelectTrigger aria-invalid={showErrors && !document.type} className={cn('h-11 rounded-xl border-border/70 bg-background/80 shadow-sm focus-visible:ring-2 focus-visible:ring-primary/20', showErrors && !document.type && 'border-destructive')}><SelectValue placeholder={t('kyc.selectPlaceholder')} /></SelectTrigger>
           <SelectContent>
             <SelectItem value="passport">{t('kyc.passport')}</SelectItem>
             <SelectItem value="nationalId">{t('kyc.nationalId')}</SelectItem>
@@ -680,17 +680,17 @@ const DocumentsStep = ({
         </Select>
       </div>
       <div className="space-y-2">
-        <Label>{t('kyc.idNumber')}</Label>
+        <Label className="text-xs font-semibold text-muted-foreground">{t('kyc.idNumber')}</Label>
         <Input
           value={document.idNumber}
           onChange={(e) => dispatch(updateDocument({ idNumber: e.target.value }))}
           aria-invalid={showErrors && !document.idNumber.trim()}
-          className={cn('h-11 rounded-xl', showErrors && !document.idNumber.trim() && 'border-destructive')}
+          className={cn('h-11 rounded-xl border-border/70 bg-background/80 shadow-sm focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20', showErrors && !document.idNumber.trim() && 'border-destructive')}
           maxLength={40}
           placeholder={t('kyc.idNumberPlaceholder')}
         />
       </div>
-      <div className="grid md:grid-cols-2 gap-3">
+      <div className="grid gap-3 md:grid-cols-2">
         <DocumentCapture
           label={document.type === 'passport' ? t('kyc.uploadPassportPage') : t('kyc.uploadFront')}
           value={document.frontName}
@@ -722,7 +722,10 @@ const DocumentsStep = ({
           />
         )}
       </div>
-      <AddressProofUpload onCapture={onAddressProofCapture} showErrors={showErrors} />
+      <AddressProofUpload
+        onCapture={onAddressProofCapture}
+        showErrors={showErrors}
+      />
     </>
   );
 };
@@ -735,7 +738,13 @@ const ADDRESS_PROOF_TYPES = new Map([
   ['jpeg', 'image/jpeg'],
 ]);
 
-const AddressProofUpload = ({ onCapture, showErrors = false }: { onCapture: (capture: CapturedFile) => void; showErrors?: boolean }) => {
+const AddressProofUpload = ({
+  onCapture,
+  showErrors = false,
+}: {
+  onCapture: (capture: CapturedFile) => void;
+  showErrors?: boolean;
+}) => {
   const { t } = useTranslation();
   const inputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);

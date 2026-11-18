@@ -20,6 +20,7 @@ import { useSubmitOnce } from '@/hooks/useSubmitOnce';
 import { useTransactionPolling } from '@/hooks/useTransactionPolling';
 import { sanitizeText, Throttle } from '@/lib/security';
 import { transferSchema } from '@/lib/validation';
+import { useAppSelector } from '@/store/hooks';
 
 const submitThrottle = new Throttle(8, 60_000);
 
@@ -34,6 +35,7 @@ type RecentRecipientSuggestion = {
 const Transfer = () => {
   const { t } = useTranslation();
   const { data: transactions = [] } = useTransactionsQuery();
+  const currentAccountNo = useAppSelector((state) => state.auth.user?.username?.trim().toLowerCase() || '');
   const pin = usePinGate();
 
   const [walletId, setWalletId] = useState<string>();
@@ -54,16 +56,16 @@ const Transfer = () => {
   const recentInternalRecipients = useMemo(() => {
     const seen = new Set<string>();
     return transactions
-      .filter((tx) => tx.type === 'transfer' && tx.direction === 'out' && tx.counterparty?.trim())
-      .filter((tx) => !/\d{6,}/.test(tx.counterparty))
+      .filter((tx) => tx.type === 'transfer' && tx.direction === 'out' && tx.counterpartyAccount?.trim())
       .filter((tx) => {
-        const key = tx.counterparty.trim().toLowerCase();
+        const key = tx.counterpartyAccount!.trim().toLowerCase();
+        if (key === currentAccountNo) return false;
         if (seen.has(key)) return false;
         seen.add(key);
         return true;
       })
       .slice(0, 6);
-  }, [transactions]);
+  }, [currentAccountNo, transactions]);
 
   // Reset recipient info when input changes
   useEffect(() => { setRecipientInfo(null); }, [recipient]);
@@ -79,7 +81,7 @@ const Transfer = () => {
 
       const suggestions = await Promise.all(
         recentInternalRecipients.map(async (tx) => {
-          const accountNo = sanitizeText(tx.counterparty);
+          const accountNo = sanitizeText(tx.counterpartyAccount || '');
           try {
             const info = await lookup({ account_no: accountNo }).unwrap();
             return {
@@ -93,7 +95,7 @@ const Transfer = () => {
             return {
               id: tx.id,
               account_no: accountNo,
-              name: tx.counterparty,
+              name: tx.counterparty || accountNo,
               avatar: undefined,
               verified: false,
             } satisfies RecentRecipientSuggestion;
@@ -118,13 +120,15 @@ const Transfer = () => {
 
   const doLookup = async (recipientValue = recipient) => {
     const normalizedRecipient = recipientValue.trim();
-    if (!normalizedRecipient) { toast.error(t('transfer.amountRequired')); return; }
+    if (!normalizedRecipient) { toast.error(t('transfer.amountRequired')); return null; }
     try {
       const info = await lookup({ account_no: sanitizeText(normalizedRecipient) }).unwrap();
       setRecipientInfo(info);
       toast.success(t('transfer.recipientFound'));
+      return info;
     } catch {
       toast.error(t('transfer.recipientNotFound'));
+      return null;
     }
   };
 
@@ -175,10 +179,10 @@ const Transfer = () => {
 
   const [submit, busy] = useSubmitOnce(doTransfer);
 
-  const onSubmit = (e: React.FormEvent) => {
+  const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!walletId) { toast.error(t('transfer.selectWallet')); return; }
-    if (!recipientInfo) { toast.error('Vérifiez le destinataire d’abord.'); return; }
+    if (!recipientInfo && !(await doLookup())) return;
     pin.guard(submit);
   };
 

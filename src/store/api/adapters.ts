@@ -116,10 +116,17 @@ export const normalizeTransaction = (payload: unknown) => {
   const txType = asString(raw.transaction_type ?? raw.type, 'transfer').toLowerCase();
   const status = asString(raw.status, 'pending').toLowerCase();
   const paymentMethod = (raw.payment_method ?? raw.paymentMethod ?? {}) as UnknownRecord;
+  const fromUser = (raw.from_user && typeof raw.from_user === 'object' ? raw.from_user : {}) as UnknownRecord;
+  const toUser = (raw.to_user && typeof raw.to_user === 'object' ? raw.to_user : {}) as UnknownRecord;
+  const rawDirection = asString(raw.direction ?? raw.flow ?? raw.transaction_direction).toLowerCase();
   const direction = (
-    ['deposit', 'receive', 'reception', 'credit', 'in'].includes(txType)
+    ['in', 'incoming', 'credit', 'received', 'receive'].includes(rawDirection)
       ? 'in'
-      : 'out'
+      : ['out', 'outgoing', 'debit', 'sent', 'send'].includes(rawDirection)
+        ? 'out'
+        : /receive|reception|credit|incoming|deposit/.test(txType)
+          ? 'in'
+          : 'out'
   ) as 'in' | 'out';
   const type = (
     txType === 'withdrawal' || txType === 'withdraw'
@@ -143,6 +150,12 @@ export const normalizeTransaction = (payload: unknown) => {
     raw.correspondent,
     raw.provider,
   );
+  const counterpartyName = direction === 'out'
+    ? firstText(raw.counterparty_name, raw.to_user_name, toUser.name, `${asString(toUser.first_name)} ${asString(toUser.last_name)}`, raw.to_account_name, raw.to_user, raw.to_account)
+    : firstText(raw.counterparty_name, raw.from_user_name, fromUser.name, `${asString(fromUser.first_name)} ${asString(fromUser.last_name)}`, raw.from_account_name, raw.from_user, raw.from_account);
+  const counterpartyAccount = direction === 'out'
+    ? firstText(raw.counterparty_account, raw.to_account_no, raw.to_account_number, toUser.account_no, toUser.account_number, raw.recipient_account_no, raw.to_account)
+    : firstText(raw.counterparty_account, raw.from_account_no, raw.from_account_number, fromUser.account_no, fromUser.account_number, raw.sender_account_no, raw.from_account);
   const amount = asNumber(
     raw.amount ??
     raw.montant ??
@@ -167,19 +180,8 @@ export const normalizeTransaction = (payload: unknown) => {
     ),
     status: normalizedStatus,
     description: firstText(raw.remark, raw.description, raw.label, raw.transaction_type, raw.type) || 'Transaction',
-    counterparty: firstText(
-      raw.counterparty_name,
-      raw.to_account_name,
-      raw.from_account_name,
-      raw.to_user_name,
-      raw.from_user_name,
-      raw.to_user,
-      raw.from_user,
-      raw.phone,
-      raw.to_account,
-      raw.from_account,
-      paymentMethodName,
-    ),
+    counterparty: firstText(counterpartyName, raw.phone, paymentMethodName),
+    counterpartyAccount,
     reference: asString(raw.reference),
     createdAt: asString(raw.timestamp ?? raw.created_at ?? raw.createdAt),
     fee: lipaxeFees + providerFees,

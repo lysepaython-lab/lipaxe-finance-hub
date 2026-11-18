@@ -18,7 +18,7 @@ export interface Wallet {
 export interface Transaction {
   id: string; type: 'deposit' | 'withdrawal' | 'transfer'; rawType?: string; direction: 'in' | 'out';
   amount: number; currency: string; status: 'completed' | 'pending' | 'failed' | 'processing';
-  description: string; counterparty: string; reference: string; createdAt: string; fee?: number;
+  description: string; counterparty: string; counterpartyAccount?: string; reference: string; createdAt: string; fee?: number;
   lipaxeFee?: number; providerFee?: number;
   wallet_id?: string; from_wallet_id?: string; to_wallet_id?: string;
   paymentMethodName?: string; paymentMethodLogo?: string; provider?: string;
@@ -366,6 +366,19 @@ export const walletApi = api.injectEndpoints({
         method: 'POST',
         body,
       }),
+      transformResponse: (response: unknown) => {
+        const unwrapped = unwrapData<unknown>(response, {});
+        const raw = (Array.isArray(unwrapped) ? unwrapped[0] : unwrapped ?? {}) as Record<string, unknown>;
+        const accountNo = String(raw.account_no ?? raw.account_number ?? raw.username ?? '');
+        const firstName = String(raw.first_name ?? raw.firstName ?? '');
+        const lastName = String(raw.last_name ?? raw.lastName ?? '');
+        return {
+          account_no: accountNo,
+          name: String(raw.name ?? raw.full_name ?? raw.fullName ?? `${firstName} ${lastName}`.trim()),
+          avatar: String(raw.profile_image_url ?? raw.avatar ?? '') || undefined,
+          verified: Boolean(raw.verified ?? raw.is_verified ?? accountNo),
+        };
+      },
     }),
     activity: b.query<{ id: string; action: string; ip: string; device: string; createdAt: string }[], void>({
       query: () => '/auth/activity/',

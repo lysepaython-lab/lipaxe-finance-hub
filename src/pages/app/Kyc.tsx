@@ -409,26 +409,26 @@ const Kyc = () => {
       </div>
 
       {/* Stepper */}
-      <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-3 py-4 shadow-sm sm:px-5">
+      <div className="flex items-center justify-between rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-4 shadow-sm sm:px-5 dark:border-slate-700 dark:bg-slate-900">
         {steps.map((s, i) => (
           <div key={s} className="flex items-center flex-1 last:flex-none">
             <div
               className={cn(
                 'flex items-center gap-2 transition-smooth',
-                i <= kyc.step ? 'text-emerald-700' : 'text-slate-400',
+                i <= kyc.step ? 'text-emerald-700 dark:text-emerald-300' : 'text-slate-400 dark:text-slate-500',
               )}
             >
               <div
                 className={cn(
                   'flex h-8 w-8 items-center justify-center rounded-full border text-xs font-bold',
                   i < kyc.step ? 'border-emerald-700 bg-emerald-700 text-white' :
-                  i === kyc.step ? 'border-emerald-700 bg-emerald-50 text-emerald-800' :
-                  'border-slate-200 bg-white text-slate-400',
+                  i === kyc.step ? 'border-emerald-700 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-200' :
+                  'border-slate-200 bg-white text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-500',
                 )}
               >
                 {i < kyc.step ? <Check className="h-4 w-4" /> : i + 1}
               </div>
-              <span className="hidden text-xs font-medium text-slate-600 md:block">{s}</span>
+              <span className="hidden text-xs font-medium text-slate-600 dark:text-slate-300 md:block">{s}</span>
             </div>
             {i < steps.length - 1 && (
               <div className={cn('mx-2 h-px flex-1', i < kyc.step ? 'bg-emerald-600' : 'bg-slate-200')} />
@@ -437,7 +437,7 @@ const Kyc = () => {
         ))}
       </div>
 
-      <Card className="overflow-hidden border-slate-200 bg-white text-slate-900 shadow-[0_12px_36px_rgba(15,23,42,0.07)]">
+      <Card className="overflow-hidden border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-[0_12px_36px_rgba(15,23,42,0.07)] dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
         <CardContent className="space-y-5 p-4 sm:p-6 lg:p-7">
           {kyc.step === 0 && (
             <IdentityStep countries={countries} showErrors={showStepErrors} />
@@ -458,16 +458,16 @@ const Kyc = () => {
           )}
 
           {showStepErrors && getMissingFields(kyc.step).length > 0 && (
-            <div role="alert" className="rounded-2xl border border-rose-200 bg-rose-50 p-4">
-              <p className="text-sm font-semibold text-rose-700">{t('kyc.requiredFieldsTitle')}</p>
-              <ul className="mt-2 grid gap-1 text-sm text-slate-700 sm:grid-cols-2">
+            <div role="alert" className="rounded-2xl border border-rose-200 bg-rose-50 dark:border-rose-900 dark:bg-rose-950/30 p-4">
+              <p className="text-sm font-semibold text-rose-700 dark:text-rose-300">{t('kyc.requiredFieldsTitle')}</p>
+              <ul className="mt-2 grid gap-1 text-sm text-slate-700 dark:text-slate-200 sm:grid-cols-2">
                 {getMissingFields(kyc.step).map((field) => <li key={field}>• {field}</li>)}
               </ul>
             </div>
           )}
 
           <div className="flex justify-between pt-4">
-            <Button variant="outline" onClick={back} disabled={kyc.step === 0} className="rounded-xl border-slate-200 bg-white text-slate-700 hover:bg-slate-50">
+            <Button variant="outline" onClick={back} disabled={kyc.step === 0} className="rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:bg-slate-800 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700">
               <ChevronLeft className="h-4 w-4 mr-1" />
               {t('kyc.back')}
             </Button>
@@ -502,17 +502,17 @@ const IdentityStep = ({ countries, showErrors }: { countries?: IncountryEntry[];
   const hasPhoneInput = Boolean(personal.phone.trim());
   const invalid = (value?: string | boolean) => showErrors && !String(value || '').trim();
   const invalidClass = 'border-destructive focus-visible:ring-destructive/20';
-  const fieldClass = 'h-11 rounded-xl border-slate-200 bg-white text-slate-800 shadow-sm placeholder:text-slate-400 focus-visible:border-emerald-600 focus-visible:ring-2 focus-visible:ring-emerald-600/15';
-  const sectionClass = 'space-y-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_4px_18px_rgba(15,23,42,0.035)] sm:p-5';
-  const labelClass = 'text-[11px] font-semibold text-slate-700';
+  const fieldClass = 'h-11 rounded-xl border-slate-200 bg-white text-slate-800 shadow-sm placeholder:text-slate-400 focus-visible:border-emerald-600 focus-visible:ring-2 focus-visible:ring-emerald-600/15 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500';
+  const sectionClass = 'space-y-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_4px_18px_rgba(15,23,42,0.035)] sm:p-5 dark:border-slate-700 dark:bg-slate-900';
+  const labelClass = 'text-[11px] font-semibold text-slate-700 dark:text-slate-200';
   const requiredMark = <span className="ml-1 text-rose-500">*</span>;
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_190px]">
       <div className="min-w-0 space-y-4">
         <section className={sectionClass}>
-          <div className="flex items-center gap-3 border-b border-slate-100 pb-3">
-            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-emerald-100 text-emerald-700"><UserRound className="h-5 w-5" /></span>
-            <div><h2 className="font-display text-base font-bold text-slate-900">{t('kyc.personalDetailsGroup')}</h2><p className="text-xs text-slate-500">{t('kyc.personalDetailsHint')}</p></div>
+          <div className="flex items-center gap-3 border-b border-slate-100 dark:border-slate-700 pb-3">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300"><UserRound className="h-5 w-5" /></span>
+            <div><h2 className="font-display text-base font-bold text-slate-900 dark:text-slate-100">{t('kyc.personalDetailsGroup')}</h2><p className="text-xs text-slate-500 dark:text-slate-400">{t('kyc.personalDetailsHint')}</p></div>
           </div>
           <div className="grid gap-x-4 gap-y-3 sm:grid-cols-2">
             <div className="space-y-1.5">
@@ -523,14 +523,14 @@ const IdentityStep = ({ countries, showErrors }: { countries?: IncountryEntry[];
               <Label className={labelClass}>{t('kyc.employmentStatus')}{requiredMark}</Label>
               <Select value={personal.employmentStatus || undefined} onValueChange={(value) => dispatch(updatePersonal({ employmentStatus: value }))}>
                 <SelectTrigger aria-invalid={invalid(personal.employmentStatus)} className={cn(fieldClass, invalid(personal.employmentStatus) && invalidClass)}><SelectValue placeholder={t('kyc.selectPlaceholder')} /></SelectTrigger>
-                <SelectContent className="border-slate-200 bg-white text-slate-800">{EMPLOYMENT_STATUS_OPTIONS.map((value) => <SelectItem key={value} value={value}>{t(`kyc.employment_${value}`)}</SelectItem>)}</SelectContent>
+                <SelectContent className="border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100">{EMPLOYMENT_STATUS_OPTIONS.map((value) => <SelectItem key={value} value={value}>{t(`kyc.employment_${value}`)}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div className="space-y-1.5">
               <Label className={labelClass}>{t('kyc.gender')}{requiredMark}</Label>
               <Select value={personal.gender || undefined} onValueChange={(value) => dispatch(updatePersonal({ gender: value }))}>
                 <SelectTrigger aria-invalid={showErrors && !personal.gender} className={cn(fieldClass, showErrors && !personal.gender && invalidClass)}><SelectValue placeholder={t('kyc.selectPlaceholder')} /></SelectTrigger>
-                <SelectContent className="border-slate-200 bg-white text-slate-800">{GENDER_OPTIONS.map((value) => <SelectItem key={value} value={value}>{t(`kyc.gender_${value}`)}</SelectItem>)}</SelectContent>
+                <SelectContent className="border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100">{GENDER_OPTIONS.map((value) => <SelectItem key={value} value={value}>{t(`kyc.gender_${value}`)}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div className="space-y-1.5">
@@ -538,24 +538,24 @@ const IdentityStep = ({ countries, showErrors }: { countries?: IncountryEntry[];
               <Input value={personal.phone} onChange={(e) => dispatch(updatePersonal({ phone: e.target.value, phoneVerified: false }))} onBlur={() => {
                 if (phoneValidation.valid && phoneValidation.normalized !== personal.phone) dispatch(updatePersonal({ phone: phoneValidation.normalized, phoneVerified: false }));
               }} placeholder={selectedDialCode ? `${selectedDialCode} ...` : '+257 ...'} aria-invalid={showErrors && !phoneValidation.valid} className={cn(fieldClass, showErrors && !phoneValidation.valid && invalidClass)} maxLength={20} />
-              <p className={cn('rounded-lg px-2.5 py-1.5 text-[10px] leading-relaxed', hasPhoneInput && phoneValidation.valid ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-50 text-slate-500')}>
+              <p className={cn('rounded-lg px-2.5 py-1.5 text-[10px] leading-relaxed', hasPhoneInput && phoneValidation.valid ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300' : 'bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400')}>
                 {hasPhoneInput ? phoneValidation.message : `Entrez un numero lie au pays selectionne${selectedDialCode ? ` (${selectedDialCode})` : ''}.`}
               </p>
             </div>
             <div className="space-y-1.5">
               <Label className={labelClass}>{t('kyc.nationality')}{requiredMark}</Label>
-              <CountryPicker value={personal.nationality} onChange={(code) => dispatch(updatePersonal({ nationality: code }))} triggerClassName="h-11 rounded-xl border-slate-200 bg-white text-sm text-slate-800 shadow-sm" contentClassName="border-slate-200 bg-white text-slate-800" />
+              <CountryPicker value={personal.nationality} onChange={(code) => dispatch(updatePersonal({ nationality: code }))} triggerClassName="h-11 rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm text-slate-800 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 shadow-sm" contentClassName="border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100" />
             </div>
           </div>
         </section>
 
         <section className={sectionClass}>
-          <div className="flex items-center gap-3 border-b border-slate-100 pb-3">
-            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-emerald-100 text-emerald-700"><Home className="h-5 w-5" /></span>
-            <div><h2 className="font-display text-base font-bold text-slate-900">{t('kyc.residenceGroup')}</h2><p className="text-xs text-slate-500">{t('kyc.residenceHint')}</p></div>
+          <div className="flex items-center gap-3 border-b border-slate-100 dark:border-slate-700 pb-3">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300"><Home className="h-5 w-5" /></span>
+            <div><h2 className="font-display text-base font-bold text-slate-900 dark:text-slate-100">{t('kyc.residenceGroup')}</h2><p className="text-xs text-slate-500 dark:text-slate-400">{t('kyc.residenceHint')}</p></div>
           </div>
           <div className="space-y-3">
-            <div className="space-y-1.5"><Label className={labelClass}>{t('kyc.country')}{requiredMark}</Label><CountryPicker value={address.country} onChange={(code) => dispatch(updateAddress({ country: code }))} triggerClassName="h-11 rounded-xl border-slate-200 bg-white text-sm text-slate-800 shadow-sm" contentClassName="border-slate-200 bg-white text-slate-800" /></div>
+            <div className="space-y-1.5"><Label className={labelClass}>{t('kyc.country')}{requiredMark}</Label><CountryPicker value={address.country} onChange={(code) => dispatch(updateAddress({ country: code }))} triggerClassName="h-11 rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm text-slate-800 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 shadow-sm" contentClassName="border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100" /></div>
             <div className="space-y-1.5"><Label className={labelClass}>{t('kyc.street')}{requiredMark}</Label><Input value={address.street} onChange={(e) => dispatch(updateAddress({ street: e.target.value }))} aria-invalid={invalid(address.street)} className={cn(fieldClass, invalid(address.street) && invalidClass)} maxLength={120} /></div>
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5"><Label className={labelClass}>{t('kyc.city')}{requiredMark}</Label><Input value={address.city} onChange={(e) => dispatch(updateAddress({ city: e.target.value }))} aria-invalid={invalid(address.city)} className={cn(fieldClass, invalid(address.city) && invalidClass)} maxLength={80} /></div>
@@ -566,37 +566,37 @@ const IdentityStep = ({ countries, showErrors }: { countries?: IncountryEntry[];
         </section>
 
         <section className={sectionClass}>
-          <div className="flex items-center gap-3 border-b border-slate-100 pb-3">
-            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-emerald-100 text-emerald-700"><BriefcaseBusiness className="h-5 w-5" /></span>
-            <div><h2 className="font-display text-base font-bold text-slate-900">{t('kyc.financialProfileGroup')}</h2><p className="text-xs text-slate-500">{t('kyc.financialProfileHint')}</p></div>
+          <div className="flex items-center gap-3 border-b border-slate-100 dark:border-slate-700 pb-3">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300"><BriefcaseBusiness className="h-5 w-5" /></span>
+            <div><h2 className="font-display text-base font-bold text-slate-900 dark:text-slate-100">{t('kyc.financialProfileGroup')}</h2><p className="text-xs text-slate-500 dark:text-slate-400">{t('kyc.financialProfileHint')}</p></div>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-1.5"><Label className={labelClass}>{t('kyc.purposeOfAccount')}{requiredMark}</Label><Select value={personal.purposeOfAccount || undefined} onValueChange={(value) => dispatch(updatePersonal({ purposeOfAccount: value }))}><SelectTrigger aria-invalid={showErrors && !personal.purposeOfAccount} className={cn(fieldClass, showErrors && !personal.purposeOfAccount && invalidClass)}><SelectValue placeholder={t('kyc.selectPlaceholder')} /></SelectTrigger><SelectContent className="border-slate-200 bg-white text-slate-800">{PURPOSE_OF_ACCOUNT_OPTIONS.map((value) => <SelectItem key={value} value={value}>{t(`kyc.purpose_${value}`)}</SelectItem>)}</SelectContent></Select></div>
-            <div className="space-y-1.5"><Label className={labelClass}>{t('kyc.sourceOfFunds')}{requiredMark}</Label><Select value={personal.sourceOfFunds || undefined} onValueChange={(value) => dispatch(updatePersonal({ sourceOfFunds: value }))}><SelectTrigger aria-invalid={showErrors && !personal.sourceOfFunds} className={cn(fieldClass, showErrors && !personal.sourceOfFunds && invalidClass)}><SelectValue placeholder={t('kyc.selectPlaceholder')} /></SelectTrigger><SelectContent className="border-slate-200 bg-white text-slate-800">{SOURCE_OF_FUNDS_OPTIONS.map((value) => <SelectItem key={value} value={value}>{t(`kyc.source_${value}`)}</SelectItem>)}</SelectContent></Select></div>
+            <div className="space-y-1.5"><Label className={labelClass}>{t('kyc.purposeOfAccount')}{requiredMark}</Label><Select value={personal.purposeOfAccount || undefined} onValueChange={(value) => dispatch(updatePersonal({ purposeOfAccount: value }))}><SelectTrigger aria-invalid={showErrors && !personal.purposeOfAccount} className={cn(fieldClass, showErrors && !personal.purposeOfAccount && invalidClass)}><SelectValue placeholder={t('kyc.selectPlaceholder')} /></SelectTrigger><SelectContent className="border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100">{PURPOSE_OF_ACCOUNT_OPTIONS.map((value) => <SelectItem key={value} value={value}>{t(`kyc.purpose_${value}`)}</SelectItem>)}</SelectContent></Select></div>
+            <div className="space-y-1.5"><Label className={labelClass}>{t('kyc.sourceOfFunds')}{requiredMark}</Label><Select value={personal.sourceOfFunds || undefined} onValueChange={(value) => dispatch(updatePersonal({ sourceOfFunds: value }))}><SelectTrigger aria-invalid={showErrors && !personal.sourceOfFunds} className={cn(fieldClass, showErrors && !personal.sourceOfFunds && invalidClass)}><SelectValue placeholder={t('kyc.selectPlaceholder')} /></SelectTrigger><SelectContent className="border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100">{SOURCE_OF_FUNDS_OPTIONS.map((value) => <SelectItem key={value} value={value}>{t(`kyc.source_${value}`)}</SelectItem>)}</SelectContent></Select></div>
             <div className="space-y-1.5"><Label className={labelClass}>{t('kyc.annualIncome')}{requiredMark}</Label><Input value={personal.annualIncome} onChange={(e) => dispatch(updatePersonal({ annualIncome: e.target.value }))} aria-invalid={invalid(personal.annualIncome)} className={cn(fieldClass, invalid(personal.annualIncome) && invalidClass)} maxLength={60} placeholder={t('kyc.annualIncomePlaceholder')} /></div>
             <div className="space-y-1.5"><Label className={labelClass}>{t('kyc.expectedMonthlyVolume')}{requiredMark}</Label><Input value={personal.expectedMonthlyVolume} onChange={(e) => dispatch(updatePersonal({ expectedMonthlyVolume: e.target.value.replace(/[^0-9]/g, '') }))} aria-invalid={invalid(personal.expectedMonthlyVolume)} className={cn(fieldClass, invalid(personal.expectedMonthlyVolume) && invalidClass)} inputMode="numeric" maxLength={60} placeholder={t('kyc.expectedMonthlyVolumePlaceholder')} /></div>
           </div>
         </section>
 
-        <label className={cn('flex cursor-pointer items-start gap-3 rounded-xl border bg-emerald-50/60 p-3 text-xs text-slate-700', showErrors && !personal.consentAccepted ? 'border-destructive' : 'border-emerald-100')}>
+        <label className={cn('flex cursor-pointer items-start gap-3 rounded-xl border bg-emerald-50/60 dark:bg-emerald-950/30 p-3 text-xs text-slate-700 dark:text-slate-200', showErrors && !personal.consentAccepted ? 'border-destructive' : 'border-emerald-100 dark:border-emerald-900')}>
           <input type="checkbox" checked={personal.consentAccepted} onChange={(e) => dispatch(updatePersonal({ consentAccepted: e.target.checked }))} className="mt-0.5 h-4 w-4 accent-emerald-700" />
           <span className="font-medium">{t('kyc.consent')}</span>
         </label>
       </div>
 
       <aside className="grid content-start gap-3 sm:grid-cols-2 lg:grid-cols-1">
-        <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 p-4 text-slate-700">
-          <span className="mb-3 grid h-9 w-9 place-items-center rounded-full bg-emerald-100 text-emerald-700"><ShieldCheck className="h-5 w-5" /></span>
-          <h3 className="text-xs font-bold text-slate-900">{t('kyc.whyWeNeedThis')}</h3>
-          <p className="mt-1.5 text-[11px] leading-relaxed text-slate-600">{t('kyc.whyWeNeedThisBody')}</p>
+        <div className="rounded-2xl border border-emerald-100 dark:border-emerald-900 bg-emerald-50/70 dark:bg-emerald-950/30 p-4 text-slate-700 dark:text-slate-200">
+          <span className="mb-3 grid h-9 w-9 place-items-center rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300"><ShieldCheck className="h-5 w-5" /></span>
+          <h3 className="text-xs font-bold text-slate-900 dark:text-slate-100">{t('kyc.whyWeNeedThis')}</h3>
+          <p className="mt-1.5 text-[11px] leading-relaxed text-slate-600 dark:text-slate-300">{t('kyc.whyWeNeedThisBody')}</p>
         </div>
-        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-slate-700">
-          <span className="mb-3 grid h-9 w-9 place-items-center rounded-full bg-white text-emerald-700 shadow-sm"><FileText className="h-5 w-5" /></span>
-          <h3 className="text-xs font-bold text-slate-900">{t('kyc.acceptedDocuments')}</h3>
-          <ul className="mt-2 space-y-2 text-[11px] leading-snug text-slate-600">
-            {['kyc.acceptedUtilityBill', 'kyc.acceptedBankStatement', 'kyc.acceptedResidenceCertificate'].map((key) => <li key={key} className="flex items-start gap-1.5"><Check className="mt-0.5 h-3 w-3 shrink-0 text-emerald-600" />{t(key)}</li>)}
+        <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-4 text-slate-700 dark:text-slate-200">
+          <span className="mb-3 grid h-9 w-9 place-items-center rounded-full bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-300 shadow-sm"><FileText className="h-5 w-5" /></span>
+          <h3 className="text-xs font-bold text-slate-900 dark:text-slate-100">{t('kyc.acceptedDocuments')}</h3>
+          <ul className="mt-2 space-y-2 text-[11px] leading-snug text-slate-600 dark:text-slate-300">
+            {['kyc.acceptedUtilityBill', 'kyc.acceptedBankStatement', 'kyc.acceptedResidenceCertificate'].map((key) => <li key={key} className="flex items-start gap-1.5"><Check className="mt-0.5 h-3 w-3 shrink-0 text-emerald-600 dark:text-emerald-400" />{t(key)}</li>)}
           </ul>
-          <p className="mt-3 border-t border-slate-200 pt-2 text-[10px] text-slate-500">{t('kyc.addressProofFormats')}</p>
+          <p className="mt-3 border-t border-slate-200 dark:border-slate-700 pt-2 text-[10px] text-slate-500 dark:text-slate-400">{t('kyc.addressProofFormats')}</p>
         </div>
       </aside>
     </div>
@@ -619,13 +619,13 @@ const DocumentsStep = ({
   const document = useAppSelector((s) => s.kyc.document);
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_4px_18px_rgba(15,23,42,0.035)]">
-        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-emerald-100 text-emerald-700"><FileCheck2 className="h-5 w-5" /></span>
-        <div><h2 className="font-display text-base font-bold text-slate-900">{t('kyc.documentsHeading')}</h2><p className="text-xs text-slate-500">{t('kyc.documentsHint')}</p></div>
+      <div className="flex items-center gap-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4 shadow-[0_4px_18px_rgba(15,23,42,0.035)]">
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300"><FileCheck2 className="h-5 w-5" /></span>
+        <div><h2 className="font-display text-base font-bold text-slate-900 dark:text-slate-100">{t('kyc.documentsHeading')}</h2><p className="text-xs text-slate-500 dark:text-slate-400">{t('kyc.documentsHint')}</p></div>
       </div>
-      <section className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_4px_18px_rgba(15,23,42,0.035)] sm:p-5">
+      <section className="space-y-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4 shadow-[0_4px_18px_rgba(15,23,42,0.035)] sm:p-5">
         <div className="space-y-1.5">
-        <Label className="text-[11px] font-semibold text-slate-700">{t('kyc.idType')}<span className="ml-1 text-rose-500">*</span></Label>
+        <Label className="text-[11px] font-semibold text-slate-700 dark:text-slate-200">{t('kyc.idType')}<span className="ml-1 text-rose-500">*</span></Label>
         <Select
           value={document.type || undefined}
           onValueChange={(v) => {
@@ -642,8 +642,8 @@ const DocumentsStep = ({
             onBackCapture({ name: '', file: null, qualityScore: 0, mrzConfidence: 0, signals: [] });
           }}
         >
-          <SelectTrigger aria-invalid={showErrors && !document.type} className={cn('h-11 rounded-xl border-slate-200 bg-white text-sm text-slate-800 shadow-sm focus-visible:border-emerald-600 focus-visible:ring-2 focus-visible:ring-emerald-600/15', showErrors && !document.type && 'border-destructive')}><SelectValue placeholder={t('kyc.selectPlaceholder')} /></SelectTrigger>
-          <SelectContent className="border-slate-200 bg-white text-slate-800">
+          <SelectTrigger aria-invalid={showErrors && !document.type} className={cn('h-11 rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm text-slate-800 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 shadow-sm focus-visible:border-emerald-600 focus-visible:ring-2 focus-visible:ring-emerald-600/15', showErrors && !document.type && 'border-destructive')}><SelectValue placeholder={t('kyc.selectPlaceholder')} /></SelectTrigger>
+          <SelectContent className="border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100">
             <SelectItem value="passport">{t('kyc.passport')}</SelectItem>
             <SelectItem value="nationalId">{t('kyc.nationalId')}</SelectItem>
             <SelectItem value="drivingLicense">{t('kyc.drivingLicense')}</SelectItem>
@@ -651,12 +651,12 @@ const DocumentsStep = ({
         </Select>
         </div>
         <div className="space-y-1.5">
-        <Label className="text-[11px] font-semibold text-slate-700">{t('kyc.idNumber')}<span className="ml-1 text-rose-500">*</span></Label>
+        <Label className="text-[11px] font-semibold text-slate-700 dark:text-slate-200">{t('kyc.idNumber')}<span className="ml-1 text-rose-500">*</span></Label>
         <Input
           value={document.idNumber}
           onChange={(e) => dispatch(updateDocument({ idNumber: e.target.value }))}
           aria-invalid={showErrors && !document.idNumber.trim()}
-          className={cn('h-11 rounded-xl border-slate-200 bg-white text-sm text-slate-800 shadow-sm placeholder:text-slate-400 focus-visible:border-emerald-600 focus-visible:ring-2 focus-visible:ring-emerald-600/15', showErrors && !document.idNumber.trim() && 'border-destructive')}
+          className={cn('h-11 rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm text-slate-800 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 shadow-sm placeholder:text-slate-400 dark:text-slate-500 focus-visible:border-emerald-600 focus-visible:ring-2 focus-visible:ring-emerald-600/15', showErrors && !document.idNumber.trim() && 'border-destructive')}
           maxLength={40}
           placeholder={t('kyc.idNumberPlaceholder')}
         />
@@ -762,19 +762,19 @@ const AddressProofUpload = ({
   };
 
   return (
-    <section className={cn('rounded-2xl border bg-white p-4 shadow-[0_4px_18px_rgba(15,23,42,0.035)] sm:p-5', showErrors && !file ? 'border-destructive' : 'border-slate-200')} aria-labelledby="address-proof-title">
+    <section className={cn('rounded-2xl border bg-white dark:bg-slate-900 p-4 shadow-[0_4px_18px_rgba(15,23,42,0.035)] sm:p-5', showErrors && !file ? 'border-destructive' : 'border-slate-200 dark:border-slate-700')} aria-labelledby="address-proof-title">
       <div className="flex items-start gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300">
           <MapPin className="h-5 w-5" />
         </div>
         <div className="min-w-0 flex-1">
-          <h3 id="address-proof-title" className="text-sm font-bold text-slate-900">
+          <h3 id="address-proof-title" className="text-sm font-bold text-slate-900 dark:text-slate-100">
             {t('kyc.addressProofTitle')} <span className="text-rose-500">*</span>
           </h3>
-          <p className="mt-1 text-xs leading-relaxed text-slate-600">
+          <p className="mt-1 text-xs leading-relaxed text-slate-600 dark:text-slate-300">
             {t('kyc.addressProofDescription')}
           </p>
-          <p className="mt-2 text-[10px] font-medium text-slate-500">{t('kyc.addressProofFormats')}</p>
+          <p className="mt-2 text-[10px] font-medium text-slate-500 dark:text-slate-400">{t('kyc.addressProofFormats')}</p>
         </div>
       </div>
 
@@ -788,24 +788,24 @@ const AddressProofUpload = ({
       />
 
       {file ? (
-        <div className="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-white">
+        <div className="mt-4 overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900">
           {previewUrl && (
-            <img src={previewUrl} alt="Aperçu du justificatif de domicile" className="max-h-52 w-full bg-slate-50 object-contain" />
+            <img src={previewUrl} alt="Aperçu du justificatif de domicile" className="max-h-52 w-full bg-slate-50 dark:bg-slate-800 object-contain" />
           )}
           <div className="flex items-center gap-3 p-3 sm:p-4">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300">
               <FileText className="h-5 w-5" />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold text-slate-800" title={file.name}>{file.name}</p>
-              <p className="text-xs text-slate-500">{(file.size / (1024 * 1024)).toFixed(2)} Mo · {t('kyc.addressProofReady')}</p>
+              <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100" title={file.name}>{file.name}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">{(file.size / (1024 * 1024)).toFixed(2)} Mo · {t('kyc.addressProofReady')}</p>
             </div>
             <Button type="button" variant="ghost" size="icon" aria-label="Retirer le justificatif" onClick={removeFile}>
               <X className="h-4 w-4" />
             </Button>
           </div>
-          <div className="flex flex-wrap gap-2 border-t border-slate-100 p-3">
-            <Button type="button" variant="outline" size="sm" onClick={() => inputRef.current?.click()} className="border-emerald-200 text-emerald-800 hover:bg-emerald-50">
+          <div className="flex flex-wrap gap-2 border-t border-slate-100 dark:border-slate-700 p-3">
+            <Button type="button" variant="outline" size="sm" onClick={() => inputRef.current?.click()} className="border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200 hover:bg-emerald-50 dark:bg-emerald-950/40">
               {t('kyc.addressProofReplace')}
             </Button>
             <Button type="button" variant="ghost" size="sm" onClick={removeFile}>{t('kyc.addressProofRemove')}</Button>
@@ -817,12 +817,12 @@ const AddressProofUpload = ({
           onClick={() => inputRef.current?.click()}
           onDragOver={(event) => event.preventDefault()}
           onDrop={handleDrop}
-          className="group mt-4 flex min-h-32 w-full flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed border-emerald-300 bg-gradient-to-b from-emerald-50/70 to-white px-4 py-5 text-center transition-colors hover:border-emerald-500 hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600/25"
+          className="group mt-4 flex min-h-32 w-full flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed border-emerald-300 bg-gradient-to-b from-emerald-50/70 to-white px-4 py-5 text-center transition-colors hover:border-emerald-500 hover:bg-emerald-50 dark:from-emerald-950/30 dark:to-slate-900 dark:hover:bg-emerald-950/50 dark:bg-emerald-950/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600/25"
         >
-          <UploadCloud className="mb-1 h-6 w-6 text-emerald-600 transition-transform group-hover:-translate-y-0.5" />
-          <span className="text-xs font-bold text-slate-800">{t('kyc.addressProofChoose')}</span>
-          <span className="text-[10px] text-slate-500">{t('kyc.addressProofDropHint')}</span>
-          <span className="mt-1 rounded-full bg-emerald-50 px-2.5 py-1 text-[9px] font-medium text-slate-500">{t('kyc.addressProofFormats')}</span>
+          <UploadCloud className="mb-1 h-6 w-6 text-emerald-600 dark:text-emerald-400 transition-transform group-hover:-translate-y-0.5" />
+          <span className="text-xs font-bold text-slate-800 dark:text-slate-100">{t('kyc.addressProofChoose')}</span>
+          <span className="text-[10px] text-slate-500 dark:text-slate-400">{t('kyc.addressProofDropHint')}</span>
+          <span className="mt-1 rounded-full bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1 text-[9px] font-medium text-slate-500 dark:text-slate-400">{t('kyc.addressProofFormats')}</span>
         </button>
       )}
     </section>
@@ -1249,19 +1249,19 @@ const DocumentCapture = ({
   ].join(' • ');
 
   return (
-    <div className={cn('space-y-3 rounded-2xl border bg-emerald-50/35 p-3.5 sm:p-4', showErrors && !value ? 'border-destructive' : 'border-emerald-100')}>
+    <div className={cn('space-y-3 rounded-2xl border bg-emerald-50 dark:bg-emerald-950/40/35 dark:bg-emerald-950/20 p-3.5 sm:p-4', showErrors && !value ? 'border-destructive' : 'border-emerald-100 dark:border-emerald-900')}>
       <input ref={fileInputRef} type="file" accept=".jpg,.jpeg,.png,image/jpeg,image/png" className="sr-only" onChange={(event) => chooseImage(event.currentTarget.files?.[0])} aria-label={t('kyc.documentUploadTitle')} />
       <div className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2">
-          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-emerald-100 text-emerald-700"><Camera className="h-4 w-4" /></span>
-          <div className="min-w-0"><p className="truncate text-xs font-bold text-slate-800">{label}<span className="ml-1 text-rose-500">*</span></p><p className="text-[10px] text-slate-500">{documentType === 'passport' ? t('kyc.passportCaptureHint') : t('kyc.idCaptureHint')}</p></div>
+          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300"><Camera className="h-4 w-4" /></span>
+          <div className="min-w-0"><p className="truncate text-xs font-bold text-slate-800 dark:text-slate-100">{label}<span className="ml-1 text-rose-500">*</span></p><p className="text-[10px] text-slate-500 dark:text-slate-400">{documentType === 'passport' ? t('kyc.passportCaptureHint') : t('kyc.idCaptureHint')}</p></div>
         </div>
-        {value && <span className="shrink-0 text-[10px] font-semibold text-emerald-700">{t('kyc.documentUploadSelected')}</span>}
+        {value && <span className="shrink-0 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300">{t('kyc.documentUploadSelected')}</span>}
       </div>
       {preview ? (
         <div className="space-y-2">
           <img src={preview} alt={label} className="w-full rounded-xl aspect-[4/3] object-cover" />
-          <div className="flex items-center justify-between rounded-xl border border-slate-100 bg-white px-3 py-2 text-xs text-slate-700">
+          <div className="flex items-center justify-between rounded-xl border border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-xs text-slate-700 dark:text-slate-200">
               <span className="flex items-center gap-1.5 font-medium">
                 <FileCheck2 className="h-3.5 w-3.5 text-success" />
                 {uploaded ? t('kyc.documentUploadSelected') : t('kyc.captureUsable')}
@@ -1290,7 +1290,7 @@ const DocumentCapture = ({
               <div className="absolute left-3 top-3 rounded-full bg-black/55 px-2.5 py-1 text-[10px] font-semibold text-white">
                 Document
               </div>
-              <div className="absolute right-3 top-3 rounded-full bg-emerald-500/15 px-2.5 py-1 text-[10px] font-semibold text-emerald-300">
+              <div className="absolute right-3 top-3 rounded-full bg-emerald-50 dark:bg-emerald-950/400/15 px-2.5 py-1 text-[10px] font-semibold text-emerald-300">
                 {videoAttached ? 'Camera active' : 'Initialisation...'}
               </div>
               {overlayBox && (
@@ -1343,10 +1343,10 @@ const DocumentCapture = ({
         </div>
       ) : (
         <div className="grid gap-2 sm:grid-cols-2">
-          <Button type="button" variant="outline" onClick={start} className="h-10 rounded-xl border-emerald-200 bg-white text-xs text-slate-700 hover:bg-emerald-50">
+          <Button type="button" variant="outline" onClick={start} className="h-10 rounded-xl border-emerald-200 dark:border-emerald-800 bg-white dark:bg-slate-900 text-xs text-slate-700 dark:text-slate-200 hover:bg-emerald-50 dark:bg-emerald-950/40">
             <Camera className="mr-2 h-5 w-5" /> {t('kyc.documentUploadUseCamera')}
           </Button>
-          <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()} className="h-10 rounded-xl border-emerald-200 bg-white text-xs text-slate-700 hover:bg-emerald-50">
+          <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()} className="h-10 rounded-xl border-emerald-200 dark:border-emerald-800 bg-white dark:bg-slate-900 text-xs text-slate-700 dark:text-slate-200 hover:bg-emerald-50 dark:bg-emerald-950/40">
             <UploadCloud className="mr-2 h-5 w-5" /> {t('kyc.documentUploadTitle')}
           </Button>
         </div>

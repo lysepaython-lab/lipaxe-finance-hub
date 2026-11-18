@@ -360,7 +360,7 @@ export const walletApi = api.injectEndpoints({
       query: (body) => ({ url: '/transactions/nfc/p2p/accept/', method: 'POST', body }),
       invalidatesTags: ['Wallet', 'Transactions'],
     }),
-    lookupRecipient: b.mutation<RecipientLookup, { account_no: string }>({
+    lookupRecipient: b.mutation<RecipientLookup, { identifier: string }>({
       query: (body) => ({
         url: '/transactions/lookup/',
         method: 'POST',

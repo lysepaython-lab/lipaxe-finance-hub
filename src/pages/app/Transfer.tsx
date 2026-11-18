@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -42,6 +42,8 @@ const Transfer = () => {
   const [wallet, setWallet] = useState<WalletV2 | undefined>();
   const [recipient, setRecipient] = useState('');
   const [recipientInfo, setRecipientInfo] = useState<RecipientLookup | null>(null);
+  const recipientInputRef = useRef('');
+  const resolvedRecipientRef = useRef('');
   const [amount, setAmount] = useState('100');
   const [note, setNote] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -68,7 +70,10 @@ const Transfer = () => {
   }, [currentAccountNo, transactions]);
 
   // Reset recipient info when input changes
-  useEffect(() => { setRecipientInfo(null); }, [recipient]);
+  useEffect(() => {
+    setRecipientInfo(null);
+    resolvedRecipientRef.current = '';
+  }, [recipient]);
 
   useEffect(() => {
     let cancelled = false;
@@ -83,28 +88,24 @@ const Transfer = () => {
         recentInternalRecipients.map(async (tx) => {
           const accountNo = sanitizeText(tx.counterpartyAccount || '');
           try {
-            const info = await lookup({ account_no: accountNo }).unwrap();
+            const info = await lookup({ identifier: accountNo }).unwrap();
+            const displayName = info.name.trim();
+            if (!displayName || displayName.toLowerCase() === accountNo.toLowerCase()) return null;
             return {
               id: tx.id,
               account_no: info.account_no || accountNo,
-              name: info.name || tx.counterparty,
+              name: displayName,
               avatar: info.avatar,
               verified: info.verified,
             } satisfies RecentRecipientSuggestion;
           } catch {
-            return {
-              id: tx.id,
-              account_no: accountNo,
-              name: tx.counterparty || accountNo,
-              avatar: undefined,
-              verified: false,
-            } satisfies RecentRecipientSuggestion;
+            return null;
           }
         }),
       );
 
       if (!cancelled) {
-        setRecipientSuggestions(suggestions);
+        setRecipientSuggestions(suggestions.filter((entry): entry is RecentRecipientSuggestion => entry !== null));
       }
     };
 
@@ -122,7 +123,10 @@ const Transfer = () => {
     const normalizedRecipient = recipientValue.trim();
     if (!normalizedRecipient) { toast.error(t('transfer.amountRequired')); return null; }
     try {
-      const info = await lookup({ account_no: sanitizeText(normalizedRecipient) }).unwrap();
+      const info = await lookup({ identifier: sanitizeText(normalizedRecipient) }).unwrap();
+      if (recipientInputRef.current.trim().toLowerCase() === normalizedRecipient.toLowerCase()) {
+        resolvedRecipientRef.current = info.account_no;
+      }
       setRecipientInfo(info);
       toast.success(t('transfer.recipientFound'));
       return info;
@@ -133,6 +137,7 @@ const Transfer = () => {
   };
 
   const applyRecentRecipient = async (value: string) => {
+    recipientInputRef.current = value;
     setRecipient(value);
     setRecipientInfo(null);
     await doLookup(value);
@@ -143,7 +148,7 @@ const Transfer = () => {
     const payload = {
       amount: parseFloat(amount) || 0,
       from_account: fromAccount,
-      to_account: sanitizeText(recipient),
+      to_account: resolvedRecipientRef.current || sanitizeText(recipient),
       payment_method: 'internal',
       wallet_id: walletId || '',
     };
@@ -246,11 +251,11 @@ const Transfer = () => {
               <Label>{t('transfer.recipient')}</Label>
               <div className="flex gap-2">
                 <Input
-                  placeholder="@username ou n° de compte"
+                  placeholder="N° de compte ou e-mail"
                   value={recipient}
-                  onChange={(e) => setRecipient(e.target.value)}
+                  onChange={(e) => { recipientInputRef.current = e.target.value; setRecipient(e.target.value); }}
                   className="h-11 rounded-xl"
-                  maxLength={64}
+                  maxLength={254}
                 />
                 <Button type="button" variant="outline" onClick={doLookup} disabled={looking || !recipient}>
                   {looking ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}

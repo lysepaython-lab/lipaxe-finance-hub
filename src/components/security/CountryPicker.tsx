@@ -21,11 +21,12 @@ interface CountryPickerProps {
   placeholder?: string;
   label?: string;
   triggerClassName?: string;
+  contentClassName?: string;
   /** Filter countries to only those served by the given payment methods. */
   paymentMethods?: { countries: { country: { alpha_2?: string; isoCode?: string; name?: string } }[] }[];
 }
 
-export const CountryPicker = ({ value, onChange, placeholder, label, paymentMethods, triggerClassName }: CountryPickerProps) => {
+export const CountryPicker = ({ value, onChange, placeholder, label, paymentMethods, triggerClassName, contentClassName }: CountryPickerProps) => {
   const { data: countries, isLoading } = useCountriesQuery();
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState('');
@@ -88,7 +89,7 @@ export const CountryPicker = ({ value, onChange, placeholder, label, paymentMeth
             <ChevronsUpDown className="h-4 w-4 opacity-50" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+        <PopoverContent className={cn('w-[--radix-popover-trigger-width] p-0', contentClassName)} align="start">
           <div className="p-2 border-b">
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
